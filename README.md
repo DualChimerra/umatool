@@ -78,13 +78,19 @@ The site is plain static files — ES modules, no bundler, no dependencies.
 
 The whole site lives in `docs/`. Two ways to publish it:
 
+* **Deploy from a branch** (simplest): *Settings → Pages → Source: Deploy from a branch →
+  pick the branch, folder **`/docs`***. No workflow needed, and it works from any branch —
+  it does not have to be the default one.
 * **GitHub Actions** (what `.github/workflows/pages.yml` does): *Settings → Pages →
-  Source: GitHub Actions*. The workflow then deploys on every push to `main` that touches
-  `docs/`.
-* **Deploy from a branch**: *Settings → Pages → Source: Deploy from a branch →
-  `main` / `docs`*. No workflow needed.
+  Source: GitHub Actions*. That workflow deploys on every push to `main` touching `docs/`,
+  so it only fires once `main` exists.
 
 Either way the site ends up at `https://<user>.github.io/umatool/`.
+
+If the folder is left on `/ (root)` instead of `/docs`, the root `index.html` in this
+repository redirects to `docs/` so the site still opens — but `/docs` is the correct
+setting and avoids the extra hop. The `.nojekyll` files stop Pages from running the
+content through Jekyll, which it has no reason to do here.
 
 ## Accuracy notes
 
