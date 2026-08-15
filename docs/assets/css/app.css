@@ -138,9 +138,9 @@ ul { margin: 0; padding: 0; list-style: none; }
 .rail { position: sticky; top: 78px; display: flex; flex-direction: column; gap: 12px; max-height: calc(100vh - 100px); overflow-y: auto; padding-right: 4px; }
 @media (max-width: 1080px) { .rail { position: static; max-height: none; } }
 
-.filters-toggle { display: none; }
+.btn.filters-toggle { display: none; }
 @media (max-width: 1080px) {
-  .filters-toggle { display: flex; width: 100%; justify-content: center; }
+  .btn.filters-toggle { display: flex; width: 100%; justify-content: center; }
   .rail--collapsible { display: none; }
   .rail--collapsible.rail--open { display: flex; }
 }

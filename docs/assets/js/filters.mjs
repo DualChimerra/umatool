@@ -18,7 +18,7 @@ export function createSkillFilter({ onChange, label = 'Skills', hint = '' } = {}
         ${hint ? `<p class="tiny muted">${esc(hint)}</p>` : ''}
         <div class="field" style="position:relative">
           <input class="input" type="search" data-role="q" placeholder="Search a skill, e.g. Determined Descent" autocomplete="off">
-          <div data-role="results" class="panel" style="position:absolute;top:100%;left:0;right:0;z-index:30;max-height:280px;overflow:auto;margin-top:4px" hidden></div>
+          <div data-role="results" class="panel" style="position:fixed;z-index:60;max-height:300px;overflow:auto;box-shadow:var(--shadow-md)" hidden></div>
         </div>
         <div class="chips" data-role="picked"></div>
         <div class="seg" data-role="mode">
@@ -65,6 +65,26 @@ export function createSkillFilter({ onChange, label = 'Skills', hint = '' } = {}
         <span class="chip chip--${s.tier === 'normal' ? '' : s.tier}">${TIER_LABEL[s.tier]}</span>
       </button>`).join('');
     results.hidden = false;
+    placeResults();
+  }
+
+  // The rail scrolls, so an absolutely positioned dropdown would be clipped by
+  // it. Pin the list to the viewport instead and track the input.
+  function placeResults() {
+    if (results.hidden) return;
+    const r = q.getBoundingClientRect();
+    results.style.left = `${r.left}px`;
+    results.style.width = `${r.width}px`;
+    const below = window.innerHeight - r.bottom - 12;
+    if (below < 180 && r.top > below) {
+      results.style.top = 'auto';
+      results.style.bottom = `${window.innerHeight - r.top + 4}px`;
+      results.style.maxHeight = `${r.top - 16}px`;
+    } else {
+      results.style.bottom = 'auto';
+      results.style.top = `${r.bottom + 4}px`;
+      results.style.maxHeight = `${Math.max(140, below)}px`;
+    }
   }
 
   function renderPicked() {
@@ -87,6 +107,8 @@ export function createSkillFilter({ onChange, label = 'Skills', hint = '' } = {}
   q.addEventListener('input', debounce(() => { state.query = q.value; renderResults(); }, 110));
   q.addEventListener('focus', renderResults);
   document.addEventListener('click', (e) => { if (!root.contains(e.target)) results.hidden = true; });
+  window.addEventListener('resize', placeResults);
+  window.addEventListener('scroll', placeResults, true);
 
   on(root, 'click', '[data-add]', (e, t) => {
     const id = t.dataset.add;
