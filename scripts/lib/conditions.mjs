@@ -1,10 +1,14 @@
-// Parser for the condition strings that ship with skill data.
+// Разбор строк с условиями, которые приходят вместе с данными скиллов.
 //
 //   "phase>=2&order_rate<=50@is_finalcorner==1"
 //
-// `@` separates alternatives (OR), `&` separates requirements (AND).
-// The parser produces two things: a readable English sentence and a set of
-// facets the UI can filter and sort on.
+// `@` разделяет альтернативы (ИЛИ), `&` — требования (И).
+// Парсер выдаёт две вещи: читаемую фразу по-русски и набор фасетов, по которым
+// интерфейс фильтрует и сортирует.
+//
+// Названия из игры (Turf, Sprint, Pace Chaser, Firm) остаются как в клиенте —
+// это термины, которые игрок видит в самой игре; переводится только связывающий
+// их текст.
 
 import {
   RUNNING_STYLE, DISTANCE_TYPE, SURFACE, GROUND_CONDITION,
@@ -36,19 +40,35 @@ function resolveSet(domain, op, value) {
   }
 }
 
-const ordinal = (n) => {
-  const s = ['th', 'st', 'nd', 'rd'];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
-};
-
 const listOf = (arr) => {
   if (arr.length === 0) return '';
   if (arr.length === 1) return arr[0];
-  return `${arr.slice(0, -1).join(', ')} or ${arr[arr.length - 1]}`;
+  return `${arr.slice(0, -1).join(', ')} или ${arr[arr.length - 1]}`;
 };
 
-const cmpWord = { '>=': 'at least', '<=': 'at most', '>': 'over', '<': 'under', '==': 'exactly', '!=': 'not' };
+const cmpWord = { '>=': 'не менее', '<=': 'не более', '>': 'больше', '<': 'меньше', '==': 'ровно', '!=': 'не' };
+
+// Места в забеге сравниваются «выше/ниже», а не «больше/меньше»: order<=3 — это
+// тройка лидеров, а не «не более трёх».
+const placePhrase = (op, v, { gen, nom }) => {
+  switch (op) {
+    case '<=': return `не ниже ${v}-го ${gen}`;
+    case '<': return `выше ${v}-го ${gen}`;
+    case '>=': return `не выше ${v}-го ${gen}`;
+    case '>': return `ниже ${v}-го ${gen}`;
+    case '!=': return `не ${v}-е ${nom}`;
+    default: return `ровно ${v}-е ${nom}`;
+  }
+};
+const PLACE = { gen: 'места', nom: 'место' };
+const FAVOURITE = { gen: 'фаворита', nom: 'место в фаворитах' };
+
+// Названия, которые встречаются только в тексте условий.
+const PHASE_RU = { 0: 'старт', 1: 'середина', 2: 'финальный отрезок', 3: 'последний спурт' };
+const WEATHER_RU = { 1: 'ясно', 2: 'облачно', 3: 'дождь', 4: 'снег' };
+const SEASON_RU = { 1: 'весна', 2: 'лето', 3: 'осень', 4: 'зима', 5: 'сезон сакуры' };
+const ROTATION_RU = { 1: 'правый круг', 2: 'левый круг' };
+const phaseRu = (v) => PHASE_RU[v] ?? `фаза ${v}`;
 
 /**
  * Per-key handlers. `describe` returns a phrase, `apply` records facets.
@@ -57,27 +77,27 @@ const cmpWord = { '>=': 'at least', '<=': 'at most', '>': 'over', '<': 'under', 
  */
 const HANDLERS = {
   phase: {
-    describe: (op, v) => `${listOf(resolveSet(PHASE, op, v).map((p) => PHASE[p].name))}`,
+    describe: (op, v) => `${listOf(resolveSet(PHASE, op, v).map(phaseRu))}`,
     apply: (op, v, f) => { f.phases = intersect(f.phases, resolveSet(PHASE, op, v)); },
   },
   phase_random: {
-    describe: (op, v) => `random point in the ${PHASE[v]?.name ?? `phase ${v}`}`,
+    describe: (op, v) => `случайная точка на отрезке «${phaseRu(v)}»`,
     apply: (op, v, f) => { f.phases = intersect(f.phases, resolveSet(PHASE, op, v)); f.random = true; },
   },
   phase_firsthalf_random: {
-    describe: (op, v) => `random point in the first half of the ${PHASE[v]?.name ?? `phase ${v}`}`,
+    describe: (op, v) => `случайная точка в первой половине отрезка «${phaseRu(v)}»`,
     apply: (op, v, f) => { f.phases = intersect(f.phases, resolveSet(PHASE, op, v)); f.random = true; },
   },
   phase_laterhalf_random: {
-    describe: (op, v) => `random point in the second half of the ${PHASE[v]?.name ?? `phase ${v}`}`,
+    describe: (op, v) => `случайная точка во второй половине отрезка «${phaseRu(v)}»`,
     apply: (op, v, f) => { f.phases = intersect(f.phases, resolveSet(PHASE, op, v)); f.random = true; },
   },
   phase_corner_random: {
-    describe: (op, v) => `random corner during the ${PHASE[v]?.name ?? `phase ${v}`}`,
+    describe: (op, v) => `случайный поворот на отрезке «${phaseRu(v)}»`,
     apply: (op, v, f) => { f.phases = intersect(f.phases, resolveSet(PHASE, op, v)); f.terrain.add('corner'); f.random = true; },
   },
   distance_type: {
-    describe: (op, v) => `${listOf(resolveSet(DISTANCE_TYPE, op, v).map((d) => DISTANCE_TYPE[d].name))} races`,
+    describe: (op, v) => `дистанция ${listOf(resolveSet(DISTANCE_TYPE, op, v).map((d) => DISTANCE_TYPE[d].name))}`,
     apply: (op, v, f) => { f.distanceTypes = intersect(f.distanceTypes, resolveSet(DISTANCE_TYPE, op, v)); },
   },
   ground_type: {
@@ -85,95 +105,95 @@ const HANDLERS = {
     apply: (op, v, f) => { f.surfaces = intersect(f.surfaces, resolveSet(SURFACE, op, v)); },
   },
   running_style: {
-    describe: (op, v) => `running as ${listOf(resolveSet(RUNNING_STYLE, op, v).map((d) => RUNNING_STYLE[d].name))}`,
+    describe: (op, v) => `стилем ${listOf(resolveSet(RUNNING_STYLE, op, v).map((d) => RUNNING_STYLE[d].name))}`,
     apply: (op, v, f) => { f.strategies = intersect(f.strategies, resolveSet(RUNNING_STYLE, op, v)); },
   },
   ground_condition: {
-    describe: (op, v) => `${listOf(resolveSet(GROUND_CONDITION, op, v).map((d) => GROUND_CONDITION[d]))} going`,
+    describe: (op, v) => `грунт ${listOf(resolveSet(GROUND_CONDITION, op, v).map((d) => GROUND_CONDITION[d]))}`,
     apply: (op, v, f) => { f.groundConditions = intersect(f.groundConditions, resolveSet(GROUND_CONDITION, op, v)); },
   },
   weather: {
-    describe: (op, v) => `${listOf(resolveSet(WEATHER, op, v).map((d) => WEATHER[d]))} weather`,
+    describe: (op, v) => `погода: ${listOf(resolveSet(WEATHER, op, v).map((d) => WEATHER_RU[d] ?? WEATHER[d]))}`,
     apply: (op, v, f) => { f.weathers = intersect(f.weathers, resolveSet(WEATHER, op, v)); },
   },
   season: {
-    describe: (op, v) => `in ${listOf(resolveSet(SEASON, op, v).map((d) => SEASON[d]))}`,
+    describe: (op, v) => `${listOf(resolveSet(SEASON, op, v).map((d) => SEASON_RU[d] ?? SEASON[d]))}`,
     apply: (op, v, f) => { f.seasons = intersect(f.seasons, resolveSet(SEASON, op, v)); },
   },
   rotation: {
-    describe: (op, v) => `${listOf(resolveSet(ROTATION, op, v).map((d) => ROTATION[d]))} tracks`,
+    describe: (op, v) => `${listOf(resolveSet(ROTATION, op, v).map((d) => ROTATION_RU[d] ?? ROTATION[d]))}`,
     apply: (op, v, f) => { f.rotations = intersect(f.rotations, resolveSet(ROTATION, op, v)); },
   },
   track_id: {
-    describe: (op, v, ctx) => `at ${ctx.trackName?.(v) ?? `track ${v}`}`,
+    describe: (op, v, ctx) => `на ${ctx.trackName?.(v) ?? `ипподроме ${v}`}`,
     apply: (op, v, f) => { if (op === '==') f.trackIds.add(v); },
   },
   corner: {
-    describe: (op, v) => (v === 0 && op === '!=' ? 'on a corner' : v === 0 ? 'not on a corner' : `on corner ${v}`),
+    describe: (op, v) => (v === 0 && op === '!=' ? 'на повороте' : v === 0 ? 'не на повороте' : `на повороте ${v}`),
     apply: (op, v, f) => { if (v === 0 && op === '!=') f.terrain.add('corner'); else if (v === 0) f.terrain.add('straight'); else f.terrain.add('corner'); },
   },
   corner_random: {
-    describe: () => 'random point on a corner',
+    describe: () => 'случайная точка на повороте',
     apply: (op, v, f) => { f.terrain.add('corner'); f.random = true; },
   },
   all_corner_random: {
-    describe: () => 'random point on every corner',
+    describe: () => 'случайная точка на каждом повороте',
     apply: (op, v, f) => { f.terrain.add('corner'); f.random = true; },
   },
   is_finalcorner: {
-    describe: (op, v) => (v === 1 ? 'from the final corner onward' : 'before the final corner'),
+    describe: (op, v) => (v === 1 ? 'от последнего поворота и дальше' : 'до последнего поворота'),
     apply: (op, v, f) => { if (v === 1) { f.terrain.add('final-corner'); f.late = true; } },
   },
   is_finalcorner_random: {
-    describe: () => 'random point on the final corner',
+    describe: () => 'случайная точка на последнем повороте',
     apply: (op, v, f) => { f.terrain.add('final-corner'); f.random = true; f.late = true; },
   },
   is_finalcorner_laterhalf: {
-    describe: () => 'second half of the final corner',
+    describe: () => 'вторая половина последнего поворота',
     apply: (op, v, f) => { f.terrain.add('final-corner'); f.late = true; },
   },
   is_last_straight: {
-    describe: () => 'on the final straight',
+    describe: () => 'на финишной прямой',
     apply: (op, v, f) => { f.terrain.add('last-straight'); f.late = true; },
   },
   is_last_straight_onetime: {
-    describe: () => 'once on the final straight',
+    describe: () => 'один раз на финишной прямой',
     apply: (op, v, f) => { f.terrain.add('last-straight'); f.late = true; },
   },
   last_straight_random: {
-    describe: () => 'random point on the final straight',
+    describe: () => 'случайная точка на финишной прямой',
     apply: (op, v, f) => { f.terrain.add('last-straight'); f.random = true; f.late = true; },
   },
   straight_random: {
-    describe: () => 'random point on a straight',
+    describe: () => 'случайная точка на прямой',
     apply: (op, v, f) => { f.terrain.add('straight'); f.random = true; },
   },
   straight_front_type: {
-    describe: (op, v) => (v === 1 ? 'on the home straight' : 'on the back straight'),
+    describe: (op, v) => (v === 1 ? 'на финишной прямой' : 'на противоположной прямой'),
     apply: (op, v, f) => { f.terrain.add('straight'); },
   },
   slope: {
-    describe: (op, v) => (v === 1 ? 'on an uphill' : v === 2 ? 'on a downhill' : 'on flat ground'),
+    describe: (op, v) => (v === 1 ? 'на подъёме' : v === 2 ? 'на спуске' : 'на ровном'),
     apply: (op, v, f) => { f.terrain.add(v === 1 ? 'uphill' : v === 2 ? 'downhill' : 'flat'); },
   },
   up_slope_random: {
-    describe: () => 'random point on an uphill',
+    describe: () => 'случайная точка на подъёме',
     apply: (op, v, f) => { f.terrain.add('uphill'); f.random = true; },
   },
   down_slope_random: {
-    describe: () => 'random point on a downhill',
+    describe: () => 'случайная точка на спуске',
     apply: (op, v, f) => { f.terrain.add('downhill'); f.random = true; },
   },
   is_lastspurt: {
-    describe: (op, v) => (v === 1 ? 'while in last spurt' : 'while not in last spurt'),
+    describe: (op, v) => (v === 1 ? 'во время последнего спурта' : 'вне последнего спурта'),
     apply: (op, v, f) => { if (v === 1) { f.late = true; f.phases = intersect(f.phases, [2, 3]); } },
   },
   is_basis_distance: {
-    describe: (op, v) => (v === 1 ? 'in races of a standard distance (multiple of 400m)' : 'in races of a non-standard distance'),
+    describe: (op, v) => (v === 1 ? 'на стандартной дистанции (кратной 400m)' : 'на нестандартной дистанции'),
     apply: () => {},
   },
   remain_distance: {
-    describe: (op, v) => `${cmpWord[op]} ${v}m left`,
+    describe: (op, v) => `до финиша ${cmpWord[op]} ${v}m`,
     apply: (op, v, f) => {
       if ((op === '<=' || op === '<') && v <= 600) f.late = true;
       // "at most N metres left" is a lower bound on how far into the race we are.
@@ -182,7 +202,7 @@ const HANDLERS = {
     },
   },
   distance_rate: {
-    describe: (op, v) => `${cmpWord[op]} ${v}% into the race`,
+    describe: (op, v) => `пройдено ${cmpWord[op]} ${v}% дистанции`,
     apply: (op, v, f) => {
       if ((op === '>=' || op === '>') && v >= 60) f.late = true;
       if (op === '>=' || op === '>') f.window.rateMin = Math.max(f.window.rateMin ?? 0, v / 100);
@@ -190,11 +210,11 @@ const HANDLERS = {
     },
   },
   distance_rate_after_random: {
-    describe: (op, v) => `random point after ${v}% into the race`,
+    describe: (op, v) => `случайная точка после ${v}% дистанции`,
     apply: (op, v, f) => { f.random = true; f.window.rateMin = Math.max(f.window.rateMin ?? 0, v / 100); },
   },
   order: {
-    describe: (op, v) => `${cmpWord[op]} ${ordinal(v)} place`,
+    describe: (op, v) => placePhrase(op, v, PLACE),
     apply: (op, v, f) => {
       if (op === '<=' || op === '<') f.position.orderMax = Math.min(f.position.orderMax ?? 99, v);
       if (op === '>=' || op === '>') f.position.orderMin = Math.max(f.position.orderMin ?? 0, v);
@@ -202,86 +222,86 @@ const HANDLERS = {
     },
   },
   order_rate: {
-    describe: (op, v) => `in the ${op.startsWith('<') ? 'top' : 'bottom'} ${op.startsWith('<') ? v : 100 - v}% of the field`,
+    describe: (op, v) => `в ${op.startsWith('<') ? 'верхних' : 'нижних'} ${op.startsWith('<') ? v : 100 - v}% поля`,
     apply: (op, v, f) => {
       if (op === '<=' || op === '<') f.position.rateMax = Math.min(f.position.rateMax ?? 100, v);
       if (op === '>=' || op === '>') f.position.rateMin = Math.max(f.position.rateMin ?? 0, v);
     },
   },
-  order_rate_in20_continue: { describe: (op, v) => `after ${v}s inside the top 20%`, apply: () => {} },
-  order_rate_out40_continue: { describe: (op, v) => `after ${v}s outside the top 40%`, apply: () => {} },
-  popularity: { describe: (op, v) => `${cmpWord[op]} ${ordinal(v)} favourite`, apply: () => {} },
-  post_number: { describe: (op, v) => `${cmpWord[op]} post ${v}`, apply: () => {} },
-  is_badstart: { describe: (op, v) => (v === 1 ? 'after a poor start' : 'without a poor start'), apply: () => {} },
+  order_rate_in20_continue: { describe: (op, v) => `после ${v}s в верхних 20%`, apply: () => {} },
+  order_rate_out40_continue: { describe: (op, v) => `после ${v}s вне верхних 40%`, apply: () => {} },
+  popularity: { describe: (op, v) => placePhrase(op, v, FAVOURITE), apply: () => {} },
+  post_number: { describe: (op, v) => `стартовый бокс ${cmpWord[op]} ${v}`, apply: () => {} },
+  is_badstart: { describe: (op, v) => (v === 1 ? 'после плохого старта' : 'без плохого старта'), apply: () => {} },
   is_overtake: {
-    describe: (op, v) => (v === 1 ? 'while overtaking' : 'while not overtaking'),
+    describe: (op, v) => (v === 1 ? 'во время обгона' : 'вне обгона'),
     apply: (op, v, f) => { if (v === 1) f.needs.add('overtake'); },
   },
-  overtake_target_time: { describe: (op, v) => `after ${v}s of chasing a target`, apply: (op, v, f) => f.needs.add('overtake') },
+  overtake_target_time: { describe: (op, v) => `после ${v}s преследования цели`, apply: (op, v, f) => f.needs.add('overtake') },
   change_order_onetime: {
-    describe: (op, v) => (v < 0 ? 'after gaining a place' : 'after losing a place'),
+    describe: (op, v) => (v < 0 ? 'после отыгранного места' : 'после потерянного места'),
     apply: (op, v, f) => { f.needs.add(v < 0 ? 'gain-place' : 'lose-place'); },
   },
   change_order_up_end_after: {
-    describe: (op, v) => `after passing ${v} runners`,
+    describe: (op, v) => `после обгона ${v} соперниц`,
     apply: (op, v, f) => { f.needs.add('gain-place'); },
   },
   blocked_front_continuetime: {
-    describe: (op, v) => `after being boxed in from the front for ${v}s`,
+    describe: (op, v) => `после ${v}s зажатости спереди`,
     apply: (op, v, f) => { f.needs.add('blocked'); },
   },
   blocked_side_continuetime: {
-    describe: (op, v) => `after being boxed in on the side for ${v}s`,
+    describe: (op, v) => `после ${v}s зажатости сбоку`,
     apply: (op, v, f) => { f.needs.add('blocked'); },
   },
   blocked_all_continuetime: {
-    describe: (op, v) => `after being fully boxed in for ${v}s`,
+    describe: (op, v) => `после ${v}s полной зажатости`,
     apply: (op, v, f) => { f.needs.add('blocked'); },
   },
-  infront_near_lane_time: { describe: (op, v) => `after ${v}s with a runner just ahead`, apply: (op, v, f) => f.needs.add('crowded') },
-  is_behind_in: { describe: (op, v) => (v === 1 ? 'while running on the inside behind others' : 'while not boxed inside'), apply: (op, v, f) => f.needs.add('crowded') },
-  is_move_lane: { describe: (op, v) => (v === 1 ? 'while changing lane' : 'while holding lane'), apply: () => {} },
-  near_count: { describe: (op, v) => `with ${cmpWord[op]} ${v} runners nearby`, apply: (op, v, f) => f.needs.add('crowded') },
-  lane_type: { describe: (op, v) => `while in the ${v === 1 ? 'inner' : 'outer'} lane`, apply: () => {} },
-  bashin_diff_infront: { describe: (op, v) => `${cmpWord[op]} ${v} length${v === 1 ? '' : 's'} behind the runner ahead`, apply: () => {} },
-  bashin_diff_behind: { describe: (op, v) => `${cmpWord[op]} ${v} length${v === 1 ? '' : 's'} ahead of the runner behind`, apply: () => {} },
-  distance_diff_top: { describe: (op, v) => `${cmpWord[op]} ${v} lengths off the leader`, apply: () => {} },
-  distance_diff_rate: { describe: (op, v) => `${cmpWord[op]} ${v}% of the leader's gap`, apply: () => {} },
-  distance_diff_top_float: { describe: (op, v) => `${cmpWord[op]} ${v / 10} lengths off the leader`, apply: () => {} },
-  hp_per: { describe: (op, v) => `with ${cmpWord[op]} ${v}% stamina left`, apply: () => {} },
-  accumulatetime: { describe: (op, v) => `${cmpWord[op]} ${v}s into the race`, apply: () => {} },
-  temptation_count: { describe: (op, v) => `${cmpWord[op]} ${v} pace-up${v === 1 ? '' : 's'} so far`, apply: () => {} },
-  is_temptation: { describe: (op, v) => (v === 1 ? 'while paced up' : 'while not paced up'), apply: () => {} },
-  activate_count_heal: { describe: (op, v) => `after ${cmpWord[op]} ${v} recovery skills`, apply: () => {} },
-  activate_count_all: { describe: (op, v) => `after ${cmpWord[op]} ${v} skills`, apply: () => {} },
-  activate_count_start: { describe: (op, v) => `after ${cmpWord[op]} ${v} opening-leg skills`, apply: () => {} },
-  activate_count_middle: { describe: (op, v) => `after ${cmpWord[op]} ${v} middle-leg skills`, apply: () => {} },
-  activate_count_later_half: { describe: (op, v) => `after ${cmpWord[op]} ${v} second-half skills`, apply: () => {} },
-  is_activate_any_skill: { describe: (op, v) => (v === 1 ? 'after any skill has fired' : 'before any skill fires'), apply: () => {} },
-  base_power: { describe: (op, v) => `with ${cmpWord[op]} ${v} base Power`, apply: () => {} },
-  base_speed: { describe: (op, v) => `with ${cmpWord[op]} ${v} base Speed`, apply: () => {} },
-  base_stamina: { describe: (op, v) => `with ${cmpWord[op]} ${v} base Stamina`, apply: () => {} },
-  base_guts: { describe: (op, v) => `with ${cmpWord[op]} ${v} base Guts`, apply: () => {} },
-  base_wiz: { describe: (op, v) => `with ${cmpWord[op]} ${v} base Wit`, apply: () => {} },
-  always: { describe: () => 'always active', apply: (op, v, f) => f.passive = true },
-  is_lastspurt_gap: { describe: (op, v) => `${cmpWord[op]} ${v} into the last spurt`, apply: () => {} },
+  infront_near_lane_time: { describe: (op, v) => `после ${v}s с соперницей прямо впереди`, apply: (op, v, f) => f.needs.add('crowded') },
+  is_behind_in: { describe: (op, v) => (v === 1 ? 'идя по внутренней позади других' : 'не будучи зажатой внутри'), apply: (op, v, f) => f.needs.add('crowded') },
+  is_move_lane: { describe: (op, v) => (v === 1 ? 'во время смены дорожки' : 'удерживая дорожку'), apply: () => {} },
+  near_count: { describe: (op, v) => `рядом ${cmpWord[op]} ${v} соперниц`, apply: (op, v, f) => f.needs.add('crowded') },
+  lane_type: { describe: (op, v) => `на ${v === 1 ? 'внутренней' : 'внешней'} дорожке`, apply: () => {} },
+  bashin_diff_infront: { describe: (op, v) => `${cmpWord[op]} ${v} корп. позади идущей впереди`, apply: () => {} },
+  bashin_diff_behind: { describe: (op, v) => `${cmpWord[op]} ${v} корп. впереди идущей сзади`, apply: () => {} },
+  distance_diff_top: { describe: (op, v) => `${cmpWord[op]} ${v} корп. от лидера`, apply: () => {} },
+  distance_diff_rate: { describe: (op, v) => `${cmpWord[op]} ${v}% отрыва лидера`, apply: () => {} },
+  distance_diff_top_float: { describe: (op, v) => `${cmpWord[op]} ${v / 10} корп. от лидера`, apply: () => {} },
+  hp_per: { describe: (op, v) => `осталось ${cmpWord[op]} ${v}% выносливости`, apply: () => {} },
+  accumulatetime: { describe: (op, v) => `с начала забега прошло ${cmpWord[op]} ${v}s`, apply: () => {} },
+  temptation_count: { describe: (op, v) => `уже ${cmpWord[op]} ${v} ускорений темпа`, apply: () => {} },
+  is_temptation: { describe: (op, v) => (v === 1 ? 'во время ускорения темпа' : 'вне ускорения темпа'), apply: () => {} },
+  activate_count_heal: { describe: (op, v) => `после ${cmpWord[op]} ${v} скиллов на восстановление`, apply: () => {} },
+  activate_count_all: { describe: (op, v) => `после ${cmpWord[op]} ${v} скиллов`, apply: () => {} },
+  activate_count_start: { describe: (op, v) => `после ${cmpWord[op]} ${v} скиллов на старте`, apply: () => {} },
+  activate_count_middle: { describe: (op, v) => `после ${cmpWord[op]} ${v} скиллов в середине`, apply: () => {} },
+  activate_count_later_half: { describe: (op, v) => `после ${cmpWord[op]} ${v} скиллов во второй половине`, apply: () => {} },
+  is_activate_any_skill: { describe: (op, v) => (v === 1 ? 'после срабатывания любого скилла' : 'до срабатывания любого скилла'), apply: () => {} },
+  base_power: { describe: (op, v) => `базовый Power ${cmpWord[op]} ${v}`, apply: () => {} },
+  base_speed: { describe: (op, v) => `базовый Speed ${cmpWord[op]} ${v}`, apply: () => {} },
+  base_stamina: { describe: (op, v) => `базовый Stamina ${cmpWord[op]} ${v}`, apply: () => {} },
+  base_guts: { describe: (op, v) => `базовый Guts ${cmpWord[op]} ${v}`, apply: () => {} },
+  base_wiz: { describe: (op, v) => `базовый Wit ${cmpWord[op]} ${v}`, apply: () => {} },
+  always: { describe: () => 'всегда активно', apply: (op, v, f) => f.passive = true },
+  is_lastspurt_gap: { describe: (op, v) => `${cmpWord[op]} ${v} в последний спурт`, apply: () => {} },
 };
 
 for (const [style, key] of [[1, 'nige'], [2, 'senko'], [3, 'sashi'], [4, 'oikomi']]) {
   HANDLERS[`running_style_count_${key}`] = {
-    describe: (op, v) => `with ${cmpWord[op]} ${v} ${RUNNING_STYLE[style].name}s in the race`,
+    describe: (op, v) => `в забеге ${cmpWord[op]} ${v} ${RUNNING_STYLE[style].name}`,
     apply: () => {},
   };
   HANDLERS[`running_style_count_${key}_otherself`] = {
-    describe: (op, v) => `with ${cmpWord[op]} ${v} other ${RUNNING_STYLE[style].name}s`,
+    describe: (op, v) => `кроме себя ${cmpWord[op]} ${v} ${RUNNING_STYLE[style].name}`,
     apply: () => {},
   };
   HANDLERS[`running_style_temptation_opponent_count_${key}`] = {
-    describe: (op, v) => `with ${cmpWord[op]} ${v} ${RUNNING_STYLE[style].name} opponents able to pace up`,
+    describe: (op, v) => `${cmpWord[op]} ${v} соперниц ${RUNNING_STYLE[style].name}, способных ускорить темп`,
     apply: () => {},
   };
   HANDLERS[`running_style_equal_popularity_one_${key}`] = {
-    describe: () => `when the favourite is a ${RUNNING_STYLE[style].name}`,
+    describe: () => `когда фаворит — ${RUNNING_STYLE[style].name}`,
     apply: () => {},
   };
 }
@@ -394,8 +414,8 @@ export function analyseCondition(condition, precondition, ctx = {}) {
   }).filter(Boolean).join(', ')).filter(Boolean);
 
   const text = [
-    preTexts.length ? `Once ${preTexts.join(' — or — ')}: ` : '',
-    altTexts.filter(Boolean).join(' — or — ') || 'No conditions',
+    preTexts.length ? `После того как ${preTexts.join(' — или — ')}: ` : '',
+    altTexts.filter(Boolean).join(' — или — ') || 'Без условий',
   ].join('');
 
   return {

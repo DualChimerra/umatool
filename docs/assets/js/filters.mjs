@@ -5,30 +5,30 @@ import { el, esc, on, debounce, skillPill, TIER_LABEL } from './ui.mjs';
 
 const TIER_ORDER = { unique: 0, evolved: 1, gold: 2, normal: 3 };
 
-export function createSkillFilter({ onChange, label = 'Skills', hint = '' } = {}) {
+export function createSkillFilter({ onChange, label = 'Скиллы', hint = '' } = {}) {
   const state = { ids: [], mode: 'all', otherRanks: true, query: '' };
 
   const root = el(`
     <section class="panel">
       <div class="panel__head">
         <h3>${esc(label)}</h3>
-        <button class="btn btn--ghost btn--sm" data-act="clear" type="button" hidden>Clear</button>
+        <button class="btn btn--ghost btn--sm" data-act="clear" type="button" hidden>Очистить</button>
       </div>
       <div class="panel__body">
         ${hint ? `<p class="tiny muted">${esc(hint)}</p>` : ''}
         <div class="field" style="position:relative">
-          <input class="input" type="search" data-role="q" placeholder="Search a skill, e.g. Determined Descent" autocomplete="off">
+          <input class="input" type="search" data-role="q" placeholder="Поиск скилла, например Determined Descent" autocomplete="off">
           <div data-role="results" class="panel" style="position:fixed;z-index:60;max-height:300px;overflow:auto;box-shadow:var(--shadow-md)" hidden></div>
         </div>
         <div class="chips" data-role="picked"></div>
         <div class="seg" data-role="mode">
-          <button type="button" data-mode="all" aria-pressed="true">Has all</button>
-          <button type="button" data-mode="any" aria-pressed="false">Has any</button>
+          <button type="button" data-mode="all" aria-pressed="true">Все сразу</button>
+          <button type="button" data-mode="any" aria-pressed="false">Любой из них</button>
         </div>
         <label class="check">
           <input type="checkbox" data-role="ranks" checked>
-          <span>Also match the other rank
-            <small>A gold pick also matches its normal version — Determined Descent ⇄ Straight Descent.</small>
+          <span>Засчитывать и другой ранг
+            <small>Золотой скилл совпадёт и со своей обычной версией — Determined Descent ⇄ Straight Descent.</small>
           </span>
         </label>
       </div>
@@ -96,7 +96,7 @@ export function createSkillFilter({ onChange, label = 'Skills', hint = '' } = {}
         : 0;
       return `<span class="chip chip--${s.tier === 'normal' ? '' : s.tier}">
         ${esc(s.name)}${extra ? `<span class="tiny muted">+${extra}</span>` : ''}
-        <span class="chip__x" data-remove="${esc(id)}" role="button" aria-label="Remove">×</span>
+        <span class="chip__x" data-remove="${esc(id)}" role="button" aria-label="Убрать">×</span>
       </span>`;
     }).join('');
     clearBtn.hidden = state.ids.length === 0;

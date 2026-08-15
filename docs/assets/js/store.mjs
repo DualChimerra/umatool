@@ -16,7 +16,7 @@ export const db = {
 export async function loadData() {
   const loaded = await Promise.all(files.map(async (name) => {
     const res = await fetch(`./data/${name}.json`, { cache: 'no-cache' });
-    if (!res.ok) throw new Error(`Could not load data/${name}.json (${res.status})`);
+    if (!res.ok) throw new Error(`Не удалось загрузить data/${name}.json (${res.status})`);
     return [name, await res.json()];
   }));
   for (const [name, value] of loaded) db[name] = value;
@@ -28,7 +28,11 @@ export async function loadData() {
       db.skillsByGroup.get(s.groupId).push(s);
     }
   }
-  for (const list of db.skillsByGroup.values()) list.sort((a, b) => b.tierRank - a.tierRank);
+  // Best rank first: gold before normal, and inside a rank the game's own
+  // ordering, which runs ◎ → ○ → ×.
+  for (const list of db.skillsByGroup.values()) {
+    list.sort((a, b) => b.tierRank - a.tierRank || a.order - b.order);
+  }
 
   db.learnable = db.skills.filter((s) => !s.inherited);
 
@@ -52,6 +56,28 @@ export function groupSiblings(skillId) {
   const skill = db.skillById.get(skillId);
   if (!skill || !skill.groupId) return skill ? [skill] : [];
   return db.skillsByGroup.get(skill.groupId) ?? [skill];
+}
+
+/**
+ * A skill whose whole effect is negative — the green "×" ranks (Right-Handed ×,
+ * Corner Recovery ×) and the few flat penalties like Wallflower. They sit in the
+ * same rank group as the skill you actually want, so anything that walks a group
+ * has to step over them: owning Corner Recovery × is the opposite of owning
+ * Corner Recovery ○, not a weaker version of it.
+ */
+export function isPenaltySkill(skill) {
+  return !!skill && (skill.score ?? 0) < 0;
+}
+
+/**
+ * The ranks of one skill group, best first. Anything inherited-only is dropped,
+ * since it cannot be learned in a training run.
+ */
+export function groupLadder(skill) {
+  if (!skill) return [];
+  if (!skill.groupId) return skill.inherited ? [] : [skill];
+  const list = (db.skillsByGroup.get(skill.groupId) ?? [skill]).filter((s) => !s.inherited);
+  return list.length ? list : [skill];
 }
 
 /**

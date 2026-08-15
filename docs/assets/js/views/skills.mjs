@@ -4,22 +4,22 @@ import { toggleGroup, searchField } from '../filters.mjs';
 import { STRATEGY } from '../model.mjs';
 
 const TIERS = [['unique', 'Unique'], ['evolved', 'Evolved'], ['gold', 'Gold'], ['normal', 'Normal']];
-const KINDS = [['speed', 'Speed'], ['accel', 'Accel'], ['recovery', 'Recovery'], ['stat', 'Stat'], ['utility', 'Utility'], ['debuff', 'Debuff']];
-const PHASES = [[0, 'Opening'], [1, 'Middle'], [2, 'Final'], [3, 'Last spurt']];
+const KINDS = [['speed', 'Скорость'], ['accel', 'Ускорение'], ['recovery', 'Восстановление'], ['stat', 'Статы'], ['utility', 'Утилита'], ['debuff', 'Дебафф']];
+const PHASES = [[0, 'Старт'], [1, 'Середина'], [2, 'Финальный'], [3, 'Спурт']];
 const DISTANCES = [[1, 'Sprint'], [2, 'Mile'], [3, 'Medium'], [4, 'Long']];
 const SURFACES = [[1, 'Turf'], [2, 'Dirt']];
-const TERRAIN = [['corner', 'Corner'], ['straight', 'Straight'], ['final-corner', 'Final corner'], ['last-straight', 'Final straight'], ['uphill', 'Uphill'], ['downhill', 'Downhill']];
-const FROM = [['unique', 'Uma unique'], ['characters', 'Uma skill list'], ['event', 'Card event'], ['hint', 'Card hint']];
+const TERRAIN = [['corner', 'Поворот'], ['straight', 'Прямая'], ['final-corner', 'Последний поворот'], ['last-straight', 'Финишная прямая'], ['uphill', 'Подъём'], ['downhill', 'Спуск']];
+const FROM = [['unique', 'Уник умы'], ['characters', 'Список умы'], ['event', 'Ивент карты'], ['hint', 'Хинт карты']];
 
 const COLUMNS = [
-  { key: 'name', label: 'Skill', sort: (a, b) => a.name.localeCompare(b.name) },
-  { key: 'effect', label: 'Effect', sort: null },
-  { key: 'cond', label: 'Activates when', sort: null },
+  { key: 'name', label: 'Скилл', sort: (a, b) => a.name.localeCompare(b.name) },
+  { key: 'effect', label: 'Эффект', sort: null },
+  { key: 'cond', label: 'Срабатывает когда', sort: null },
   { key: 'cost', label: 'SP', num: true, sort: (a, b) => a.cost - b.cost },
-  { key: 'score', label: 'Score', num: true, sort: (a, b) => a.score - b.score },
-  { key: 'eff', label: 'Score/SP', num: true, sort: (a, b) => scorePerSp(a) - scorePerSp(b) },
-  { key: 'dur', label: 'Dur', num: true, sort: (a, b) => a.duration - b.duration },
-  { key: 'src', label: 'Sources', num: true, sort: (a, b) => sourceCount(a) - sourceCount(b) },
+  { key: 'score', label: 'Очки', num: true, sort: (a, b) => a.score - b.score },
+  { key: 'eff', label: 'Очки/SP', num: true, sort: (a, b) => scorePerSp(a) - scorePerSp(b) },
+  { key: 'dur', label: 'Длит.', num: true, sort: (a, b) => a.duration - b.duration },
+  { key: 'src', label: 'Источники', num: true, sort: (a, b) => sourceCount(a) - sourceCount(b) },
 ];
 
 const scorePerSp = (s) => (s.cost ? s.score / s.cost : 0);
@@ -46,8 +46,8 @@ export function renderSkills(root) {
     <section>
       <div class="page-head">
         <div>
-          <h1>Skills</h1>
-          <p>Every skill live on Global, with its real activation conditions read straight out of the game data.</p>
+          <h1>Скиллы</h1>
+          <p>Все скиллы, живые на Global, с настоящими условиями срабатывания прямо из игровых данных.</p>
         </div>
       </div>
       <div data-role="count" class="small muted" style="margin-bottom:10px"></div>
@@ -69,22 +69,22 @@ export function renderSkills(root) {
 
   const p1 = el('<section class="panel"><div class="panel__body"></div></section>');
   p1.querySelector('.panel__body').append(
-    searchField({ placeholder: 'Search skills…', value: state.q, onChange: (v) => { state.q = v; paint(); } }).element,
-    mk('Rank', TIERS, 'tiers'),
-    mk('Effect', KINDS, 'kinds'),
+    searchField({ placeholder: 'Поиск по скиллам…', value: state.q, onChange: (v) => { state.q = v; paint(); } }).element,
+    mk('Ранг', TIERS, 'tiers'),
+    mk('Эффект', KINDS, 'kinds'),
   );
 
-  const p2 = el('<section class="panel"><div class="panel__head"><h3>Activation</h3></div><div class="panel__body"></div></section>');
+  const p2 = el('<section class="panel"><div class="panel__head"><h3>Срабатывание</h3></div><div class="panel__body"></div></section>');
   p2.querySelector('.panel__body').append(
-    mk('Race phase', PHASES, 'phases', Number),
-    mk('Running style', Object.entries(STRATEGY).map(([v, s]) => [v, s.name]), 'strategies', Number),
-    mk('Distance', DISTANCES, 'distances', Number),
-    mk('Surface', SURFACES, 'surfaces', Number),
-    mk('Terrain', TERRAIN, 'terrain'),
+    mk('Фаза забега', PHASES, 'phases', Number),
+    mk('Стиль бега', Object.entries(STRATEGY).map(([v, s]) => [v, s.name]), 'strategies', Number),
+    mk('Дистанция', DISTANCES, 'distances', Number),
+    mk('Покрытие', SURFACES, 'surfaces', Number),
+    mk('Рельеф', TERRAIN, 'terrain'),
   );
 
-  const p3 = el('<section class="panel"><div class="panel__head"><h3>Where to get it</h3></div><div class="panel__body"></div></section>');
-  p3.querySelector('.panel__body').append(mk('Source', FROM, 'from'));
+  const p3 = el('<section class="panel"><div class="panel__head"><h3>Где взять</h3></div><div class="panel__body"></div></section>');
+  p3.querySelector('.panel__body').append(mk('Источник', FROM, 'from'));
 
   rail.append(p1, p2, p3);
 
@@ -136,18 +136,18 @@ export function renderSkills(root) {
     const dir = state.dir === 'desc' ? -1 : 1;
     if (col?.sort) rows.sort((a, b) => dir * col.sort(a, b) || a.name.localeCompare(b.name));
 
-    count.textContent = `${rows.length} of ${db.learnable.length} skills`;
+    count.textContent = `${rows.length} из ${db.learnable.length} скиллов`;
     paintHead();
-    tbody.innerHTML = rows.map(rowHtml).join('') || '<tr><td colspan="8"><div class="empty">No skill matches these filters.</div></td></tr>';
+    tbody.innerHTML = rows.map(rowHtml).join('') || '<tr><td colspan="8"><div class="empty">Под эти фильтры ничего не подходит.</div></td></tr>';
   }
 
   function rowHtml(s) {
     const src = s.sources;
     const parts = [
-      src.unique.length ? [`${src.unique.length} uma unique`, `${src.unique.length}·uniq`] : null,
-      src.characters.length ? [`${src.characters.length} uma skill lists`, `${src.characters.length}·uma`] : null,
-      src.event.length ? [`${src.event.length} card events`, `${src.event.length}·evt`] : null,
-      src.hint.length ? [`${src.hint.length} card hints`, `${src.hint.length}·hint`] : null,
+      src.unique.length ? [`уник у ${src.unique.length} ум`, `${src.unique.length}·уник`] : null,
+      src.characters.length ? [`в списках ${src.characters.length} ум`, `${src.characters.length}·ума`] : null,
+      src.event.length ? [`ивент у ${src.event.length} карт`, `${src.event.length}·ивент`] : null,
+      src.hint.length ? [`хинт у ${src.hint.length} карт`, `${src.hint.length}·хинт`] : null,
     ].filter(Boolean);
 
     return `<tr>

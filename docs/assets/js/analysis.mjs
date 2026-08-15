@@ -12,6 +12,28 @@ export const HINT_CONFIDENCE = 0.6;
 const KIND_WEIGHT = { unique: 1, own: 1, event: 1, hint: HINT_CONFIDENCE };
 const KIND_RANK = { unique: 4, own: 3, event: 2, hint: 1 };
 
+/**
+ * What one card actually teaches, one entry per skill.
+ *
+ * 72 Global cards list the same skill both as their event skill and as a hint.
+ * Walking the two arrays back to back therefore counted those skills twice —
+ * twice in the deck value, and twice in the pill row, which is what made a card
+ * look like it was handing out the same gold skill two times over.
+ */
+export function cardSkills(card) {
+  const out = [];
+  const seen = new Set();
+  for (const [ids, kind] of [[card.eventSkills, 'event'], [card.hintSkills, 'hint']]) {
+    for (const id of ids) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const skill = db.skillById.get(id);
+      if (skill) out.push({ skill, kind });
+    }
+  }
+  return out;
+}
+
 /** Memoised skill valuation for one scoring context. */
 export function valuer(full) {
   const cache = new Map();
@@ -20,6 +42,14 @@ export function valuer(full) {
     if (!cache.has(skill.id)) cache.set(skill.id, scoreSkill(skill, full));
     return cache.get(skill.id);
   };
+}
+
+/** Readable names for whatever put a skill within reach — cards or the uma. */
+export function sourceNames(info) {
+  if (!info) return [];
+  return info.from
+    .map((id) => db.supportById.get(id)?.name ?? db.outfitById.get(id)?.charaName)
+    .filter(Boolean);
 }
 
 export function analyseSlot(slot) {
@@ -45,8 +75,7 @@ export function analyseSlot(slot) {
   const cards = slot.deck.map((id) => (id ? db.supportById.get(id) : null));
   for (const card of cards) {
     if (!card) continue;
-    for (const id of card.eventSkills) note(id, 'event', card.id);
-    for (const id of card.hintSkills) note(id, 'hint', card.id);
+    for (const { skill, kind } of cardSkills(card)) note(skill.id, kind, card.id);
   }
 
   const pool = [];
@@ -73,6 +102,7 @@ export function analyseSlot(slot) {
       skill,
       hit,
       via: hit && hit.skillId !== id ? db.skillById.get(hit.skillId) : null,
+      from: hit ? sourceNames(hit.info) : [],
       scored: valueOf(db.skillById.get(hit?.skillId ?? id)),
     };
   });
@@ -97,8 +127,15 @@ export function analyseSlot(slot) {
 /**
  * Rank support cards by what they would add to this deck — value the deck does
  * not already have, plus priority entries it would newly satisfy.
+ *
+ * Cards outside the collection are never dropped from the result. One of the six
+ * may always be borrowed from a friend, so hiding them makes that slot invisible;
+ * they come back flagged `blocked` once the borrow is spent, which the picker
+ * renders as a disabled row explaining why.
+ *
+ * @param {'all'|'mine'|'friend'} own  which side of the collection to list
  */
-export function rankCards(analysis, deckIndex, { ownedOnly = cm.useOwned, query = '', type = null } = {}) {
+export function rankCards(analysis, deckIndex, { own = 'all', query = '', type = null } = {}) {
   const { origin, valueOf, slot } = analysis;
   const inDeck = new Set(slot.deck.filter(Boolean));
   const needle = query.trim().toLowerCase();
@@ -111,45 +148,45 @@ export function rankCards(analysis, deckIndex, { ownedOnly = cm.useOwned, query 
     if (!card.global) continue;
     if (needle && !card.name.toLowerCase().includes(needle)) continue;
     if (type && card.type !== type) continue;
-    const owned = ownsCard(card.id);
-    if (ownedOnly && !owned && !canPlace(slot, deckIndex, card.id)) continue;
+    const owned = !cm.useOwned || ownsCard(card.id);
+    if (cm.useOwned && own === 'mine' && !owned) continue;
+    if (cm.useOwned && own === 'friend' && owned) continue;
 
     let gain = 0;
     let existing = 0;
     const newPriority = [];
     const skills = [];
-    for (const [ids, kind] of [[card.eventSkills, 'event'], [card.hintSkills, 'hint']]) {
-      for (const id of ids) {
-        const skill = db.skillById.get(id);
-        if (!skill) continue;
-        const scored = valueOf(skill);
-        const value = (scored?.bashin ?? 0) * KIND_WEIGHT[kind];
-        const held = origin.has(id);
-        skills.push({ skill, kind, value, held, scored });
-        if (held) existing += value; else gain += value;
-        if (!held) {
-          for (const { id: pid, set } of prioritySets) {
-            if (!alreadyCovered.has(pid) && set.has(id) && !newPriority.includes(pid)) newPriority.push(pid);
-          }
-        }
+    for (const { skill, kind } of cardSkills(card)) {
+      const scored = valueOf(skill);
+      const value = (scored?.bashin ?? 0) * KIND_WEIGHT[kind];
+      const held = origin.has(skill.id);
+      skills.push({ skill, kind, value, held, scored });
+      if (held) { existing += value; continue; }
+      gain += value;
+      for (const { id: pid, set } of prioritySets) {
+        if (!alreadyCovered.has(pid) && set.has(skill.id) && !newPriority.includes(pid)) newPriority.push(pid);
       }
     }
     skills.sort((a, b) => b.value - a.value);
+    const blocked = !owned && !canPlace(slot, deckIndex, card.id);
     out.push({
-      card, owned, gain, existing, newPriority, skills,
+      card, owned, gain, existing, newPriority, skills, blocked,
       inDeck: inDeck.has(card.id),
-      blocked: !owned && !canPlace(slot, deckIndex, card.id),
-      // Priorities lead the ordering; when the collection restriction is on,
-      // cards you actually own outrank the one you could borrow.
-      rank: (ownedOnly && owned ? 1000 : 0) + newPriority.length * 10 + gain,
+      // What the card is worth leads the ordering. Ownership is only a
+      // tie-breaker: it used to be a flat +1000, which buried every borrowable
+      // card below the whole collection where nobody would ever scroll to it.
+      rank: newPriority.length * 10 + gain - (blocked ? 1e6 : 0),
     });
   }
-  out.sort((a, b) => b.rank - a.rank || b.gain - a.gain);
+  out.sort((a, b) => b.rank - a.rank || Number(b.owned) - Number(a.owned) || b.gain - a.gain);
   return out;
 }
 
-/** Rank umamusume by what their own kit is worth on this course. */
-export function rankUmas({ ownedOnly = cm.useOwned, query = '', strategy = null } = {}) {
+/**
+ * Rank umamusume by what their own kit is worth on this course.
+ * @param {'all'|'mine'} own  'mine' respects the collection restriction
+ */
+export function rankUmas({ own = 'all', query = '', strategy = null } = {}) {
   const course = db.courseById.get(cm.courseId);
   const needle = query.trim().toLowerCase();
   const aptDistance = ['', 'sprint', 'mile', 'medium', 'long'][course.distanceType];
@@ -161,7 +198,8 @@ export function rankUmas({ ownedOnly = cm.useOwned, query = '', strategy = null 
     if (needle && !outfit.displayName.toLowerCase().includes(needle)) continue;
     const style = strategy ?? outfit.strategy;
     if (strategy && outfit.strategy !== strategy) continue;
-    if (ownedOnly && !cm.owned.umas.includes(outfit.id)) continue;
+    const owned = !cm.useOwned || cm.owned.umas.includes(outfit.id);
+    if (own === 'mine' && !owned) continue;
 
     if (!byStrategy.has(style)) {
       const ctx = scoringContext({ outfitId: outfit.id, strategy: style, stats: cm.stats, deck: [] });
@@ -189,7 +227,7 @@ export function rankUmas({ ownedOnly = cm.useOwned, query = '', strategy = null 
       * (outfit.aptitudes[STRATEGY[style].key] >= 7 ? 1 : 0.8);
 
     out.push({
-      outfit, value, unique, skills, aptOk,
+      outfit, value, unique, skills, aptOk, owned,
       gold: skills.filter((s) => s.skill?.tier === 'gold').length,
       rank: value * aptOk,
       aptitudes: {
@@ -219,54 +257,55 @@ export function recommendations(analyses) {
   const filled = analyses.filter((a) => a.outfit);
 
   if (filled.length < 3) {
-    push('blocker', `${3 - filled.length} slot${filled.length === 2 ? '' : 's'} still empty`,
-      'A Champions Meeting entry runs three umamusume. Fill the remaining slots to get a team reading.');
+    push('blocker', `Пустых слотов: ${3 - filled.length}`,
+      'В заявку на Champions Meeting идут три умы. Заполни оставшиеся слоты, чтобы получить оценку по команде целиком.');
   }
 
   const styles = new Set(filled.map((a) => a.ctx.strategy));
   if (filled.length === 3 && styles.size === 1) {
-    push('warn', 'All three run the same style',
-      `Three ${STRATEGY[[...styles][0]].name}s fight each other for the same positions. In a ${cm.fieldSize}-runner field that also means all three sit in the same slice of the order, so any skill gated on placing works — or fails — for the whole team at once.`);
+    push('warn', 'Все трое бегут одним стилем',
+      `Три ${STRATEGY[[...styles][0]].name} борются друг с другом за одни и те же позиции. В забеге на ${cm.fieldSize} участниц это ещё и значит, что все трое попадают в один и тот же кусок порядка: любой скилл с условием на место сработает — или не сработает — сразу у всей команды.`);
   }
 
   for (const [i, a] of analyses.entries()) {
     if (!a.outfit) continue;
-    const label = `Uma ${i + 1} · ${a.outfit.charaName}`;
+    const label = `Ума ${i + 1} · ${a.outfit.charaName}`;
 
     const deficit = a.sim.requiredStamina - a.ctx.stats.stamina;
     if (deficit > 0) {
       const recoveryNeeded = (deficit * 0.8 * 0.95) / a.sim.maxHp * 100;
-      push('blocker', `${label}: ${Math.round(deficit)} Stamina short`,
-        `Only ${Math.round(a.sim.spurtCoverage * 100)}% of the last spurt is paid for. Either add ${Math.round(deficit)} Stamina, or cover it with roughly ${recoveryNeeded.toFixed(0)}% of max stamina in recovery skills.`,
+      push('blocker', `${label}: не хватает ${Math.round(deficit)} Stamina`,
+        `Последний спурт оплачен только на ${Math.round(a.sim.spurtCoverage * 100)}%. Либо добери ${Math.round(deficit)} Stamina, либо закрой это восстановлением примерно на ${recoveryNeeded.toFixed(0)}% от запаса выносливости.`,
         { slot: i });
     } else if (a.sim.surplus > a.sim.hpFullSpurt * 0.35) {
-      push('tip', `${label}: Stamina well past what the course asks`,
-        `${Math.round(a.ctx.stats.stamina - a.sim.requiredStamina)} points above the requirement. That surplus buys nothing here — recovery skills are already scored near zero for this build, and the points would do more in Speed or Power.`,
+      push('tip', `${label}: Stamina сильно больше, чем требует дистанция`,
+        `На ${Math.round(a.ctx.stats.stamina - a.sim.requiredStamina)} выше необходимого. Этот запас здесь ничего не даёт — скиллы на восстановление уже оцениваются почти в ноль, а очки принесли бы больше в Speed или Power.`,
         { slot: i });
     }
 
-    for (const [key, label2, min] of [['distance', course.distanceTypeName, 7], ['surface', course.surfaceName, 7], ['style', 'the chosen running style', 7]]) {
+    for (const [key, label2, min] of [['distance', course.distanceTypeName, 7], ['surface', course.surfaceName, 7], ['style', 'выбранный стиль бега', 7]]) {
       if (a.aptitudes[`${key}Val`] < min) {
-        push('warn', `${label}: ${label2} aptitude only ${a.aptitudes[key]}`,
-          `Below A costs speed and stamina outright. Fix it with the matching aptitude item, or run a different uma here.`, { slot: i });
+        push('warn', `${label}: аптитюд ${label2} всего ${a.aptitudes[key]}`,
+          'Ниже A — это прямая потеря скорости и выносливости. Поправь предметом на аптитюд или поставь сюда другую уму.', { slot: i });
       }
     }
 
     const empties = a.slot.deck.filter((x) => !x).length;
     if (empties) {
-      push('warn', `${label}: ${empties} empty deck slot${empties === 1 ? '' : 's'}`,
-        'Open the slot to see the cards ranked by what they would actually add to this deck.', { slot: i });
+      push('warn', `${label}: пустых слотов в деке — ${empties}`,
+        'Открой слот: карты отсортированы по тому, сколько они реально добавят именно этой деке.', { slot: i });
     }
 
     const missing = a.coverage.filter((c) => !c.hit);
     if (cm.priority.length && missing.length) {
       const best = rankCards(a, a.slot.deck.indexOf(null) >= 0 ? a.slot.deck.indexOf(null) : 5, {})
-        .filter((c) => c.newPriority.length && !c.inDeck)[0];
+        .filter((c) => c.newPriority.length && !c.inDeck && !c.blocked)[0];
+      const names = `${missing.slice(0, 3).map((m) => m.skill.name).join(', ')}${missing.length > 3 ? ` и ещё ${missing.length - 3}` : ''}`;
       push(missing.length > cm.priority.length / 2 ? 'warn' : 'tip',
-        `${label}: ${missing.length} priority skill${missing.length === 1 ? '' : 's'} unreachable`,
+        `${label}: недостижимых приоритетных скиллов — ${missing.length}`,
         best
-          ? `Nothing in this run teaches ${missing.slice(0, 3).map((m) => m.skill.name).join(', ')}${missing.length > 3 ? ` and ${missing.length - 3} more` : ''}. ${best.card.name} (${best.card.rarityName} ${best.card.typeName}) would newly cover ${best.newPriority.length} of them and add ${best.gain.toFixed(2)} lengths.`
-          : `Nothing in this run teaches ${missing.slice(0, 3).map((m) => m.skill.name).join(', ')}${missing.length > 3 ? ` and ${missing.length - 3} more` : ''}, and no Global card covers them either.`,
+          ? `В этом прогоне негде взять ${names}. ${best.card.name} (${best.card.rarityName} ${best.card.typeName}) закрыла бы из них ${best.newPriority.length} и добавила бы ${best.gain.toFixed(2)} корпусов.`
+          : `В этом прогоне негде взять ${names} — и ни одна карта на Global их тоже не даёт.`,
         { slot: i, card: best?.card.id });
     }
 
@@ -275,21 +314,21 @@ export function recommendations(analyses) {
     if (ordered.length) {
       const [bestStat, bestVal] = ordered[0];
       const [worstStat, worstVal] = ordered[ordered.length - 1];
-      push('tip', `${label}: next points go into ${bestStat.charAt(0).toUpperCase() + bestStat.slice(1)}`,
-        `+100 ${bestStat} is worth ${bestVal.bashin.toFixed(2)} lengths here, against ${worstVal.bashin.toFixed(2)} for ${worstStat}. Measured by re-running the race with the extra points.`,
+      push('tip', `${label}: следующие очки — в ${bestStat.charAt(0).toUpperCase() + bestStat.slice(1)}`,
+        `+100 ${bestStat} стоят здесь ${bestVal.bashin.toFixed(2)} корпуса против ${worstVal.bashin.toFixed(2)} у ${worstStat}. Посчитано повторным прогоном забега с добавленными очками.`,
         { slot: i });
     }
 
     const goldInReach = a.pool.filter((p) => p.skill.tier === 'gold').length;
     if (a.cards.filter(Boolean).length >= 5 && goldInReach < 4) {
-      push('tip', `${label}: only ${goldInReach} gold skills in reach`,
-        'A full deck usually puts more gold within range. Sorting the card picker by what it adds will surface the ones that do.', { slot: i });
+      push('tip', `${label}: золотых скиллов в досягаемости всего ${goldInReach}`,
+        'Полная дека обычно открывает больше золота. Сортировка в выборе карт по вкладу покажет те, что это делают.', { slot: i });
     }
   }
 
   const teamMissing = cm.priority.filter((id) => !analyses.some((a) => a.coverage.find((c) => c.skill?.id === id && c.hit)));
   if (cm.priority.length && teamMissing.length) {
-    push('warn', `${teamMissing.length} priority skill${teamMissing.length === 1 ? '' : 's'} nobody in the team can get`,
+    push('warn', `Приоритетных скиллов, недоступных никому в команде: ${teamMissing.length}`,
       teamMissing.slice(0, 6).map((id) => db.skillById.get(id)?.name).join(', ') + (teamMissing.length > 6 ? '…' : ''));
   }
 
@@ -297,8 +336,8 @@ export function recommendations(analyses) {
   for (const a of analyses) for (const c of a.cards) if (c) cardUse.set(c.id, (cardUse.get(c.id) ?? 0) + 1);
   const overused = [...cardUse.entries()].filter(([, n]) => n === 3);
   if (overused.length >= 3) {
-    push('tip', 'The three decks are nearly identical',
-      `${overused.length} cards appear in all three decks. That is legal, but it means all three umamusume end up with the same skill pool — spreading the decks widens what the team can cover.`);
+    push('tip', 'Три деки почти одинаковые',
+      `${overused.length} карт стоят сразу во всех трёх деках. Это разрешено, но тогда у всех трёх ум один и тот же набор скиллов — если развести деки, команда закроет больше.`);
   }
 
   out.sort((a, b) => SEV[a.severity] - SEV[b.severity]);
