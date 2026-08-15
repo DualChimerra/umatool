@@ -1,8 +1,10 @@
 name: Deploy site
 
+# Публикуется дефолтная ветка репозитория. Ветки `main` здесь нет и не было,
+# так что фильтр на неё означал, что деплой не запускался ни разу.
 on:
   push:
-    branches: [main]
+    branches: [claude/champions-meetings-guide-e8qzbo]
     paths:
       - 'docs/**'
       - '.github/workflows/pages.yml'

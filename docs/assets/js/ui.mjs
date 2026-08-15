@@ -26,20 +26,59 @@ export function debounce(fn, ms = 140) {
 
 export const fmt = {
   signed: (n, digits = 2) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n).toFixed(digits)}`,
-  int: (n) => Math.round(n).toLocaleString('en-US'),
+  int: (n) => Math.round(n).toLocaleString('ru-RU'),
   pct: (n) => `${Math.round(n * 100)}%`,
 };
 
 export const TIER_LABEL = { normal: 'Normal', gold: 'Gold', unique: 'Unique', evolved: 'Evolved' };
 
+// Направление круга приходит из данных как Left / Right / Straight.
+const TURN_LABEL = { Left: 'левый круг', Right: 'правый круг', Straight: 'прямая' };
+export const turnLabel = (turnName) => TURN_LABEL[turnName] ?? turnName;
+
+/**
+ * Названия эффектов по-русски. Названия статов (Speed, Stamina, Power, Guts,
+ * Wit) остаются как в игре — это термины, а не описания.
+ */
+const EFFECT_LABEL = {
+  activation: 'шанс срабатывания',
+  recovery: 'восстановление',
+  startdash: 'задержка на старте',
+  opp_temptation: 'ускорение темпа соперниц',
+  hp_drain: 'потеря выносливости',
+  current_speed: 'мгновенная скорость',
+  current_speed_decel: 'мгновенная скорость (затухает)',
+  target_speed: 'скорость',
+  lane_move: 'скорость смены дорожки',
+  vision: 'обзор',
+  accel: 'ускорение',
+  unblock: 'выход из блока',
+  position_keep: 'позиционирование',
+  special: 'особое',
+};
+export const effectLabel = (e) => (e.kind === 'stat' ? e.label : EFFECT_LABEL[e.key] ?? e.label);
+
+/** Составляющие расчёта, как они называются в разборе скилла. */
+export const PART_LABEL = {
+  speed: 'скорость', accel: 'ускорение', recovery: 'восстановление',
+  stat: 'статы', utility: 'утилита',
+};
+
+/** Условия, которые скилл требует сверх позиции и фазы. */
+export const NEED_LABEL = {
+  overtake: 'обгон', blocked: 'зажали', crowded: 'толкучка',
+  'gain-place': 'отыграть место', 'lose-place': 'потерять место',
+};
+
 /** One-line summary of what a skill actually does. */
 export function effectSummary(skill) {
   if (!skill.effects.length) return '—';
   return skill.effects.map((e) => {
-    if (e.kind === 'stat') return `${e.label} ${fmt.signed(e.value, 0)}`;
-    if (e.unit === 'm/s' || e.unit === 'm/s²') return `${e.label} ${fmt.signed(e.value, 2)}${e.unit}`;
-    if (e.unit) return `${e.label} ${fmt.signed(e.value, 1)}${e.unit === '% max HP' ? '%' : e.unit}`;
-    return `${e.label} ${fmt.signed(e.value, 2)}`;
+    const label = effectLabel(e);
+    if (e.kind === 'stat') return `${label} ${fmt.signed(e.value, 0)}`;
+    if (e.unit === 'm/s' || e.unit === 'm/s²') return `${label} ${fmt.signed(e.value, 2)}${e.unit}`;
+    if (e.unit) return `${label} ${fmt.signed(e.value, 1)}${e.unit === '% max HP' ? '%' : e.unit}`;
+    return `${label} ${fmt.signed(e.value, 2)}`;
   }).join(' · ');
 }
 
@@ -67,18 +106,18 @@ function tooltipHtml(skill) {
   const cond = skill.variants.map((v) => `<div>${esc(v.text)}</div>`).join('');
   const sources = skill.sources || { characters: [], event: [], hint: [], unique: [] };
   const where = [
-    sources.unique.length ? `${sources.unique.length} uma unique` : '',
-    sources.characters.length ? `${sources.characters.length} uma skill lists` : '',
-    sources.event.length ? `${sources.event.length} card events` : '',
-    sources.hint.length ? `${sources.hint.length} card hints` : '',
-  ].filter(Boolean).join(' · ') || 'Not obtainable from cards or umas';
+    sources.unique.length ? `уник у ${sources.unique.length} ум` : '',
+    sources.characters.length ? `в списках ${sources.characters.length} ум` : '',
+    sources.event.length ? `ивент у ${sources.event.length} карт` : '',
+    sources.hint.length ? `хинт у ${sources.hint.length} карт` : '',
+  ].filter(Boolean).join(' · ') || 'Не получить ни с карт, ни с ум';
 
   return `<h5>${esc(skill.name)}</h5>
     <div class="chips" style="margin-bottom:6px">
       <span class="chip chip--${skill.tier === 'normal' ? '' : skill.tier}">${TIER_LABEL[skill.tier]}</span>
       ${skill.cost ? `<span class="chip">${skill.cost} SP</span>` : ''}
-      ${skill.duration ? `<span class="chip">${skill.duration}s base</span>` : ''}
-      ${skill.wisdomCheck ? '<span class="chip">Wit check</span>' : ''}
+      ${skill.duration ? `<span class="chip">база ${skill.duration}s</span>` : ''}
+      ${skill.wisdomCheck ? '<span class="chip">проверка Wit</span>' : ''}
     </div>
     <div>${esc(effectSummary(skill))}</div>
     <div class="muted" style="margin-top:6px">${cond}</div>

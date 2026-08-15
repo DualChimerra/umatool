@@ -312,6 +312,13 @@ const NEED_PENALTY = {
   overtake: 0.72, blocked: 0.5, crowded: 0.6, 'gain-place': 0.75, 'lose-place': 0.75,
 };
 
+// Модель ничего не знает о представлении, но причины она пишет текстом, который
+// уходит прямо в интерфейс, поэтому названия условий живут рядом со штрафами.
+const NEED_LABEL = {
+  overtake: 'обгон', blocked: 'зажали', crowded: 'толкучка',
+  'gain-place': 'отыграть место', 'lose-place': 'потерять место',
+};
+
 /**
  * @returns {null|{bashin:number, metres:number, score:number, parts:object, reasons:string[]}}
  *   `null` when the skill cannot fire on this course with this running style.
@@ -344,7 +351,7 @@ export function scoreSkill(skill, ctx) {
   const nominal = Math.max(0.1, skill.duration * (course.distance / 1000));
   const durSec = Math.min(nominal, secondsLeft);
   if (durSec < nominal - 0.05 && skill.duration > 0) {
-    reasons.push(`only ${durSec.toFixed(1)}s of ${nominal.toFixed(1)}s fits before the line`);
+    reasons.push(`до линии влезает ${durSec.toFixed(1)}s из ${nominal.toFixed(1)}s`);
   }
 
   let metres = 0;
@@ -370,7 +377,7 @@ export function scoreSkill(skill, ctx) {
         const extraSeconds = recovered / Math.max(0.1, sim.rates.spurt);
         const gain = extraSeconds * Math.max(0, sim.speeds.spurt - sim.speeds.v2);
         add('recovery', gain * sim.staminaPressure);
-        if (sim.staminaPressure < 0.15) reasons.push('stamina already covered, so recovery scores low');
+        if (sim.staminaPressure < 0.15) reasons.push('выносливости и так хватает, поэтому восстановление ценится низко');
         break;
       }
       case 'speed': {
@@ -396,17 +403,17 @@ export function scoreSkill(skill, ctx) {
   // --- probability that it actually fires, and fires usefully ---
   const pPosition = positionProbability(f.position, strategy, fieldSize);
   if (pPosition < 0.999) {
-    reasons.push(`position holds ${Math.round(pPosition * 100)}% of the time in a ${fieldSize}-runner field`);
+    reasons.push(`условие по позиции выполняется в ${Math.round(pPosition * 100)}% случаев при поле из ${fieldSize}`);
   }
   const pWit = skill.wisdomCheck ? activationRate(stats?.wit ?? 900) : 1;
-  if (pWit < 1) reasons.push(`Wit activation ${Math.round(pWit * 100)}%`);
+  if (pWit < 1) reasons.push(`срабатывание Wit ${Math.round(pWit * 100)}%`);
 
   let pOther = 1;
   for (const need of f.needs) {
-    if (NEED_PENALTY[need]) { pOther *= NEED_PENALTY[need]; reasons.push(`needs ${need.replace('-', ' ')}`); }
+    if (NEED_PENALTY[need]) { pOther *= NEED_PENALTY[need]; reasons.push(`требует: ${NEED_LABEL[need] ?? need}`); }
   }
   if (f.random && win.share < 0.25) {
-    reasons.push(`fires somewhere in ${Math.round(win.length)}m of eligible track`);
+    reasons.push(`срабатывает где-то на ${Math.round(win.length)}m подходящей трассы`);
   }
 
   const weight = positionWeight(fraction);
