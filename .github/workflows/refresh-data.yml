@@ -38,6 +38,10 @@ jobs:
             node scripts/build-data.mjs
           fi
 
+      - name: Report the GameTora pass
+        run: |
+          python3 -c "import json;m=json.load(open('docs/data/meta.json'));print(json.dumps({'gametora':m['gametora'],'counts':m['counts']},indent=2))"
+
       - name: Refresh icons for anything new
         run: |
           python3 -m pip install --quiet --disable-pip-version-check Pillow

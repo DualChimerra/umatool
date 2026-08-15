@@ -1,6 +1,9 @@
 import { loadData, db } from './store.mjs';
 import { initTooltips, esc, el } from './ui.mjs';
+import { initContext } from './context.mjs';
+import { initSkillDrawer } from './views/detail.mjs';
 import { renderPlanner } from './views/planner.mjs';
+import { renderTeam } from './views/team.mjs';
 import { renderUmas } from './views/umas.mjs';
 import { renderCards } from './views/cards.mjs';
 import { renderSkills } from './views/skills.mjs';
@@ -8,6 +11,7 @@ import { renderData } from './views/data.mjs';
 
 const views = {
   planner: renderPlanner,
+  team: renderTeam,
   umas: renderUmas,
   cards: renderCards,
   skills: renderSkills,
@@ -83,7 +87,9 @@ window.addEventListener('hashchange', () => {
 /* -------------------------------------------------------------------- boot */
 
 loadData().then(() => {
+  initContext();
   initTooltips(document.body);
+  initSkillDrawer(document.body);
   const meta = db.meta;
   if (meta.generatedAt) {
     document.getElementById('footer-meta').textContent =

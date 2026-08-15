@@ -107,8 +107,9 @@ function mergeVariantFacets(list) {
   const out = {
     phases: [], strategies: [], distanceTypes: [], surfaces: [], groundConditions: [],
     weathers: [], seasons: [], rotations: [], trackIds: [], terrain: [], needs: [],
-    position: {}, random: false, late: false, passive: false,
+    position: {}, window: {}, random: false, late: false, passive: false,
   };
+  let firstWindow = true;
   for (const f of list) {
     for (const k of ['phases', 'strategies', 'distanceTypes', 'surfaces', 'groundConditions', 'weathers', 'seasons', 'rotations', 'trackIds', 'terrain', 'needs']) {
       out[k] = [...new Set([...(out[k] || []), ...(f[k] || [])])];
@@ -117,6 +118,16 @@ function mergeVariantFacets(list) {
     for (const [k, v] of Object.entries(f.position || {})) {
       if (out.position[k] === undefined) out.position[k] = v;
       else out.position[k] = k.endsWith('Max') ? Math.max(out.position[k], v) : Math.min(out.position[k], v);
+    }
+    // Alternatives are OR-ed, so a bound only survives if every branch has it,
+    // and then the loosest one wins.
+    const w = f.window || {};
+    if (firstWindow) { Object.assign(out.window, w); firstWindow = false; } else {
+      for (const k of ['rateMin', 'rateMax', 'remainMin', 'remainMax']) {
+        if (w[k] === undefined || out.window[k] === undefined) { delete out.window[k]; continue; }
+        out.window[k] = (k === 'rateMin' || k === 'remainMin')
+          ? Math.min(out.window[k], w[k]) : Math.max(out.window[k], w[k]);
+      }
     }
   }
   for (const k of ['phases', 'strategies', 'distanceTypes', 'surfaces', 'groundConditions', 'weathers', 'seasons', 'rotations']) {
@@ -136,7 +147,7 @@ function mergeEffects(effects) {
 
 /* -------------------------------------------------------------- characters */
 
-function buildCharacters(dump, skillById) {
+function buildCharacters(dump, skillById, overrides = {}) {
   const out = [];
   for (const [charaId, chara] of Object.entries(dump.umas)) {
     const outfits = [];
@@ -147,8 +158,12 @@ function buildCharacters(dump, skillById) {
       const uniqueId = uniqueSkillForOutfit(outfitId);
       const skillIds = (o.awakenings || []).filter((s) => skillById.has(s));
 
+      // The Global client ships data slightly ahead of the banner, so an
+      // outfit can be present here before it is playable. Overrides pin those.
+      const pinned = overrides[outfitId] ?? overrides[charaId];
       outfits.push({
         id: outfitId,
+        global: pinned === undefined ? true : !!pinned,
         epithet: (o.epithet || '').replace(/^\[|\]$/g, ''),
         stars: o.rarity,
         strategy: o.strategy,
@@ -160,7 +175,7 @@ function buildCharacters(dump, skillById) {
       });
     }
     outfits.sort((a, b) => a.id.localeCompare(b.id));
-    out.push({ id: charaId, name: chara.name[1] || chara.name[0], outfits });
+    out.push({ id: charaId, name: chara.name[1] || chara.name[0], outfits, global: outfits.some((o) => o.global) });
   }
   out.sort((a, b) => a.name.localeCompare(b.name));
   return out;
@@ -191,9 +206,14 @@ function buildSupports(dump, globalSkillIds, overrides, gametora) {
       releaseSource = 'manual override';
     }
 
+    // Cards released long after the Global frontier that only pass because they
+    // reuse old skills are flagged rather than silently trusted.
+    const unverified = releaseSource === 'skill-set inference' && isGlobal && Number(id.slice(1)) > 200;
+
     out.push({
       id,
       seq: Number(id.slice(1)),
+      unverified,
       name: card.name[1] || card.name[0],
       type: SUPPORT_TYPE[card.type]?.key ?? 'other',
       typeName: SUPPORT_TYPE[card.type]?.name ?? '—',
@@ -263,9 +283,9 @@ function buildCourses(dump) {
 
 /* --------------------------------------------------------------------- main */
 
-async function readOverrides() {
+async function readOverrides(file) {
   try {
-    return JSON.parse(await readFile(path.join(ROOT, 'data-overrides', 'supports.json'), 'utf8'));
+    return JSON.parse(await readFile(path.join(ROOT, 'data-overrides', file), 'utf8'));
   } catch { return {}; }
 }
 
@@ -290,11 +310,12 @@ async function main() {
   const skillById = new Map(skills.map((s) => [s.id, s]));
 
   log('Building characters…');
-  const characters = buildCharacters(dump, skillById);
+  const characterOverrides = await readOverrides('characters.json');
+  const characters = buildCharacters(dump, skillById, characterOverrides);
 
   log('Building support cards…');
   const globalSkillIds = new Set(Object.keys(dump.skillMeta));
-  const overrides = await readOverrides();
+  const overrides = await readOverrides('supports.json');
   const supports = buildSupports(dump, globalSkillIds, overrides, gametora);
 
   log('Building courses…');
@@ -308,6 +329,7 @@ async function main() {
   };
   for (const c of characters) {
     for (const o of c.outfits) {
+      if (!o.global) continue;
       if (o.uniqueId) bucket(o.uniqueId).unique.push(o.id);
       for (const s of o.skillIds) bucket(s).characters.push(o.id);
     }
@@ -336,6 +358,8 @@ async function main() {
       outfits: characters.reduce((n, c) => n + c.outfits.length, 0),
       supports: globalSupports.length,
       supportsAll: supports.length,
+      supportsUnverified: globalSupports.filter((s) => s.unverified).length,
+      outfitsHidden: characters.reduce((n, c) => n + c.outfits.filter((o) => !o.global).length, 0),
       courses: courses.length,
     },
     gametora: gametora ? { ok: gametora.ok, counts: gametora.counts, notes: gametora.notes.slice(0, 6) } : { ok: false, notes: ['skipped'] },

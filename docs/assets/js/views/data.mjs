@@ -16,6 +16,8 @@ export function renderData(root) {
   ];
 
   const jpOnly = db.supports.filter((s) => !s.global).length;
+  const unverified = db.supports.filter((s) => s.global && s.unverified).length;
+  const hiddenOutfits = m.counts?.outfitsHidden ?? 0;
 
   root.replaceChildren(el(`<div class="layout" style="grid-template-columns:minmax(0,1fr)">
     <section class="stack" style="max-width:820px">
@@ -59,10 +61,16 @@ export function renderData(root) {
           Global skill set: a card counts as released on Global when every skill it teaches — its event skill and all of
           its hints — exists in the Global client. ${fmt.int(jpOnly)} cards fail that test and are hidden behind the
           <i>Global releases only</i> switch on the Support cards page.</p>
-          <p style="margin-top:8px" class="note">This inference is right for the overwhelming majority of cards, but a
-          brand-new Japanese card that happens to reuse only old skills can slip through. When the GameTora check
-          succeeds its release dates take priority, and <code>data-overrides/supports.json</code> in the repository can
-          pin any individual card either way.</p>
+          <p style="margin-top:8px">Cards that pass the check but sit past the current Global release frontier are
+          flagged <b>unverified</b> rather than trusted silently — ${fmt.int(unverified)} of them right now. The Support
+          cards page can hide them with one switch.</p>
+          <p style="margin-top:8px">Umas come straight from the Global dump, but the client ships card data a little
+          ahead of the banner, so an outfit can appear before it is playable.
+          ${hiddenOutfits ? `${fmt.int(hiddenOutfits)} outfits are currently pinned as not-yet-released.` : 'Nothing is pinned as unreleased at the moment.'}</p>
+          <p style="margin-top:8px" class="note">Both lists are correctable by hand:
+          <code>data-overrides/supports.json</code> and <code>data-overrides/characters.json</code> pin any card or outfit
+          either way, and when the GameTora check succeeds its release dates take priority over the inference. If you spot
+          something on the site that is not on Global yet, that is the file to add it to.</p>
         </div>
       </section>
 
@@ -75,9 +83,15 @@ export function renderData(root) {
           from the distance, per-phase target speeds from the running style, last-spurt speed from Speed and Guts, and HP
           drain of <code>20·(v − base + 12)² / 144</code> per second with the Guts multiplier applied in the final leg.
           It ignores rivals, positioning and pace-ups, so read it as the stamina floor for running your own race.</p>
-          <p style="margin-top:8px"><b>Skill scores</b> are an estimate of metres gained on the selected course,
-          multiplied by a phase weight and a reliability factor. Every factor applied to a skill is printed next to it —
-          if you disagree with one, you can see it rather than guess at it.</p>
+          <p style="margin-top:8px"><b>Skill scores</b> are expected <b>lengths</b> gained on the selected course. The
+          trigger window is intersected with the real track geometry, the effect duration is capped by the distance left
+          to the line, and the result is multiplied by the chance the position condition holds in a 9-runner Champions
+          Meeting field, the Wit activation roll (<code>100 − 9000 / Wit</code>) and a penalty for conditions like being
+          boxed in. Open any skill to see every one of those numbers for that skill.</p>
+          <p style="margin-top:8px"><b>Stat sensitivity</b> on the planner is a finite difference: the race is re-run with
+          100 more of a stat and the time saved is converted into lengths at the finish. Power is deliberately blank —
+          it drives acceleration and lane changes, which this build does not simulate, so pretending to measure it would
+          be worse than saying so.</p>
         </div>
       </section>
 

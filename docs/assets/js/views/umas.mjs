@@ -125,6 +125,7 @@ export function renderUmas(root) {
 
     for (const chara of db.characters) {
       for (const outfit of chara.outfits) {
+        if (outfit.global === false) continue;
         if (needle && !`${chara.name} ${outfit.epithet}`.toLowerCase().includes(needle)) continue;
         if (state.strategies.length && !state.strategies.includes(outfit.strategy)) continue;
         if (state.stars.length && !state.stars.includes(outfit.stars)) continue;

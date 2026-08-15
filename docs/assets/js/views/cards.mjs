@@ -26,6 +26,7 @@ export function renderCards(root) {
     rarities: saved.r ? saved.r.split(',').map(Number) : [],
     where: saved.w ?? 'any', // any | event | hint
     globalOnly: saved.g !== '0',
+    hideUnverified: saved.uv === '1',
     sort: saved.sort ?? 'match',
     dir: saved.dir ?? 'desc',
   };
@@ -93,7 +94,12 @@ export function renderCards(root) {
     <span>Global releases only<small>Cards not yet on the Global server are hidden.</small></span>
   </label>`);
   globalToggle.querySelector('input').addEventListener('change', (e) => { state.globalOnly = e.target.checked; paint(); });
-  body.append(globalToggle);
+  const hideUnverified = el(`<label class="check">
+    <input type="checkbox" ${state.hideUnverified ? 'checked' : ''}>
+    <span>Hide unverified releases<small>Cards past the current Global frontier that only pass the automatic check because they reuse old skills.</small></span>
+  </label>`);
+  hideUnverified.querySelector('input').addEventListener('change', (e) => { state.hideUnverified = e.target.checked; paint(); });
+  body.append(globalToggle, hideUnverified);
 
   rail.append(basics, skillFilter.element);
 
@@ -109,6 +115,7 @@ export function renderCards(root) {
       r: state.rarities.join(','),
       w: state.where === 'any' ? '' : state.where,
       g: state.globalOnly ? '' : '0',
+      uv: state.hideUnverified ? '1' : '',
       sort: state.sort === 'match' ? '' : state.sort,
       dir: state.dir === 'desc' ? '' : state.dir,
     });
@@ -118,6 +125,7 @@ export function renderCards(root) {
 
     for (const card of db.supports) {
       if (state.globalOnly && !card.global) continue;
+      if (state.hideUnverified && card.unverified) continue;
       if (needle && !card.name.toLowerCase().includes(needle)) continue;
       if (state.types.length && !state.types.includes(card.type)) continue;
       if (state.rarities.length && !state.rarities.includes(card.rarity)) continue;
@@ -174,6 +182,7 @@ export function renderCards(root) {
             <span class="chip">${esc(card.typeName)}</span>
             <span class="chip">#${esc(card.id)}</span>
             ${card.global ? '' : '<span class="chip chip--warn">Not on Global</span>'}
+            ${card.unverified ? '<span class="chip chip--warn" title="Passes the skill-set check but sits past the current Global release frontier — treat with suspicion until the GameTora pass confirms it">unverified</span>' : ''}
           </div>
         </div>
       </div>

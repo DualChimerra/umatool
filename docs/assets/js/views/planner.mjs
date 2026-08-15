@@ -1,38 +1,22 @@
-import { db } from '../store.mjs';
-import { el, esc, on, skillPill, effectSummary, fmt, readState, writeState } from '../ui.mjs';
-import { simulateRace, rankSkills, statGuide, STRATEGY, scoreSkill } from '../model.mjs';
+import { db, isObtainable } from '../store.mjs';
+import { el, esc, on, skillPill, effectSummary, fmt } from '../ui.mjs';
+import { cm, commitContext, currentCourse, scoringContext, DEFAULT_STATS } from '../context.mjs';
+import {
+  simulateRace, rankSkills, statGuide, statSensitivity, STRATEGY,
+  orderDistribution, orderRate, activationRate, BASHIN, CM_FIELD_SIZE,
+} from '../model.mjs';
 
 const GROUND = [[1, 'Firm'], [2, 'Good'], [3, 'Soft'], [4, 'Heavy']];
-const STATS = [
-  ['speed', 'Speed'], ['stamina', 'Stamina'], ['power', 'Power'], ['guts', 'Guts'], ['wit', 'Wit'],
-];
+const STATS = [['speed', 'Speed'], ['stamina', 'Stamina'], ['power', 'Power'], ['guts', 'Guts'], ['wit', 'Wit']];
 
 export function renderPlanner(root) {
-  const saved = readState();
-  const defaultCourse = db.courseById.has(saved.c) ? saved.c
-    : (db.courses.find((c) => c.trackName === 'Tokyo' && c.distance === 2400 && c.surface === 1)?.id ?? db.courses[0].id);
-
-  const state = {
-    courseId: defaultCourse,
-    strategy: Number(saved.st ?? 2),
-    ground: Number(saved.gr ?? 1),
-    recovery: Number(saved.rc ?? 0),
-    stats: {
-      speed: Number(saved.sp ?? 1200),
-      stamina: Number(saved.sa ?? 900),
-      power: Number(saved.pw ?? 1000),
-      guts: Number(saved.gu ?? 500),
-      wit: Number(saved.wi ?? 900),
-    },
-  };
-
   const layout = el(`<div class="layout">
     <aside class="rail"></aside>
     <section class="stack">
       <div class="page-head">
         <div>
           <h1>Champions Meeting planner</h1>
-          <p>Pick the course and running style you are preparing for. Everything below is derived from that.</p>
+          <p>Pick the race you are preparing for. Everything below — and the Team page — is derived from it.</p>
         </div>
       </div>
       <div data-role="out" class="stack"></div>
@@ -50,24 +34,25 @@ export function renderPlanner(root) {
     <div class="panel__body">
       <div class="field">
         <label>Racecourse</label>
-        <select class="select" data-role="track">
-          ${tracks.map((t) => `<option value="${esc(t)}">${esc(t)}</option>`).join('')}
-        </select>
+        <select class="select" data-role="track">${tracks.map((t) => `<option value="${esc(t)}">${esc(t)}</option>`).join('')}</select>
       </div>
-      <div class="field">
-        <label>Course</label>
-        <select class="select" data-role="course"></select>
-      </div>
+      <div class="field"><label>Course</label><select class="select" data-role="course"></select></div>
       <div class="field">
         <label>Running style</label>
         <div class="toggle-grid" data-role="strategy">
-          ${Object.entries(STRATEGY).map(([v, s]) => `<button type="button" data-v="${v}" aria-pressed="${Number(v) === state.strategy}">${esc(s.name)}</button>`).join('')}
+          ${Object.entries(STRATEGY).map(([v, s]) => `<button type="button" data-v="${v}" aria-pressed="${Number(v) === cm.strategy}">${esc(s.name)}</button>`).join('')}
         </div>
       </div>
       <div class="field">
         <label>Going</label>
         <div class="toggle-grid" data-role="ground">
-          ${GROUND.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${v === state.ground}">${l}</button>`).join('')}
+          ${GROUND.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${v === cm.ground}">${l}</button>`).join('')}
+        </div>
+      </div>
+      <div class="field">
+        <label>Field size</label>
+        <div class="toggle-grid" data-role="field">
+          ${[9, 12, 18].map((n) => `<button type="button" data-v="${n}" aria-pressed="${n === cm.fieldSize}">${n}${n === CM_FIELD_SIZE ? ' · CM' : ''}</button>`).join('')}
         </div>
       </div>
     </div>
@@ -76,22 +61,29 @@ export function renderPlanner(root) {
   const statsPanel = el(`<section class="panel">
     <div class="panel__head"><h3>Your stats</h3><button class="btn btn--ghost btn--sm" data-act="stat-reset" type="button">Reset</button></div>
     <div class="panel__body">
+      <div class="field">
+        <label>Stat ceiling you play with</label>
+        <div class="toggle-grid" data-role="cap">
+          ${[1200, 1400, 1600, 1800, 2000].map((n) => `<button type="button" data-v="${n}" aria-pressed="${n === cm.statCap}">${n}</button>`).join('')}
+        </div>
+        <p class="tiny muted">Scenarios keep raising the cap, so nothing here is hardcoded to 1200 — set what your scenario allows and the sliders and target ranges follow.</p>
+      </div>
       ${STATS.map(([k, label]) => `
         <div class="field">
           <label>${label}</label>
           <div class="range-row">
-            <input type="range" min="200" max="1800" step="10" data-stat="${k}" value="${state.stats[k]}">
-            <output data-out="${k}">${state.stats[k]}</output>
+            <input type="range" min="100" step="10" data-stat="${k}">
+            <input class="input num" type="number" min="100" step="10" data-num="${k}" style="width:74px;padding:4px 6px;text-align:right">
           </div>
         </div>`).join('')}
       <div class="field">
         <label>Recovery from skills</label>
         <div class="range-row">
-          <input type="range" min="0" max="40" step="1" data-role="recovery" value="${state.recovery}">
-          <output data-out="recovery">${state.recovery}%</output>
+          <input type="range" min="0" max="60" step="1" data-role="recovery" value="${cm.recovery}">
+          <output data-out="recovery">${cm.recovery}%</output>
         </div>
+        <p class="tiny muted">Total % of max stamina your healing skills give back across the race.</p>
       </div>
-      <p class="tiny muted">Recovery counts the total % of max stamina your healing skills give back over the race.</p>
     </div>
   </section>`);
 
@@ -102,79 +94,92 @@ export function renderPlanner(root) {
 
   function fillCourses(trackName, preferId = null) {
     const list = db.courses.filter((c) => c.trackName === trackName);
-    courseSel.innerHTML = list.map((c) => `
-      <option value="${esc(c.id)}">${c.distance}m ${esc(c.surfaceName)} · ${esc(c.turnName)}</option>`).join('');
+    courseSel.innerHTML = list.map((c) => `<option value="${esc(c.id)}">${c.distance}m ${esc(c.surfaceName)} · ${esc(c.turnName)}</option>`).join('');
     const chosen = preferId && list.some((c) => c.id === preferId) ? preferId : list[0]?.id;
     courseSel.value = chosen;
-    state.courseId = chosen;
+    cm.courseId = chosen;
   }
+  trackSel.value = currentCourse().trackName;
+  fillCourses(trackSel.value, cm.courseId);
 
-  trackSel.value = db.courseById.get(state.courseId).trackName;
-  fillCourses(trackSel.value, state.courseId);
+  trackSel.addEventListener('change', () => { fillCourses(trackSel.value); commitContext(); paint(); });
+  courseSel.addEventListener('change', () => { cm.courseId = courseSel.value; commitContext(); paint(); });
 
-  trackSel.addEventListener('change', () => { fillCourses(trackSel.value); paint(); });
-  courseSel.addEventListener('change', () => { state.courseId = courseSel.value; paint(); });
-
-  on(controls, 'click', '[data-role="strategy"] button', (e, t) => {
-    state.strategy = Number(t.dataset.v);
-    controls.querySelectorAll('[data-role="strategy"] button').forEach((b) => b.setAttribute('aria-pressed', String(b === t)));
-    paint();
+  const groupHandler = (selector, apply) => on(controls, 'click', `${selector} button`, (e, t) => {
+    apply(Number(t.dataset.v));
+    controls.querySelectorAll(`${selector} button`).forEach((b) => b.setAttribute('aria-pressed', String(b === t)));
+    commitContext(); paint();
   });
-  on(controls, 'click', '[data-role="ground"] button', (e, t) => {
-    state.ground = Number(t.dataset.v);
-    controls.querySelectorAll('[data-role="ground"] button').forEach((b) => b.setAttribute('aria-pressed', String(b === t)));
-    paint();
+  groupHandler('[data-role="strategy"]', (v) => { cm.strategy = v; });
+  groupHandler('[data-role="ground"]', (v) => { cm.ground = v; });
+  groupHandler('[data-role="field"]', (v) => { cm.fieldSize = v; });
+
+  on(statsPanel, 'click', '[data-role="cap"] button', (e, t) => {
+    cm.statCap = Number(t.dataset.v);
+    statsPanel.querySelectorAll('[data-role="cap"] button').forEach((b) => b.setAttribute('aria-pressed', String(b === t)));
+    syncStatInputs(); commitContext(); paint();
   });
+
+  function syncStatInputs() {
+    for (const [k] of STATS) {
+      const range = statsPanel.querySelector(`input[data-stat="${k}"]`);
+      const num = statsPanel.querySelector(`input[data-num="${k}"]`);
+      range.max = cm.statCap;
+      num.max = cm.statCap;
+      cm.stats[k] = Math.min(cm.stats[k], cm.statCap);
+      range.value = cm.stats[k];
+      num.value = cm.stats[k];
+    }
+  }
+  syncStatInputs();
 
   on(statsPanel, 'input', 'input[data-stat]', (e, t) => {
-    state.stats[t.dataset.stat] = Number(t.value);
-    statsPanel.querySelector(`[data-out="${t.dataset.stat}"]`).textContent = t.value;
-    paint();
+    cm.stats[t.dataset.stat] = Number(t.value);
+    statsPanel.querySelector(`input[data-num="${t.dataset.stat}"]`).value = t.value;
+    commitContext(); paint();
+  });
+  on(statsPanel, 'change', 'input[data-num]', (e, t) => {
+    const v = Math.max(100, Math.min(cm.statCap, Number(t.value) || 100));
+    cm.stats[t.dataset.num] = v;
+    t.value = v;
+    statsPanel.querySelector(`input[data-stat="${t.dataset.num}"]`).value = v;
+    commitContext(); paint();
   });
   statsPanel.querySelector('[data-role="recovery"]').addEventListener('input', (e) => {
-    state.recovery = Number(e.target.value);
-    statsPanel.querySelector('[data-out="recovery"]').textContent = `${state.recovery}%`;
-    paint();
+    cm.recovery = Number(e.target.value);
+    statsPanel.querySelector('[data-out="recovery"]').textContent = `${cm.recovery}%`;
+    commitContext(); paint();
   });
   on(statsPanel, 'click', '[data-act="stat-reset"]', () => {
-    state.stats = { speed: 1200, stamina: 900, power: 1000, guts: 500, wit: 900 };
-    STATS.forEach(([k]) => {
-      statsPanel.querySelector(`input[data-stat="${k}"]`).value = state.stats[k];
-      statsPanel.querySelector(`[data-out="${k}"]`).textContent = state.stats[k];
-    });
-    paint();
+    Object.assign(cm.stats, DEFAULT_STATS);
+    syncStatInputs(); commitContext(); paint();
   });
 
   /* ----------------------------------------------------------------- paint */
 
   function paint() {
-    const course = db.courseById.get(state.courseId);
-    writeState({
-      c: state.courseId, st: state.strategy, gr: state.ground === 1 ? '' : state.ground,
-      rc: state.recovery || '', sp: state.stats.speed, sa: state.stats.stamina,
-      pw: state.stats.power, gu: state.stats.guts, wi: state.stats.wit,
-    });
+    const course = currentCourse();
+    const ctx = scoringContext();
+    const sim = simulateRace({ course, strategy: ctx.strategy, stats: ctx.stats, ground: ctx.ground, recoveryPct: cm.recovery });
+    const full = { ...ctx, sim };
 
-    const sim = simulateRace({ course, strategy: state.strategy, stats: state.stats, ground: state.ground, recoveryPct: state.recovery });
-    const ctx = { course, strategy: state.strategy, ground: state.ground, sim, stats: state.stats };
-
-    const ranked = rankSkills(db.learnable, ctx);
+    const ranked = rankSkills(db.learnable, full);
     const uniques = ranked.filter((r) => r.skill.tier === 'unique' || r.skill.tier === 'evolved');
-    const learnable = ranked.filter((r) => r.skill.tier === 'gold' || r.skill.tier === 'normal');
+    const allLearnable = ranked.filter((r) => r.skill.tier === 'gold' || r.skill.tier === 'normal');
+    const learnable = cm.obtainableOnly === false ? allLearnable : allLearnable.filter((r) => isObtainable(r.skill));
+    const hiddenCount = allLearnable.length - learnable.length;
     const recovery = learnable.filter((r) => r.skill.effects.some((e) => e.kind === 'recovery'));
+    const sensitivity = statSensitivity({ ...full, recoveryPct: cm.recovery }, db.learnable);
 
     out.replaceChildren(
       courseCard(course, sim),
       statCards(course, sim),
-      guideCard(course, sim),
-      rankCard('Best skills for this course', learnable.slice(0, 30), learnable.length,
-        'Ranked by estimated metres gained, then adjusted for how reliably the skill fires with this running style.'),
-      recovery.length ? rankCard('Best recovery skills', recovery.slice(0, 12), recovery.length,
-        sim.surplus > 0
-          ? 'You already have stamina to spare, so recovery is scored low here — it climbs as soon as stamina gets tight.'
-          : 'Stamina is short on this setup, so recovery converts directly into a longer last spurt.') : el('<span hidden></span>'),
-      rankCard('Best uniques to bring', uniques.slice(0, 20), uniques.length,
-        'Only uniques that can actually fire with this running style are listed. The uma carrying each one is shown underneath.', true),
+      guideCard(course, sim, sensitivity),
+      fieldCard(ctx),
+      scoringExplainer(),
+      rankCard('Best skills for this course', learnable.slice(0, 30), learnable.length, hiddenCount),
+      recovery.length ? rankCard('Best recovery skills', recovery.slice(0, 12), recovery.length) : el('<span hidden></span>'),
+      uniqueCard(uniques.slice(0, 24), uniques.length),
       cardSourcesCard(learnable.slice(0, 24)),
     );
   }
@@ -183,7 +188,7 @@ export function renderPlanner(root) {
 
   function courseCard(course, sim) {
     const d = course.derived;
-    const node = el(`<section class="panel">
+    return el(`<section class="panel">
       <div class="panel__head">
         <h3>${esc(course.trackName)} · ${course.distance}m ${esc(course.surfaceName)}</h3>
         <div class="row">
@@ -193,35 +198,36 @@ export function renderPlanner(root) {
         </div>
       </div>
       <div class="panel__body">
-        ${trackSvg(course)}
+        ${trackSvg(course, sim)}
         <div class="row small muted" style="gap:16px">
           <span><b class="num">${d.cornerCount}</b> corners (${fmt.int(d.cornerLength)}m)</span>
           <span>final corner at <b class="num">${d.finalCornerStart != null ? fmt.int(d.finalCornerStart) : '—'}</b>m</span>
           <span>home straight <b class="num">${fmt.int(d.lastStraightLength)}</b>m</span>
           <span>uphill <b class="num">${fmt.int(d.uphillLength)}</b>m</span>
           <span>downhill <b class="num">${fmt.int(d.downhillLength)}</b>m</span>
+          <span>last spurt from <b class="num">${fmt.int(course.distance - sim.spurtDistance)}</b>m</span>
         </div>
       </div>
     </section>`);
-    return node;
   }
 
-  function trackSvg(course) {
+  function trackSvg(course, sim) {
     const W = 1000; const H = 74;
     const x = (m) => (m / course.distance) * W;
-    const seg = (a, b, cls, y, h) => `<rect x="${x(a).toFixed(1)}" y="${y}" width="${Math.max(1, x(b) - x(a)).toFixed(1)}" height="${h}" fill="${cls}" />`;
+    const seg = (a, b, fill, y, h) => `<rect x="${x(a).toFixed(1)}" y="${y}" width="${Math.max(1, x(b) - x(a)).toFixed(1)}" height="${h}" fill="${fill}"/>`;
 
-    const corners = course.corners.map((c) => seg(c.start, c.start + c.length, 'var(--line)', 26, 16)).join('');
     const straights = course.straights.map((s) => seg(s.start, s.end, 'color-mix(in srgb, var(--accent) 28%, transparent)', 26, 16)).join('');
+    const corners = course.corners.map((c) => seg(c.start, c.start + c.length, 'var(--line)', 26, 16)).join('');
     const up = course.derived.uphill.map((s) => seg(s.start, s.start + s.length, 'color-mix(in srgb, var(--danger) 55%, transparent)', 46, 7)).join('');
     const down = course.derived.downhill.map((s) => seg(s.start, s.start + s.length, 'color-mix(in srgb, var(--turf) 60%, transparent)', 46, 7)).join('');
+    const spurt = seg(course.distance - sim.spurtDistance, course.distance, 'color-mix(in srgb, var(--gold) 45%, transparent)', 20, 4);
 
-    const phaseMarks = [course.distance / 6, (course.distance * 2) / 3].map((m, i) => `
+    const marks = [[course.distance / 6, 'middle leg'], [(course.distance * 2) / 3, 'final leg']].map(([m, label]) => `
       <line x1="${x(m).toFixed(1)}" y1="18" x2="${x(m).toFixed(1)}" y2="60" stroke="var(--ink-3)" stroke-width="1" stroke-dasharray="3 3"/>
-      <text x="${(x(m) + 4).toFixed(1)}" y="14" font-size="11" fill="var(--ink-3)">${i === 0 ? 'middle leg' : 'final leg'}</text>`).join('');
+      <text x="${(x(m) + 4).toFixed(1)}" y="14" font-size="11" fill="var(--ink-3)">${label}</text>`).join('');
 
     return `<svg class="track-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Course profile">
-      ${straights}${corners}${up}${down}${phaseMarks}
+      ${straights}${corners}${up}${down}${spurt}${marks}
       <text x="2" y="70" font-size="11" fill="var(--ink-3)">start</text>
       <text x="${W - 4}" y="70" font-size="11" fill="var(--ink-3)" text-anchor="end">finish</text>
     </svg>`;
@@ -229,10 +235,9 @@ export function renderPlanner(root) {
 
   function statCards(course, sim) {
     const need = sim.requiredStamina;
-    const have = state.stats.stamina;
+    const have = cm.stats.stamina;
     const ok = have >= need;
     const coverage = Math.round(sim.spurtCoverage * 100);
-
     return el(`<div class="plan-grid">
       <div class="stat-tile ${ok ? 'stat-tile--ok' : 'stat-tile--bad'}">
         <h4>Stamina needed</h4>
@@ -258,45 +263,120 @@ export function renderPlanner(root) {
     </div>`);
   }
 
-  function guideCard(course, sim) {
-    const guide = statGuide(course, state.strategy);
-    const rows = [
-      ['Stamina', `${fmt.int(sim.requiredStamina)}+`, 'calculated from this course, style and going'],
-      ...Object.entries(guide).map(([k, [lo, hi]]) => [
-        k.charAt(0).toUpperCase() + k.slice(1), `${fmt.int(lo)} – ${fmt.int(hi)}`, 'common Champions Meeting baseline',
-      ]),
-    ];
+  function guideCard(course, sim, sens) {
+    const guide = statGuide(course, cm.strategy, cm.statCap);
+    const order = ['speed', 'stamina', 'power', 'guts', 'wit'];
+    const best = order.filter((k) => sens[k]?.bashin != null)
+      .sort((a, b) => sens[b].bashin - sens[a].bashin)[0];
+
+    const rows = order.map((k) => {
+      const range = k === 'stamina' ? `${fmt.int(sim.requiredStamina)}+` : `${fmt.int(guide[k][0])} – ${fmt.int(guide[k][1])}`;
+      const s = sens[k];
+      const marginal = s?.bashin == null ? '—' : `${s.bashin >= 0 ? '+' : '−'}${Math.abs(s.bashin).toFixed(2)} len`;
+      const note = k === 'stamina' ? 'solved from this course, style and going'
+        : s?.viaSkills ? 'raises the Wit activation roll on checked skills'
+          : s?.modelled ? 'measured on the HP/speed model' : 'drives acceleration and lane changes — not simulated here';
+      return `<tr>
+        <td style="font-weight:500">${k.charAt(0).toUpperCase() + k.slice(1)}${k === best ? ' <span class="chip chip--accent">best next point</span>' : ''}</td>
+        <td class="num">${esc(range)}</td>
+        <td class="num">${esc(marginal)}</td>
+        <td class="small muted">${esc(note)}</td>
+      </tr>`;
+    }).join('');
+
     return el(`<section class="panel">
-      <div class="panel__head"><h3>Stat targets</h3></div>
+      <div class="panel__head"><h3>Stat targets and where the next 100 points go</h3></div>
       <div class="panel__body" style="gap:8px">
         <table>
-          <tbody>
-            ${rows.map(([a, b, c]) => `<tr><td style="font-weight:500">${esc(a)}</td><td class="num">${esc(b)}</td><td class="small muted">${esc(c)}</td></tr>`).join('')}
-          </tbody>
+          <thead><tr><th>Stat</th><th class="num">Target</th><th class="num">+100 is worth</th><th>How it was worked out</th></tr></thead>
+          <tbody>${rows}</tbody>
         </table>
-        <p class="note">Stamina is solved from the HP model for a full-length last spurt. The other four are the ranges players converge on for this distance, surface and style — treat them as a starting point, not a rule.</p>
+        <p class="note">Stamina is solved from the HP model for a full-length last spurt. The “+100 is worth” column is a finite
+        difference on the model — it re-runs the race with 100 more of that stat and converts the time saved into lengths at the
+        finish, so it tells you which stat is actually starved right now. Target ranges scale with the stat ceiling you set.</p>
       </div>
     </section>`);
   }
 
-  function rankCard(title, rows, total, note, showOwners = false) {
+  function fieldCard(ctx) {
+    const dist = orderDistribution(ctx.strategy, ctx.fieldSize);
+    const rows = [...dist.entries()].sort((a, b) => a[0] - b[0]);
+    const maxW = Math.max(...rows.map(([, w]) => w));
+    const wit = activationRate(ctx.stats.wit);
+
+    return el(`<section class="panel">
+      <div class="panel__head">
+        <h3>Field model</h3>
+        <span class="sk-count">${ctx.fieldSize} runners · ${esc(STRATEGY[ctx.strategy].name)}</span>
+      </div>
+      <div class="panel__body">
+        <p class="small muted">Champions Meeting runs ${CM_FIELD_SIZE} umamusume, so <code>order_rate</code> moves in steps of
+        ${(100 / ctx.fieldSize).toFixed(1)}%. That is what decides whether a “top 30% of the field” skill is reachable at all.</p>
+        <table>
+          <thead><tr><th>Place</th><th class="num">order_rate</th><th class="num">Chance</th><th></th></tr></thead>
+          <tbody>
+            ${rows.map(([o, w]) => `<tr>
+              <td>${o}${o === 1 ? 'st' : o === 2 ? 'nd' : o === 3 ? 'rd' : 'th'}</td>
+              <td class="num">${orderRate(o, ctx.fieldSize).toFixed(1)}%</td>
+              <td class="num">${(w * 100).toFixed(0)}%</td>
+              <td style="width:40%"><div class="bar"><i style="width:${((w / maxW) * 100).toFixed(0)}%"></i></div></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        <p class="small muted">Wit ${ctx.stats.wit} → Wit-checked skills fire <b>${(wit * 100).toFixed(1)}%</b> of the time
+        (<code>100 − 9000 / Wit</code>, floored at 20%).</p>
+      </div>
+    </section>`);
+  }
+
+  function scoringExplainer() {
+    return el(`<section class="panel">
+      <div class="panel__head"><h3>How “best skills” is ranked</h3></div>
+      <div class="panel__body">
+        <p class="small">Every skill is scored as <b>expected lengths gained on this exact course</b>, not by a tier list. In order:</p>
+        <ol class="small muted" style="display:flex;flex-direction:column;gap:5px;padding-left:18px;list-style:decimal">
+          <li><b>Can it fire at all?</b> Running style, distance band, surface, track handedness, track id, going and required terrain are hard gates — fail one and the skill is dropped, not penalised.</li>
+          <li><b>Where does it fire?</b> The trigger window is intersected with the real course: race phase, corners, straights, slopes, and any <code>distance_rate</code> / <code>remain_distance</code> bound. That gives the metre mark it starts at.</li>
+          <li><b>How long does it get?</b> Duration scales with race distance, then is capped by the time left to the finish from that point — a 6-second speed skill firing 100m out only gets what fits.</li>
+          <li><b>How much ground is that?</b> Speed effects give m/s × seconds. Acceleration is calibrated so +0.2 m/s² over 3s ≈ +0.35 m/s over 3s. Recovery is converted through the HP model into extra last-spurt seconds, and scales with how tight your stamina actually is.</li>
+          <li><b>How often does it happen?</b> Multiply by P(position) from the ${cm.fieldSize}-runner order distribution, P(Wit roll) for Wit-checked skills, and a penalty for conditions like being blocked or overtaking.</li>
+          <li><b>When does it happen?</b> A weight of 0.55 / 0.78 / 1.25 / 1.45 for opening, middle, final leg and the last 10%.</li>
+        </ol>
+        <p class="tiny muted">Open any skill to see all of those numbers for that specific skill, plus where to get it.</p>
+      </div>
+    </section>`);
+  }
+
+  function rankCard(title, rows, total, hidden = null) {
     if (!rows.length) return el('<span hidden></span>');
     const max = rows[0].score || 1;
     const node = el(`<section class="panel">
-      <div class="panel__head"><h3>${esc(title)}</h3><span class="sk-count">${rows.length} of ${total}</span></div>
+      <div class="panel__head">
+        <h3>${esc(title)}</h3>
+        <div class="row">
+          ${hidden === null ? '' : `<div class="seg" data-role="obtainable">
+            <button type="button" data-v="1" aria-pressed="${cm.obtainableOnly !== false}">Obtainable</button>
+            <button type="button" data-v="0" aria-pressed="${cm.obtainableOnly === false}">All</button>
+          </div>`}
+          <span class="sk-count">${rows.length} of ${total}</span>
+        </div>
+      </div>
       <div class="panel__body" style="padding:0">
-        <div class="rank-list">${rows.map((r, i) => rankRow(r, i, max, showOwners)).join('')}</div>
+        <div class="rank-list">${rows.map((r, i) => rankRow(r, i, max)).join('')}</div>
       </div>
     </section>`);
-    if (note) node.querySelector('.panel__body').insertAdjacentHTML('afterend', `<div style="padding:11px 13px;border-top:1px solid var(--line-soft)"><p class="tiny muted">${esc(note)}</p></div>`);
+    if (hidden) {
+      node.insertAdjacentHTML('beforeend', `<div style="padding:11px 13px;border-top:1px solid var(--line-soft)"><p class="tiny muted">${hidden} more skills score here but no Global uma or support card teaches them — scenario rewards and the like. Switch to <b>All</b> to see them.</p></div>`);
+    }
+    on(node, 'click', '[data-role="obtainable"] button', (e, t) => {
+      cm.obtainableOnly = t.dataset.v === '1';
+      commitContext(); paint();
+    });
     return node;
   }
 
-  function rankRow(r, i, max, showOwners) {
-    const owners = showOwners
-      ? (r.skill.sources.unique.map((id) => db.outfitById.get(id)).filter(Boolean).map((o) => o.displayName).join(', '))
-      : '';
-    const why = owners || [effectSummary(r.skill), ...r.reasons].filter(Boolean).join(' · ');
+  function rankRow(r, i, max) {
+    const why = [effectSummary(r.skill), ...r.reasons].filter(Boolean).join(' · ');
     return `<div class="rank-row">
       <span class="rank-row__i">${i + 1}</span>
       <span style="min-width:0">
@@ -305,10 +385,51 @@ export function renderPlanner(root) {
       </span>
       <span class="rank-row__mid">
         <div class="bar"><i style="width:${Math.max(3, (r.score / max) * 100).toFixed(0)}%"></i></div>
-        <span class="tiny muted num">≈ ${r.metres.toFixed(2)} m raw</span>
+        <span class="tiny muted num">${fmt.pct(r.probability)} × ${(r.metres / BASHIN).toFixed(2)} len</span>
       </span>
-      <span class="rank-row__score">${(r.score * 100).toFixed(0)}</span>
+      <span class="rank-row__score">${r.bashin.toFixed(2)}</span>
     </div>`;
+  }
+
+  function uniqueCard(rows, total) {
+    if (!rows.length) return el('<span hidden></span>');
+    const course = currentCourse();
+    const aptKey = ['', 'sprint', 'mile', 'medium', 'long'][course.distanceType];
+    const surfKey = course.surface === 1 ? 'turf' : 'dirt';
+
+    return el(`<section class="panel">
+      <div class="panel__head"><h3>Uniques that land on this course</h3><span class="sk-count">${rows.length} of ${total}</span></div>
+      <div class="panel__body" style="padding:0">
+        <div class="rank-list">
+          ${rows.map((r, i) => {
+    const owners = r.skill.sources.unique.map((id) => db.outfitById.get(id)).filter(Boolean);
+    const owner = owners[0];
+    const apt = owner ? owner.aptitudeGrades[aptKey] : null;
+    const surf = owner ? owner.aptitudeGrades[surfKey] : null;
+    const styleOk = owner ? (owner.strategy === r.skill.facets.strategies?.[0] || !r.skill.facets.strategies || r.skill.facets.strategies.length === 4) : true;
+    return `<div class="rank-row" style="grid-template-columns:26px 38px minmax(0,1fr) 104px 64px">
+              <span class="rank-row__i">${i + 1}</span>
+              ${owner ? `<img src="./img/chara/${esc(owner.id)}.webp" alt="" width="34" height="34" loading="lazy" style="border-radius:7px;background:var(--sunken)">` : '<span></span>'}
+              <span style="min-width:0">
+                ${skillPill(r.skill)}
+                <span class="rank-row__why">${esc(owner ? `${owner.charaName} (${owner.epithet}) · ${owner.strategyName}` : 'no Global uma carries this')}${esc(r.reasons.length ? ` · ${r.reasons[0]}` : '')}</span>
+              </span>
+              <span class="rank-row__mid row" style="gap:4px">
+                ${apt ? `<span class="chip">${esc(course.distanceTypeName)} ${esc(apt)}</span>` : ''}
+                ${surf ? `<span class="chip chip--${surfKey}">${esc(surf)}</span>` : ''}
+                ${styleOk ? '' : '<span class="chip chip--warn">style</span>'}
+              </span>
+              <span class="rank-row__score">${r.bashin.toFixed(2)}</span>
+            </div>`;
+  }).join('')}
+        </div>
+      </div>
+      <div style="padding:11px 13px;border-top:1px solid var(--line-soft)">
+        <p class="tiny muted">Only uniques that can fire with ${esc(STRATEGY[cm.strategy].name)} on this course are listed, scored the same
+        way as everything else. The chips show that uma's aptitude for this distance and surface, so you can see straight away whether
+        running them here needs a shoe.</p>
+      </div>
+    </section>`);
   }
 
   function cardSourcesCard(top) {
@@ -319,8 +440,8 @@ export function renderPlanner(root) {
       const events = card.eventSkills.filter((id) => wanted.has(id));
       const hints = card.hintSkills.filter((id) => wanted.has(id));
       if (!events.length && !hints.length) continue;
-      const value = events.reduce((n, id) => n + wanted.get(id).score, 0)
-        + hints.reduce((n, id) => n + wanted.get(id).score * 0.6, 0);
+      const value = events.reduce((n, id) => n + wanted.get(id).bashin, 0)
+        + hints.reduce((n, id) => n + wanted.get(id).bashin * 0.6, 0);
       scored.push({ card, events, hints, value });
     }
     scored.sort((a, b) => b.value - a.value);
@@ -331,9 +452,9 @@ export function renderPlanner(root) {
       <div class="panel__head"><h3>Support cards carrying those skills</h3><span class="sk-count">top ${rows.length}</span></div>
       <div class="panel__body" style="padding:0">
         <div class="rank-list">
-          ${rows.map(({ card, events, hints }) => `
-            <div class="rank-row" style="grid-template-columns:44px minmax(0,1fr) 92px">
-              <img src="./img/support/${esc(card.id)}.webp" alt="" width="40" height="32" loading="lazy" style="border-radius:5px;object-fit:cover;background:var(--sunken)">
+          ${rows.map(({ card, events, hints, value }) => `
+            <div class="rank-row" style="grid-template-columns:44px minmax(0,1fr) 92px 64px">
+              <img src="./img/support/${esc(card.id)}.webp" alt="" width="40" height="40" loading="lazy" style="border-radius:6px;object-fit:cover;background:var(--sunken)">
               <span style="min-width:0">
                 <div style="font-weight:500">${esc(card.name)}</div>
                 <div class="chips" style="margin-top:4px">
@@ -345,8 +466,13 @@ export function renderPlanner(root) {
                 <span class="chip chip--accent">${esc(card.rarityName)}</span>
                 <span class="chip">${esc(card.typeName)}</span>
               </span>
+              <span class="rank-row__score">${value.toFixed(2)}</span>
             </div>`).join('')}
         </div>
+      </div>
+      <div style="padding:11px 13px;border-top:1px solid var(--line-soft)">
+        <p class="tiny muted">Card value = sum of the expected lengths of the top-ranked skills it teaches. Event skills count in full
+        because they are guaranteed; hints count at 60% because you still have to roll and buy them.</p>
       </div>
     </section>`);
   }

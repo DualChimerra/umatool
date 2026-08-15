@@ -1,23 +1,31 @@
 // Race model and skill valuation.
 //
-// Two independent pieces live here:
+// Three layers, each usable on its own:
 //
-//   1. `simulateRace` — the stamina/HP model. It uses the widely reproduced
-//      community formulas for base speed, per-phase target speed, last-spurt
-//      speed and HP drain. It is an approximation of the real engine (no
-//      positioning, no rivals, no pace-up), which is exactly what you want for
-//      "how much Stamina do I need on this course" and nothing more.
+//   1. `simulateRace` — HP / speed model. Base speed from the distance,
+//      per-phase target speeds from the running style, last-spurt speed from
+//      Speed and Guts, HP drain of 20·(v − base + 12)²/144 per second with the
+//      Guts multiplier in the final leg. No rivals, no positioning: it answers
+//      "can I run my own race to the line", which is what Stamina planning is.
 //
-//   2. `scoreSkill` — turns a skill into an estimate of metres gained on a
-//      specific course with a specific running style, so skills can be ranked
-//      against each other. Every multiplier it applies is reported back in
-//      `reasons` so the number is auditable rather than magic.
+//   2. Position model — Champions Meeting runs **9 umamusume**, so `order_rate`
+//      is quantised in steps of 1/9 ≈ 11.1%. Each running style gets a
+//      distribution over finishing-order slots, and a skill's positional
+//      condition turns into an actual probability instead of a fudge factor.
+//
+//   3. `scoreSkill` — expected lengths gained. It works out *where on this
+//      course* the skill can fire, how long the effect can still run from
+//      there, the chance the position condition holds, and the Wit activation
+//      roll. Every one of those is reported back so the number can be audited.
+
+export const BASHIN = 2.5;          // metres in one length
+export const CM_FIELD_SIZE = 9;     // Champions Meeting field
 
 export const STRATEGY = {
-  1: { key: 'front', name: 'Front Runner' },
-  2: { key: 'pace', name: 'Pace Chaser' },
-  3: { key: 'late', name: 'Late Surger' },
-  4: { key: 'end', name: 'End Closer' },
+  1: { key: 'front', name: 'Front Runner', short: 'Front' },
+  2: { key: 'pace', name: 'Pace Chaser', short: 'Pace' },
+  3: { key: 'late', name: 'Late Surger', short: 'Late' },
+  4: { key: 'end', name: 'End Closer', short: 'End' },
 };
 
 const HP_COEF = { 1: 0.95, 2: 0.89, 3: 1.0, 4: 0.995 };
@@ -27,20 +35,68 @@ const SPEED_COEF = {
   3: [0.938, 0.998, 0.994],
   4: [0.931, 1.0, 1.0],
 };
-
-// HP drain multiplier for the going.
 const GROUND_HP = {
-  1: { 1: 1.0, 2: 1.0, 3: 1.02, 4: 1.02 }, // turf
-  2: { 1: 1.0, 2: 1.0, 3: 1.01, 4: 1.02 }, // dirt
+  1: { 1: 1.0, 2: 1.0, 3: 1.02, 4: 1.02 },
+  2: { 1: 1.0, 2: 1.0, 3: 1.01, 4: 1.02 },
 };
 
-/** Where a runner typically sits, used to judge positional skill conditions. */
-export const EXPECTED_POSITION = {
-  1: { rate: 8, order: 1 },
-  2: { rate: 30, order: 4 },
-  3: { rate: 58, order: 8 },
-  4: { rate: 82, order: 12 },
+/**
+ * Where each style sits, as bands over the field expressed in fractions of the
+ * field from the front. Discretised onto the actual field size at run time, so
+ * the same table works for a 9-runner Champions Meeting and an 18-runner race.
+ */
+const POSITION_BANDS = {
+  1: [[0.00, 0.12, 0.55], [0.12, 0.24, 0.30], [0.24, 0.36, 0.15]],
+  2: [[0.12, 0.24, 0.20], [0.24, 0.36, 0.30], [0.36, 0.50, 0.30], [0.50, 0.62, 0.20]],
+  3: [[0.36, 0.50, 0.15], [0.50, 0.62, 0.25], [0.62, 0.74, 0.25], [0.74, 0.86, 0.20], [0.86, 1.00, 0.15]],
+  4: [[0.56, 0.68, 0.15], [0.68, 0.80, 0.25], [0.80, 0.90, 0.30], [0.90, 1.00, 0.30]],
 };
+
+/**
+ * Probability of finishing in each order slot, for one running style in a field
+ * of `fieldSize`. Returns a Map of order (1-based) to probability.
+ */
+export function orderDistribution(strategy, fieldSize = CM_FIELD_SIZE) {
+  const bands = POSITION_BANDS[strategy] ?? POSITION_BANDS[2];
+  const weights = new Map();
+  for (const [lo, hi, w] of bands) {
+    const first = Math.max(1, Math.ceil(lo * fieldSize + 1e-9));
+    const last = Math.min(fieldSize, Math.max(first, Math.ceil(hi * fieldSize - 1e-9)));
+    const share = w / (last - first + 1);
+    for (let o = first; o <= last; o += 1) weights.set(o, (weights.get(o) ?? 0) + share);
+  }
+  const total = [...weights.values()].reduce((a, b) => a + b, 0) || 1;
+  for (const [o, w] of weights) weights.set(o, w / total);
+  return weights;
+}
+
+/** In-game `order_rate` for a given placing. */
+export const orderRate = (order, fieldSize) => (order / fieldSize) * 100;
+
+/**
+ * Chance the positional part of a skill condition holds, given the style and
+ * field size. Handles both absolute placings and order_rate percentages.
+ */
+export function positionProbability(position = {}, strategy, fieldSize = CM_FIELD_SIZE) {
+  const dist = orderDistribution(strategy, fieldSize);
+  let p = 0;
+  for (const [order, w] of dist) {
+    const rate = orderRate(order, fieldSize);
+    if (position.orderMin != null && order < position.orderMin) continue;
+    if (position.orderMax != null && order > position.orderMax) continue;
+    if (position.rateMin != null && rate < position.rateMin) continue;
+    if (position.rateMax != null && rate > position.rateMax) continue;
+    p += w;
+  }
+  return p;
+}
+
+/** Skill activation roll. Skills flagged as Wit-checked fail it sometimes. */
+export function activationRate(wit) {
+  return Math.min(1, Math.max(0.2, (100 - 9000 / Math.max(1, wit)) / 100));
+}
+
+/* ---------------------------------------------------------------- HP model */
 
 export const baseSpeed = (distance) => 20 - (distance - 2000) / 1000;
 
@@ -48,25 +104,17 @@ export function raceSpeeds({ distance, speed, guts, strategy }) {
   const base = baseSpeed(distance);
   const coef = SPEED_COEF[strategy] ?? SPEED_COEF[2];
   const speedBonus = Math.sqrt(500 * speed) * 0.002;
-  const v0 = base * coef[0];
-  const v1 = base * coef[1];
-  const v2 = base * coef[2] + speedBonus;
-  // The last-spurt formula works off the *unmodified* final-leg target speed and
-  // adds the Speed bonus once, so it must not be taken from v2.
-  const spurt = (base * coef[2] + 0.01 * base) * 1.05 + speedBonus + (450 * guts) ** 0.597 * 0.0001;
-  return { base, v0, v1, v2, spurt };
+  return {
+    base,
+    v0: base * coef[0],
+    v1: base * coef[1],
+    v2: base * coef[2] + speedBonus,
+    spurt: (base * coef[2] + 0.01 * base) * 1.05 + speedBonus + (450 * guts) ** 0.597 * 0.0001,
+  };
 }
 
 const drainPerSecond = (v, base) => (20 * (v - base + 12) ** 2) / 144;
 
-/**
- * @param {object} opts
- * @param {object} opts.course
- * @param {number} opts.strategy
- * @param {{speed:number,stamina:number,power:number,guts:number,wit:number}} opts.stats
- * @param {number} [opts.ground]  1 firm … 4 heavy
- * @param {number} [opts.recoveryPct]  total % of max HP recovered by skills
- */
 export function simulateRace({ course, strategy, stats, ground = 1, recoveryPct = 0 }) {
   const d = course.distance;
   const { base, v0, v1, v2, spurt } = raceSpeeds({ distance: d, speed: stats.speed, guts: stats.guts, strategy });
@@ -85,9 +133,7 @@ export function simulateRace({ course, strategy, stats, ground = 1, recoveryPct 
   const rateSpurt = drainPerSecond(spurt, base) * groundMul * gutsMul;
   const rateCruise = drainPerSecond(v2, base) * groundMul * gutsMul;
   const hpFullSpurt = (rateSpurt * seg[2]) / spurt;
-  const hpNoSpurt = (rateCruise * seg[2]) / v2;
 
-  // How much of the final leg can actually be run at spurt speed.
   const perMetreSpurt = rateSpurt / spurt;
   const perMetreCruise = rateCruise / v2;
   let spurtDistance = seg[2];
@@ -98,7 +144,6 @@ export function simulateRace({ course, strategy, stats, ground = 1, recoveryPct 
 
   const needHp = before + hpFullSpurt;
   const requiredStamina = Math.max(0, (needHp / (1 + recoveryPct / 100) - d) / (0.8 * hpCoef));
-
   const time = seg[0] / v0 + seg[1] / v1 + (seg[2] - spurtDistance) / v2 + spurtDistance / spurt;
 
   return {
@@ -106,7 +151,6 @@ export function simulateRace({ course, strategy, stats, ground = 1, recoveryPct 
     hpUsed: needHp,
     hpBeforeFinal: before,
     hpFullSpurt,
-    hpNoSpurt,
     available,
     surplus: available - hpFullSpurt,
     requiredStamina: Math.ceil(requiredStamina),
@@ -121,7 +165,7 @@ export function simulateRace({ course, strategy, stats, ground = 1, recoveryPct 
   };
 }
 
-/* ------------------------------------------------------- skill applicability */
+/* -------------------------------------------------- course geometry helpers */
 
 export function courseTerrain(course) {
   const t = new Set(['flat']);
@@ -132,35 +176,97 @@ export function courseTerrain(course) {
   return t;
 }
 
-function positionFit(position, strategy) {
-  const exp = EXPECTED_POSITION[strategy] ?? EXPECTED_POSITION[2];
-  let fit = 1;
-  if (position.rateMax != null && exp.rate > position.rateMax) {
-    fit *= Math.max(0.15, 1 - (exp.rate - position.rateMax) / 45);
+/** Metre ranges on the course matching a terrain keyword. */
+function terrainSegments(course, kind) {
+  const d = course.distance;
+  switch (kind) {
+    case 'corner': return course.corners.map((c) => [c.start, c.start + c.length]);
+    case 'final-corner': {
+      const c = course.corners[course.corners.length - 1];
+      return c ? [[c.start, d]] : [];
+    }
+    case 'straight': return course.straights.map((s) => [s.start, s.end]);
+    case 'last-straight': {
+      const s = course.straights[course.straights.length - 1];
+      return s ? [[s.start, s.end]] : [];
+    }
+    case 'uphill': return course.derived.uphill.map((s) => [s.start, s.start + s.length]);
+    case 'downhill': return course.derived.downhill.map((s) => [s.start, s.start + s.length]);
+    default: return [[0, d]];
   }
-  if (position.rateMin != null && exp.rate < position.rateMin) {
-    fit *= Math.max(0.15, 1 - (position.rateMin - exp.rate) / 45);
-  }
-  if (position.orderMax != null && exp.order > position.orderMax) {
-    fit *= Math.max(0.2, 1 - (exp.order - position.orderMax) / 9);
-  }
-  if (position.orderMin != null && exp.order < position.orderMin) {
-    fit *= Math.max(0.2, 1 - (position.orderMin - exp.order) / 9);
-  }
-  return fit;
 }
 
-const PHASE_WEIGHT = { 0: 0.45, 1: 0.7, 2: 1.3, 3: 1.45 };
+const PHASE_BOUNDS = (d) => [[0, d / 6], [d / 6, (d * 2) / 3], [(d * 2) / 3, d], [(d * 2) / 3, d]];
+
+function intersectRanges(a, b) {
+  const out = [];
+  for (const [s1, e1] of a) {
+    for (const [s2, e2] of b) {
+      const s = Math.max(s1, s2); const e = Math.min(e1, e2);
+      if (e - s > 1) out.push([s, e]);
+    }
+  }
+  return out;
+}
+
+const rangeLength = (rs) => rs.reduce((n, [s, e]) => n + (e - s), 0);
+
+/**
+ * The stretch of track on which a skill can actually fire, from its phases,
+ * terrain requirement and any distance_rate / remain_distance bound.
+ */
+export function triggerWindow(skill, course) {
+  const d = course.distance;
+  const f = skill.facets;
+  let ranges = [[0, d]];
+
+  if (f.phases?.length && f.phases.length < 4) {
+    const bounds = PHASE_BOUNDS(d);
+    const phaseRanges = [...new Set(f.phases)].map((p) => bounds[p]).filter(Boolean);
+    ranges = intersectRanges(ranges, phaseRanges);
+  }
+  for (const kind of f.terrain ?? []) {
+    if (kind === 'flat') continue;
+    ranges = intersectRanges(ranges, terrainSegments(course, kind));
+  }
+  const w = f.window ?? {};
+  const lo = Math.max(w.rateMin != null ? w.rateMin * d : 0, w.remainMin != null ? 0 : 0);
+  const hi = Math.min(
+    w.rateMax != null ? w.rateMax * d : d,
+    w.remainMax != null ? d - w.remainMax : d,
+  );
+  const loFinal = Math.max(lo, w.remainMin != null ? 0 : 0);
+  const hiFinal = Math.min(hi, w.remainMin != null ? d - w.remainMin : d);
+  if (loFinal > 0 || hiFinal < d) ranges = intersectRanges(ranges, [[loFinal, Math.max(loFinal + 1, hiFinal)]]);
+
+  if (!ranges.length) return null;
+  const length = rangeLength(ranges);
+  const centroid = ranges.reduce((n, [s, e]) => n + ((s + e) / 2) * (e - s), 0) / Math.max(1, length);
+  return { ranges, length, centroid, share: length / d };
+}
+
+/**
+ * How much a metre gained at this point in the race is worth. Ground made up
+ * in the final leg sticks; ground made up early is partly given back through
+ * pace and stamina.
+ */
+function positionWeight(fraction) {
+  if (fraction < 1 / 6) return 0.55;
+  if (fraction < 2 / 3) return 0.78;
+  if (fraction < 0.9) return 1.25;
+  return 1.45;
+}
+
 const NEED_PENALTY = {
   overtake: 0.72, blocked: 0.5, crowded: 0.6, 'gain-place': 0.75, 'lose-place': 0.75,
 };
 
 /**
- * @returns {null|{metres:number, score:number, reasons:string[], phase:number}}
- *   `null` when the skill simply cannot fire on this course / with this style.
+ * @returns {null|{bashin:number, metres:number, score:number, parts:object, reasons:string[]}}
+ *   `null` when the skill cannot fire on this course with this running style.
  */
 export function scoreSkill(skill, ctx) {
-  const { course, strategy, ground = 1, sim } = ctx;
+  const { course, strategy, ground = 1, sim, fieldSize = CM_FIELD_SIZE, stats } = ctx;
   const f = skill.facets;
   const reasons = [];
 
@@ -172,99 +278,108 @@ export function scoreSkill(skill, ctx) {
   if (f.groundConditions?.length && !f.groundConditions.includes(ground)) return null;
 
   const terrain = courseTerrain(course);
-  for (const t of f.terrain) if (!terrain.has(t)) return null;
+  for (const t of f.terrain) if (t !== 'flat' && !terrain.has(t)) return null;
 
-  const durSec = Math.max(0.1, skill.duration * (course.distance / 1000));
-  const phases = f.phases?.length ? f.phases : [0, 1, 2, 3];
-  const phase = phases.reduce((best, p) => (PHASE_WEIGHT[p] > PHASE_WEIGHT[best] ? p : best), phases[0]);
-  const phaseWeight = PHASE_WEIGHT[phase] ?? 1;
+  const win = triggerWindow(skill, course);
+  if (!win) return null;
+
+  // Where the effect starts, and therefore how much of it the race still has
+  // room for.
+  const at = f.random ? win.centroid : win.ranges[0][0];
+  const fraction = at / course.distance;
+  const speedHere = fraction < 1 / 6 ? sim.speeds.v0 : fraction < 2 / 3 ? sim.speeds.v1 : sim.speeds.spurt;
+  const secondsLeft = (course.distance - at) / speedHere;
+
+  const nominal = Math.max(0.1, skill.duration * (course.distance / 1000));
+  const durSec = Math.min(nominal, secondsLeft);
+  if (durSec < nominal - 0.05 && skill.duration > 0) {
+    reasons.push(`only ${durSec.toFixed(1)}s of ${nominal.toFixed(1)}s fits before the line`);
+  }
 
   let metres = 0;
+  const parts = {};
+  const add = (key, m) => { if (m) { parts[key] = (parts[key] ?? 0) + m; metres += m; } };
+
   for (const e of skill.effects) {
     switch (e.key) {
       case 'target_speed':
-        metres += e.value * durSec;
+        add('speed', e.value * durSec);
         break;
       case 'current_speed':
       case 'current_speed_decel':
-        metres += e.value * Math.min(durSec, 3) * 0.6;
+        add('speed', e.value * Math.min(durSec, 3) * 0.6);
         break;
       case 'accel':
         // Calibrated so +0.2 m/s² over 3s is worth about as much as +0.35 m/s
-        // over 3s, which matches how the two are valued in practice.
-        metres += e.value * durSec * 1.67;
+        // over the same 3s, which is how the two are valued in practice.
+        add('accel', e.value * durSec * 1.67);
         break;
       case 'recovery': {
-        if (!sim) break;
         const recovered = (e.value / 100) * sim.maxHp;
         const extraSeconds = recovered / Math.max(0.1, sim.rates.spurt);
         const gain = extraSeconds * Math.max(0, sim.speeds.spurt - sim.speeds.v2);
-        metres += gain * sim.staminaPressure;
-        if (sim.staminaPressure < 0.15) reasons.push('stamina already covered');
+        add('recovery', gain * sim.staminaPressure);
+        if (sim.staminaPressure < 0.15) reasons.push('stamina already covered, so recovery scores low');
         break;
       }
       case 'speed': {
-        // +N Speed feeds the final-leg speed bonus √(500·speed)·0.002
-        const s = ctx.stats?.speed ?? 1200;
+        const s = stats?.speed ?? 1200;
         const perPoint = (0.002 * Math.sqrt(500)) / (2 * Math.sqrt(Math.max(1, s)));
-        metres += e.value * perPoint * (course.distance / 3 / Math.max(1, sim?.speeds.v2 ?? 20));
+        add('stat', e.value * perPoint * ((course.distance / 3) / Math.max(1, sim.speeds.v2)));
         break;
       }
-      case 'guts':
-        metres += e.value * 0.0009 * (course.distance / 1000);
-        break;
-      case 'power':
-        metres += e.value * 0.0011 * (course.distance / 1000);
-        break;
       case 'stamina':
-        metres += e.value * 0.0016 * (sim?.staminaPressure ?? 0.5) * (course.distance / 1000);
+        add('stat', e.value * 0.0016 * sim.staminaPressure * (course.distance / 1000));
         break;
-      case 'wit':
-        metres += e.value * 0.0004 * (course.distance / 1000);
-        break;
+      case 'power': add('stat', e.value * 0.0011 * (course.distance / 1000)); break;
+      case 'guts': add('stat', e.value * 0.0009 * (course.distance / 1000)); break;
+      case 'wit': add('stat', e.value * 0.0004 * (course.distance / 1000)); break;
       case 'lane_move':
-      case 'unblock':
-        metres += e.value * 0.4;
-        break;
-      default:
-        break;
+      case 'unblock': add('utility', e.value * 0.4); break;
+      default: break;
     }
   }
 
   if (metres <= 0) return null;
 
-  let reliability = 1;
-  if (f.random) { reliability *= 0.88; reasons.push('random trigger point'); }
-  if (skill.wisdomCheck) { reliability *= 0.9; reasons.push('Wit activation check'); }
+  // --- probability that it actually fires, and fires usefully ---
+  const pPosition = positionProbability(f.position, strategy, fieldSize);
+  if (pPosition < 0.999) {
+    reasons.push(`position holds ${Math.round(pPosition * 100)}% of the time in a ${fieldSize}-runner field`);
+  }
+  const pWit = skill.wisdomCheck ? activationRate(stats?.wit ?? 900) : 1;
+  if (pWit < 1) reasons.push(`Wit activation ${Math.round(pWit * 100)}%`);
+
+  let pOther = 1;
   for (const need of f.needs) {
-    if (NEED_PENALTY[need]) { reliability *= NEED_PENALTY[need]; reasons.push(`needs ${need.replace('-', ' ')}`); }
+    if (NEED_PENALTY[need]) { pOther *= NEED_PENALTY[need]; reasons.push(`needs ${need.replace('-', ' ')}`); }
   }
-  const fit = positionFit(f.position ?? {}, strategy);
-  if (fit < 0.98) reasons.push(`position fit ${Math.round(fit * 100)}%`);
-  reliability *= fit;
-
-  if (f.terrain.includes('downhill')) {
-    const share = course.derived.downhillLength / course.distance;
-    reliability *= Math.min(1, 0.55 + share * 6);
-    reasons.push(`${Math.round(course.derived.downhillLength)}m of downhill`);
-  }
-  if (f.terrain.includes('uphill')) {
-    const share = course.derived.uphillLength / course.distance;
-    reliability *= Math.min(1, 0.55 + share * 6);
-    reasons.push(`${Math.round(course.derived.uphillLength)}m of uphill`);
+  if (f.random && win.share < 0.25) {
+    reasons.push(`fires somewhere in ${Math.round(win.length)}m of eligible track`);
   }
 
-  const effective = metres * phaseWeight * reliability;
+  const weight = positionWeight(fraction);
+  const probability = pPosition * pWit * pOther;
+  const expected = metres * weight * probability;
+
   return {
     metres,
-    phase,
-    reliability,
-    score: effective,
+    bashin: expected / BASHIN,
+    score: expected,
+    probability,
+    parts,
     reasons,
+    at,
+    fraction,
+    durSec,
+    window: win,
+    pPosition,
+    pWit,
+    pOther,
+    weight,
   };
 }
 
-/** Ranks every learnable skill for a course + strategy. */
 export function rankSkills(skills, ctx, { tiers = null, limit = 0 } = {}) {
   const out = [];
   for (const s of skills) {
@@ -277,10 +392,42 @@ export function rankSkills(skills, ctx, { tiers = null, limit = 0 } = {}) {
   return limit ? out.slice(0, limit) : out;
 }
 
-/* --------------------------------------------------------------- stat guide */
+/* ------------------------------------------------------------- stat guidance */
 
-// Baselines the Champions Meeting community converges on. Stamina is not in
-// here on purpose — it is calculated from the course instead.
+/**
+ * Marginal value of each stat, by finite difference on the model: how much
+ * faster (in lengths at the finish) does +100 of a stat make you?
+ *
+ * Speed, Stamina and Guts move the HP/speed model directly. Wit moves the
+ * expected value of every Wit-checked skill, so it is measured against the
+ * ranked skill list instead. Power is not in the model — it drives
+ * acceleration and lane changes, which this build does not simulate.
+ */
+export function statSensitivity(ctx, skills, step = 100) {
+  const { course, strategy, ground, stats, fieldSize } = ctx;
+  const base = simulateRace({ course, strategy, stats, ground, recoveryPct: ctx.recoveryPct ?? 0 });
+  const out = {};
+
+  for (const key of ['speed', 'stamina', 'guts']) {
+    const bumped = simulateRace({
+      course, strategy, ground, recoveryPct: ctx.recoveryPct ?? 0,
+      stats: { ...stats, [key]: stats[key] + step },
+    });
+    const metres = (base.time - bumped.time) * base.speeds.spurt;
+    out[key] = { bashin: metres / BASHIN, seconds: base.time - bumped.time, modelled: true };
+  }
+
+  const valueAt = (wit) => {
+    const c = { ...ctx, sim: base, stats: { ...stats, wit } };
+    return rankSkills(skills, c, { limit: 12 }).reduce((n, r) => n + r.bashin, 0);
+  };
+  out.wit = { bashin: valueAt(stats.wit + step) - valueAt(stats.wit), modelled: true, viaSkills: true };
+  out.power = { bashin: null, modelled: false };
+  return out;
+}
+
+// Ranges players converge on. Scaled by the stat ceiling the user is playing
+// with, since scenarios keep raising it.
 const STAT_BASELINE = {
   sprint: { speed: [1100, 1200], power: [1000, 1150], guts: [400, 600], wit: [800, 1000] },
   mile: { speed: [1100, 1200], power: [900, 1050], guts: [400, 600], wit: [800, 1000] },
@@ -288,12 +435,14 @@ const STAT_BASELINE = {
   long: { speed: [1000, 1150], power: [800, 950], guts: [350, 500], wit: [800, 1000] },
 };
 
-export function statGuide(course, strategy) {
+export function statGuide(course, strategy, cap = 1200) {
   const key = ['', 'sprint', 'mile', 'medium', 'long'][course.distanceType] ?? 'medium';
   const base = STAT_BASELINE[key];
-  const out = { ...base };
-  if (course.surface === 2) out.power = [base.power[0] + 100, base.power[1] + 150];
-  if (strategy === 1) out.guts = [base.guts[0] + 100, base.guts[1] + 150];
-  if (strategy === 4) out.power = [base.power[0] + 50, base.power[1] + 100];
+  const scale = Math.max(1, cap / 1200);
+  const out = {};
+  for (const [k, [lo, hi]] of Object.entries(base)) out[k] = [Math.round(lo * scale), Math.round(hi * scale)];
+  if (course.surface === 2) out.power = [Math.round(out.power[0] + 100 * scale), Math.round(out.power[1] + 150 * scale)];
+  if (strategy === 1) out.guts = [Math.round(out.guts[0] + 100 * scale), Math.round(out.guts[1] + 150 * scale)];
+  if (strategy === 4) out.power = [Math.round(out.power[0] + 50 * scale), Math.round(out.power[1] + 100 * scale)];
   return out;
 }

@@ -9,6 +9,7 @@ export const db = {
   outfitById: new Map(),
   supportById: new Map(),
   courseById: new Map(),
+  globalOutfits: [],
   learnable: [],
 };
 
@@ -39,6 +40,7 @@ export async function loadData() {
       db.outfitById.set(o.id, o);
     }
   }
+  db.globalOutfits = [...db.outfitById.values()].filter((o) => o.global !== false);
   for (const s of db.supports) db.supportById.set(s.id, s);
   for (const c of db.courses) db.courseById.set(c.id, c);
 
@@ -70,6 +72,19 @@ export function expandSelection(ids, includeOtherRanks) {
     }
   }
   return out;
+}
+
+/**
+ * Can this skill actually be acquired in a training run on Global? Scenario
+ * rewards and inherited uniques score well but no card or uma teaches them, so
+ * they are separated out rather than sitting at the top of a planning list.
+ */
+export function isObtainable(skill) {
+  const s = skill?.sources;
+  if (!s) return false;
+  return s.unique.length > 0 || s.characters.length > 0
+    || s.event.some((id) => db.supportById.get(id)?.global)
+    || s.hint.some((id) => db.supportById.get(id)?.global);
 }
 
 export function skillIconUrl(skill) {

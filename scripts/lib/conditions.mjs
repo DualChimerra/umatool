@@ -174,15 +174,24 @@ const HANDLERS = {
   },
   remain_distance: {
     describe: (op, v) => `${cmpWord[op]} ${v}m left`,
-    apply: (op, v, f) => { if ((op === '<=' || op === '<') && v <= 600) f.late = true; },
+    apply: (op, v, f) => {
+      if ((op === '<=' || op === '<') && v <= 600) f.late = true;
+      // "at most N metres left" is a lower bound on how far into the race we are.
+      if (op === '<=' || op === '<') f.window.remainMax = Math.min(f.window.remainMax ?? Infinity, v);
+      if (op === '>=' || op === '>') f.window.remainMin = Math.max(f.window.remainMin ?? 0, v);
+    },
   },
   distance_rate: {
     describe: (op, v) => `${cmpWord[op]} ${v}% into the race`,
-    apply: (op, v, f) => { if ((op === '>=' || op === '>') && v >= 60) f.late = true; },
+    apply: (op, v, f) => {
+      if ((op === '>=' || op === '>') && v >= 60) f.late = true;
+      if (op === '>=' || op === '>') f.window.rateMin = Math.max(f.window.rateMin ?? 0, v / 100);
+      if (op === '<=' || op === '<') f.window.rateMax = Math.min(f.window.rateMax ?? 1, v / 100);
+    },
   },
   distance_rate_after_random: {
     describe: (op, v) => `random point after ${v}% into the race`,
-    apply: (op, v, f) => { f.random = true; },
+    apply: (op, v, f) => { f.random = true; f.window.rateMin = Math.max(f.window.rateMin ?? 0, v / 100); },
   },
   order: {
     describe: (op, v) => `${cmpWord[op]} ${ordinal(v)} place`,
@@ -305,6 +314,7 @@ function emptyFacets() {
     terrain: new Set(),
     needs: new Set(),
     position: {},
+    window: {},
     random: false,
     late: false,
     passive: false,
@@ -322,6 +332,15 @@ function mergeFacets(target, alt) {
     if (target.position[k] === undefined) target.position[k] = v;
     else if (k.endsWith('Max')) target.position[k] = Math.max(target.position[k], v);
     else target.position[k] = Math.min(target.position[k], v);
+  }
+  // A skill fires if *any* branch matches, so the window is the union: the
+  // loosest bound on each side wins.
+  for (const k of ['rateMin', 'rateMax', 'remainMin', 'remainMax']) {
+    if (alt.window[k] === undefined) { delete target.window[k]; continue; }
+    if (target.window[k] === undefined) continue;
+    target.window[k] = k === 'rateMin' || k === 'remainMin'
+      ? Math.min(target.window[k], alt.window[k])
+      : Math.max(target.window[k], alt.window[k]);
   }
   return target;
 }
@@ -394,6 +413,7 @@ export function analyseCondition(condition, precondition, ctx = {}) {
       terrain: [...merged.terrain],
       needs: [...merged.needs],
       position: merged.position,
+      window: merged.window,
       random: merged.random,
       late: merged.late,
       passive: merged.passive,
