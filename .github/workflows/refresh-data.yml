@@ -1,7 +1,11 @@
 name: Refresh game data
 
-# Rebuilds docs/data/*.json from the Global master-database dump and, when it is
-# reachable, from GameTora. Commits only when something actually changed.
+# Rebuilds docs/data/*.json from the Global master-database dump and GameTora's
+# release table, refreshing the committed snapshot of that table on the way.
+# Commits only when something actually changed.
+#
+# The build fails rather than publish an unfiltered card list, so a red run here
+# means the last good data stays up.
 
 on:
   schedule:
@@ -53,7 +57,7 @@ jobs:
         run: |
           git config user.name  'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add docs/data docs/img
+          git add docs/data docs/img data-cache
           if git diff --cached --quiet; then
             echo 'No data changes.'
             exit 0

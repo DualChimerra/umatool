@@ -1,101 +1,89 @@
-// Optional enrichment pass against GameTora.
+// Release-date pass against GameTora.
 //
-// GameTora is a Next.js site: every page embeds a `__NEXT_DATA__` blob and the
-// same payload is served as static JSON under `/_next/data/<buildId>/...`.
-// This adapter grabs whichever of the two works, then walks the payload looking
-// for the arrays it recognises. It is deliberately defensive — if GameTora
-// changes shape, or is unreachable from the runner, the build keeps the data it
-// already has instead of failing.
+// GameTora keeps its game data in content-hashed JSON files and publishes an
+// index of them at /data/manifests/umamusume.json:
+//
+//   { "support-cards": "4d092416", "character-cards": "785343d8", … }
+//   ->  /data/umamusume/support-cards.4d092416.json
+//
+// That index is what the site itself loads on every page, so it is the same
+// data GameTora renders from — no HTML scraping, no bundle spelunking.
 //
 // What we take from here:
-//   * global release dates (`release_en`) — the authoritative "is it out on
-//     Global yet" signal, and the canonical Global spelling of every name.
+//   * `release_en` on every support card and every character outfit — the
+//     authoritative "is it out on Global yet" signal. Everything mechanical
+//     (skill conditions, aptitudes, course geometry) comes from the
+//     master-database dump instead.
 //
-// Everything mechanical (skill conditions, aptitudes, course geometry) comes
-// from the master-database dump instead.
+// The payloads are small enough to keep a copy of: build-data.mjs snapshots the
+// release table so a later build survives GameTora being unreachable.
 
-import { getText } from '../lib/http.mjs';
+import { getJson } from '../lib/http.mjs';
 
 const BASE = 'https://gametora.com';
-const PAGES = ['/umamusume/supports', '/umamusume/characters', '/umamusume/skills'];
+const MANIFEST = `${BASE}/data/manifests/umamusume.json`;
+const dataUrl = (name, hash) => `${BASE}/data/umamusume/${name}.${hash}.json`;
 
-function extractNextData(html) {
-  const m = /<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/.exec(html);
-  if (!m) return null;
-  try { return JSON.parse(m[1]); } catch { return null; }
+const today = () => new Date().toISOString().slice(0, 10);
+
+/** A date string counts as released only once it is actually in the past. */
+function released(date, asOf) {
+  return typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) && date <= asOf;
 }
 
-/** Depth-first walk collecting every array of plain objects. */
-function* arrays(node, depth = 0) {
-  if (depth > 12 || node == null || typeof node !== 'object') return;
-  if (Array.isArray(node)) {
-    if (node.length && typeof node[0] === 'object' && node[0] !== null && !Array.isArray(node[0])) yield node;
-    for (const v of node.slice(0, 200)) yield* arrays(v, depth + 1);
-    return;
-  }
-  for (const v of Object.values(node)) yield* arrays(v, depth + 1);
-}
+export async function loadGametora({ log = console.log, asOf = today() } = {}) {
+  const result = { ok: false, supports: {}, characters: {}, notes: [], asOf };
 
-const has = (o, ...keys) => keys.some((k) => Object.prototype.hasOwnProperty.call(o, k));
+  const manifest = await getJson(MANIFEST, { retries: 2, timeout: 45000 });
+  const hashOf = (key) => {
+    const hash = manifest?.[key];
+    if (typeof hash !== 'string') throw new Error(`manifest has no "${key}" entry`);
+    return hash;
+  };
 
-function classify(arr) {
-  const s = arr[0];
-  if (has(s, 'support_id')) return 'supports';
-  if (has(s, 'char_id', 'charaId') && !has(s, 'support_id')) return 'characters';
-  if (has(s, 'iconid', 'icon_id') && has(s, 'id')) return 'skills';
-  return null;
-}
+  const [supportCards, characterCards] = await Promise.all([
+    getJson(dataUrl('support-cards', hashOf('support-cards')), { retries: 2, timeout: 45000 }),
+    getJson(dataUrl('character-cards', hashOf('character-cards')), { retries: 2, timeout: 45000 }),
+  ]);
 
-const pick = (o, ...keys) => { for (const k of keys) if (o[k] != null && o[k] !== '') return o[k]; return null; };
+  if (!Array.isArray(supportCards) || !supportCards.length) throw new Error('support-cards payload is not a list');
+  if (!Array.isArray(characterCards) || !characterCards.length) throw new Error('character-cards payload is not a list');
 
-export async function loadGametora({ log = console.log } = {}) {
-  const result = { ok: false, supports: {}, characters: {}, skills: {}, notes: [] };
-
-  let buildId = null;
-  for (const page of PAGES) {
-    let payload = null;
-    try {
-      const html = await getText(BASE + page, { retries: 2, timeout: 45000 });
-      const next = extractNextData(html);
-      if (next) {
-        buildId = buildId || next.buildId;
-        payload = next.props?.pageProps ?? next.props ?? next;
-      }
-    } catch (err) {
-      result.notes.push(`${page}: ${err.message}`);
-    }
-
-    if (!payload && buildId) {
-      try {
-        payload = JSON.parse(await getText(`${BASE}/_next/data/${buildId}${page}.json`, { retries: 2, timeout: 45000 }));
-        payload = payload.pageProps ?? payload;
-      } catch (err) {
-        result.notes.push(`${page} (_next/data): ${err.message}`);
-      }
-    }
-    if (!payload) continue;
-
-    for (const arr of arrays(payload)) {
-      const kind = classify(arr);
-      if (!kind) continue;
-      for (const row of arr) {
-        const id = String(pick(row, 'support_id', 'char_id', 'charaId', 'id') ?? '');
-        if (!id) continue;
-        const entry = {
-          name: pick(row, 'name_en', 'nameEn', 'name'),
-          titleEn: pick(row, 'title_en', 'titleEn'),
-          release: pick(row, 'release_en', 'releaseEn'),
-          releaseJp: pick(row, 'release', 'release_jp'),
-        };
-        if (entry.name || entry.release) result[kind][id] = { ...result[kind][id], ...entry };
-      }
-    }
+  for (const row of supportCards) {
+    const id = String(row.support_id ?? '');
+    if (!id) continue;
+    result.supports[id] = {
+      global: released(row.release_en, asOf),
+      release: row.release_en ?? null,
+      releaseJp: row.release ?? null,
+      name: row.char_name ?? null,
+      title: row.title_en ?? null,
+    };
   }
 
-  const counts = Object.fromEntries(['supports', 'characters', 'skills'].map((k) => [k, Object.keys(result[k]).length]));
-  result.ok = Object.values(counts).some((n) => n > 0);
-  result.counts = counts;
-  log(`  gametora: ${result.ok ? 'ok' : 'unavailable'} ${JSON.stringify(counts)}`);
-  if (result.notes.length) result.notes.slice(0, 4).forEach((n) => log(`    note: ${n}`));
+  // `card_id` is the outfit id the master dump uses (100101, 100302, …).
+  for (const row of characterCards) {
+    const id = String(row.card_id ?? '');
+    if (!id) continue;
+    result.characters[id] = {
+      global: released(row.release_en, asOf),
+      release: row.release_en ?? null,
+      releaseJp: row.release ?? null,
+      name: row.name_en ?? null,
+      title: row.title_en_gl ?? row.title ?? null,
+    };
+  }
+
+  const known = (m) => Object.keys(m).length;
+  const live = (m) => Object.values(m).filter((v) => v.global).length;
+  result.counts = {
+    supports: known(result.supports),
+    supportsGlobal: live(result.supports),
+    outfits: known(result.characters),
+    outfitsGlobal: live(result.characters),
+  };
+  result.ok = result.counts.supports > 0 && result.counts.outfits > 0;
+
+  log(`  gametora: ok ${JSON.stringify(result.counts)}`);
   return result;
 }

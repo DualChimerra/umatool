@@ -1,0 +1,5690 @@
+{
+ "fetchedAt": "2026-08-15T02:19:11.445Z",
+ "counts": {
+  "supports": 548,
+  "supportsGlobal": 238,
+  "outfits": 263,
+  "outfitsGlobal": 97
+ },
+ "supports": {
+  "10001": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Special Week",
+   "title": "[Tracen Academy]"
+  },
+  "10002": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Silence Suzuka",
+   "title": "[Tracen Academy]"
+  },
+  "10003": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Tokai Teio",
+   "title": "[Tracen Academy]"
+  },
+  "10004": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Maruzensky",
+   "title": "[Tracen Academy]"
+  },
+  "10005": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Oguri Cap",
+   "title": "[Tracen Academy]"
+  },
+  "10006": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Gold Ship",
+   "title": "[Tracen Academy]"
+  },
+  "10007": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Vodka",
+   "title": "[Tracen Academy]"
+  },
+  "10008": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Taiki Shuttle",
+   "title": "[Tracen Academy]"
+  },
+  "10009": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Grass Wonder",
+   "title": "[Tracen Academy]"
+  },
+  "10010": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Mejiro McQueen",
+   "title": "[Tracen Academy]"
+  },
+  "10011": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "El Condor Pasa",
+   "title": "[Tracen Academy]"
+  },
+  "10012": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "TM Opera O",
+   "title": "[Tracen Academy]"
+  },
+  "10013": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Symboli Rudolf",
+   "title": "[Tracen Academy]"
+  },
+  "10014": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Seiun Sky",
+   "title": "[Tracen Academy]"
+  },
+  "10015": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Rice Shower",
+   "title": "[Tracen Academy]"
+  },
+  "10016": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Winning Ticket",
+   "title": "[Tracen Academy]"
+  },
+  "10017": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Gold City",
+   "title": "[Tracen Academy]"
+  },
+  "10018": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Sakura Bakushin O",
+   "title": "[Tracen Academy]"
+  },
+  "10019": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Super Creek",
+   "title": "[Tracen Academy]"
+  },
+  "10020": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Haru Urara",
+   "title": "[Tracen Academy]"
+  },
+  "10021": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Tazuna Hayakawa",
+   "title": "[Tracen Academy]"
+  },
+  "10022": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Aoi Kiryuin",
+   "title": "[Tracen Academy]"
+  },
+  "10023": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Daiwa Scarlet",
+   "title": "[Tracen Academy]"
+  },
+  "10024": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Hishi Amazon",
+   "title": "[Tracen Academy]"
+  },
+  "10025": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Air Groove",
+   "title": "[Tracen Academy]"
+  },
+  "10026": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Agnes Digital",
+   "title": "[Tracen Academy]"
+  },
+  "10027": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Tamamo Cross",
+   "title": "[Tracen Academy]"
+  },
+  "10028": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Fine Motion",
+   "title": "[Tracen Academy]"
+  },
+  "10029": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Biwa Hayahide",
+   "title": "[Tracen Academy]"
+  },
+  "10030": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Mayano Top Gun",
+   "title": "[Tracen Academy]"
+  },
+  "10031": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Manhattan Cafe",
+   "title": "[Tracen Academy]"
+  },
+  "10032": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Mihono Bourbon",
+   "title": "[Tracen Academy]"
+  },
+  "10033": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Mejiro Ryan",
+   "title": "[Tracen Academy]"
+  },
+  "10034": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Yukino Bijin",
+   "title": "[Tracen Academy]"
+  },
+  "10035": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Ines Fujin",
+   "title": "[Tracen Academy]"
+  },
+  "10036": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Agnes Tachyon",
+   "title": "[Tracen Academy]"
+  },
+  "10037": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Air Shakur",
+   "title": "[Tracen Academy]"
+  },
+  "10038": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Eishin Flash",
+   "title": "[Tracen Academy]"
+  },
+  "10039": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Smart Falcon",
+   "title": "[Tracen Academy]"
+  },
+  "10040": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Narita Taishin",
+   "title": "[Tracen Academy]"
+  },
+  "10041": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Nishino Flower",
+   "title": "[Tracen Academy]"
+  },
+  "10042": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Biko Pegasus",
+   "title": "[Tracen Academy]"
+  },
+  "10043": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Marvelous Sunday",
+   "title": "[Tracen Academy]"
+  },
+  "10044": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Matikanefukukitaru",
+   "title": "[Tracen Academy]"
+  },
+  "10045": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Meisho Doto",
+   "title": "[Tracen Academy]"
+  },
+  "10046": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Mejiro Dober",
+   "title": "[Tracen Academy]"
+  },
+  "10047": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Nice Nature",
+   "title": "[Tracen Academy]"
+  },
+  "10048": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "King Halo",
+   "title": "[Tracen Academy]"
+  },
+  "10049": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Fuji Kiseki",
+   "title": "[Tracen Academy]"
+  },
+  "10050": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-03-02",
+   "name": "Sweep Tosho",
+   "title": "[Tracen Academy]"
+  },
+  "10051": {
+   "global": true,
+   "release": "2025-07-02",
+   "releaseJp": "2021-03-09",
+   "name": "Twin Turbo",
+   "title": "[Tracen Academy]"
+  },
+  "10052": {
+   "global": true,
+   "release": "2025-07-02",
+   "releaseJp": "2021-03-09",
+   "name": "Daitaku Helios",
+   "title": "[Tracen Academy]"
+  },
+  "10053": {
+   "global": true,
+   "release": "2025-07-10",
+   "releaseJp": "2021-03-18",
+   "name": "Ikuno Dictus",
+   "title": "[Tracen Academy]"
+  },
+  "10054": {
+   "global": true,
+   "release": "2025-07-10",
+   "releaseJp": "2021-03-18",
+   "name": "Mejiro Palmer",
+   "title": "[Tracen Academy]"
+  },
+  "10055": {
+   "global": true,
+   "release": "2025-07-16",
+   "releaseJp": "2021-03-30",
+   "name": "Kitasan Black",
+   "title": "[Tracen Academy]"
+  },
+  "10056": {
+   "global": true,
+   "release": "2025-07-16",
+   "releaseJp": "2021-03-30",
+   "name": "Satono Diamond",
+   "title": "[Tracen Academy]"
+  },
+  "10057": {
+   "global": true,
+   "release": "2025-07-16",
+   "releaseJp": "2021-03-30",
+   "name": "Matikanetannhauser",
+   "title": "[Tracen Academy]"
+  },
+  "10058": {
+   "global": true,
+   "release": "2025-08-03",
+   "releaseJp": "2021-04-26",
+   "name": "Yaeno Muteki",
+   "title": "[Tracen Academy]"
+  },
+  "10059": {
+   "global": true,
+   "release": "2025-08-03",
+   "releaseJp": "2021-04-26",
+   "name": "Zenno Rob Roy",
+   "title": "[Tracen Academy]"
+  },
+  "10060": {
+   "global": true,
+   "release": "2025-11-06",
+   "releaseJp": "2021-08-30",
+   "name": "Riko Kashimoto",
+   "title": "[Tracen Academy]"
+  },
+  "10061": {
+   "global": true,
+   "release": "2025-08-20",
+   "releaseJp": "2021-05-17",
+   "name": "Seeking the Pearl",
+   "title": "[Tracen Academy]"
+  },
+  "10062": {
+   "global": true,
+   "release": "2025-08-20",
+   "releaseJp": "2021-05-17",
+   "name": "Sakura Chiyono O",
+   "title": "[Tracen Academy]"
+  },
+  "10063": {
+   "global": true,
+   "release": "2025-08-28",
+   "releaseJp": "2021-05-28",
+   "name": "Kawakami Princess",
+   "title": "[Tracen Academy]"
+  },
+  "10064": {
+   "global": true,
+   "release": "2025-08-28",
+   "releaseJp": "2021-05-28",
+   "name": "Hishi Akebono",
+   "title": "[Tracen Academy]"
+  },
+  "10065": {
+   "global": true,
+   "release": "2025-09-17",
+   "releaseJp": "2021-06-21",
+   "name": "Bamboo Memory",
+   "title": "[Tracen Academy]"
+  },
+  "10066": {
+   "global": true,
+   "release": "2025-09-17",
+   "releaseJp": "2021-06-21",
+   "name": "Shinko Windy",
+   "title": "[Tracen Academy]"
+  },
+  "10067": {
+   "global": true,
+   "release": "2025-12-08",
+   "releaseJp": "2021-10-20",
+   "name": "Nakayama Festa",
+   "title": "[Tracen Academy]"
+  },
+  "10068": {
+   "global": true,
+   "release": "2026-01-15",
+   "releaseJp": "2021-12-14",
+   "name": "Inari One",
+   "title": "[Tracen Academy]"
+  },
+  "10069": {
+   "global": true,
+   "release": "2025-10-02",
+   "releaseJp": "2021-07-12",
+   "name": "Mejiro Ardan",
+   "title": "[Tracen Academy]"
+  },
+  "10070": {
+   "global": true,
+   "release": "2025-10-30",
+   "releaseJp": "2021-08-20",
+   "name": "Tosen Jordan",
+   "title": "[Tracen Academy]"
+  },
+  "10071": {
+   "global": true,
+   "release": "2025-12-08",
+   "releaseJp": "2021-10-20",
+   "name": "Sirius Symboli",
+   "title": "[Tracen Academy]"
+  },
+  "10072": {
+   "global": true,
+   "release": "2025-10-07",
+   "releaseJp": "2021-07-20",
+   "name": "Narita Brian",
+   "title": "[Tracen Academy]"
+  },
+  "10073": {
+   "global": true,
+   "release": "2025-12-14",
+   "releaseJp": "2021-10-28",
+   "name": "Curren Chan",
+   "title": "[Tracen Academy]"
+  },
+  "10074": {
+   "global": true,
+   "release": "2026-02-05",
+   "releaseJp": "2022-01-11",
+   "name": "Sasami Anshinzawa",
+   "title": "[Acupuncturist]"
+  },
+  "10075": {
+   "global": true,
+   "release": "2026-01-29",
+   "releaseJp": "2021-12-31",
+   "name": "Admire Vega",
+   "title": "[Tracen Academy]"
+  },
+  "10076": {
+   "global": true,
+   "release": "2026-03-12",
+   "releaseJp": "2022-02-24",
+   "name": "Mejiro Bright",
+   "title": "[Tracen Academy]"
+  },
+  "10077": {
+   "global": true,
+   "release": "2026-03-12",
+   "releaseJp": "2022-02-24",
+   "name": "Narita Top Road",
+   "title": "[Tracen Academy]"
+  },
+  "10078": {
+   "global": true,
+   "release": "2026-04-30",
+   "releaseJp": "2022-05-10",
+   "name": "Mr. C.B.",
+   "title": "[Tracen Academy]"
+  },
+  "10079": {
+   "global": true,
+   "release": "2026-08-12",
+   "releaseJp": "2022-09-20",
+   "name": "Daiichi Ruby",
+   "title": "[Tracen Academy]"
+  },
+  "10080": {
+   "global": true,
+   "release": "2026-08-12",
+   "releaseJp": "2022-09-20",
+   "name": "K.S.Miracle",
+   "title": "[Tracen Academy]"
+  },
+  "10081": {
+   "global": true,
+   "release": "2026-06-25",
+   "releaseJp": "2022-07-20",
+   "name": "Tsurumaru Tsuyoshi",
+   "title": "[Tracen Academy]"
+  },
+  "10082": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-02-24",
+   "name": "Symboli Kris S",
+   "title": "[Tracen Academy]"
+  },
+  "10083": {
+   "global": true,
+   "release": "2026-07-22",
+   "releaseJp": "2022-08-24",
+   "name": "Light Hello",
+   "title": "[Event Producer]"
+  },
+  "10084": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-10-17",
+   "name": "Tanino Gimlet",
+   "title": "[Tracen Academy]"
+  },
+  "10085": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-11-28",
+   "name": "Sakura Laurel",
+   "title": "[Tracen Academy]"
+  },
+  "10086": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-12-20",
+   "name": "Yamanin Zephyr",
+   "title": "[Tracen Academy]"
+  },
+  "10087": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-01-20",
+   "name": "Aston Machan",
+   "title": "[Tracen Academy]"
+  },
+  "10088": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-02-24",
+   "name": "Mejiro Ramonu",
+   "title": "[Tracen Academy]"
+  },
+  "10089": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-02-24",
+   "name": "Jungle Pocket",
+   "title": "[Tracen Academy]"
+  },
+  "10090": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-01-19",
+   "name": "Hokko Tarumae",
+   "title": null
+  },
+  "10091": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-02-24",
+   "name": "Katsuragi Ace",
+   "title": "[Tracen Academy]"
+  },
+  "10092": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-06-19",
+   "name": "Copano Rickey",
+   "title": "[Tracen Academy]"
+  },
+  "10093": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-07-21",
+   "name": "Wonder Acute",
+   "title": "[Tracen Academy]"
+  },
+  "10094": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-08-24",
+   "name": "Mei Satake",
+   "title": null
+  },
+  "10095": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-09-29",
+   "name": "Tap Dance City",
+   "title": null
+  },
+  "10096": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-08-24",
+   "name": "Still in Love",
+   "title": null
+  },
+  "10097": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-11-20",
+   "name": "Verxina",
+   "title": null
+  },
+  "10098": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-11-20",
+   "name": "Sounds of Earth",
+   "title": null
+  },
+  "10099": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-12-20",
+   "name": "Vivlos",
+   "title": null
+  },
+  "10100": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-12-20",
+   "name": "Royce and Royce",
+   "title": null
+  },
+  "10101": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-12-28",
+   "name": "Duramente",
+   "title": null
+  },
+  "10102": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-01-31",
+   "name": "North Flight",
+   "title": null
+  },
+  "10103": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-02-24",
+   "name": "Orfevre",
+   "title": null
+  },
+  "10104": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-02-24",
+   "name": "Ryoka Tsurugi",
+   "title": null
+  },
+  "10105": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-03-21",
+   "name": "Cheval Grand",
+   "title": null
+  },
+  "10106": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-04-09",
+   "name": "Neo Universe",
+   "title": null
+  },
+  "10107": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-04-30",
+   "name": "Hishi Miracle",
+   "title": null
+  },
+  "10108": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-05-10",
+   "name": "Dantsu Flame",
+   "title": null
+  },
+  "10109": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-06-26",
+   "name": "Yayoi Akikawa",
+   "title": null
+  },
+  "10110": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-09-10",
+   "name": "Espoir City",
+   "title": null
+  },
+  "10111": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-12-10",
+   "name": "Bubble Gum Fellow",
+   "title": null
+  },
+  "10113": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-02-24",
+   "name": "Gentildonna",
+   "title": null
+  },
+  "10114": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-03-21",
+   "name": "Rhein Kraft",
+   "title": null
+  },
+  "10115": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-09-20",
+   "name": "Cesario",
+   "title": null
+  },
+  "10116": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-12-10",
+   "name": "Blast Onepiece",
+   "title": null
+  },
+  "10117": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-04-30",
+   "name": "No Reason",
+   "title": null
+  },
+  "10118": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-08-24",
+   "name": "Buena Vista",
+   "title": null
+  },
+  "10119": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-03-31",
+   "name": "Dream Journey",
+   "title": null
+  },
+  "10120": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-04-10",
+   "name": "Daring Tact",
+   "title": null
+  },
+  "10121": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-04-10",
+   "name": "Daring Heart",
+   "title": null
+  },
+  "10122": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-02-24",
+   "name": "Almond Eye",
+   "title": null
+  },
+  "10123": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-02-24",
+   "name": "Lucky Lilac",
+   "title": null
+  },
+  "10124": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-02-24",
+   "name": "Gran Alegria",
+   "title": null
+  },
+  "10125": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-04-30",
+   "name": "Transcend",
+   "title": null
+  },
+  "10126": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-05-12",
+   "name": "Curren Bouquetd'or",
+   "title": null
+  },
+  "10127": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-05-30",
+   "name": "Air Messiah",
+   "title": null
+  },
+  "10128": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-06-27",
+   "name": "Tucker Bryne",
+   "title": null
+  },
+  "10129": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-07-22",
+   "name": "Fusaichi Pandora",
+   "title": null
+  },
+  "10131": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-07-31",
+   "name": "Win Variation",
+   "title": null
+  },
+  "10132": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-08-24",
+   "name": "Stay Gold",
+   "title": null
+  },
+  "10133": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-08-24",
+   "name": "Admire Groove",
+   "title": null
+  },
+  "10134": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-08-24",
+   "name": "Chrono Genesis",
+   "title": null
+  },
+  "10135": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-08-29",
+   "name": "Calstone Light O",
+   "title": null
+  },
+  "10136": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-08-29",
+   "name": "Durandal",
+   "title": null
+  },
+  "10137": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-10-10",
+   "name": "Sakura Chitose O",
+   "title": null
+  },
+  "10138": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-10-29",
+   "name": "Kiyoko Hoshina",
+   "title": null
+  },
+  "10139": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-11-28",
+   "name": "Fenomeno",
+   "title": null
+  },
+  "10140": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-02-24",
+   "name": "Forever Young",
+   "title": null
+  },
+  "10141": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-02-24",
+   "name": "Casino Drive",
+   "title": null
+  },
+  "10142": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-02-24",
+   "name": "Red Desire",
+   "title": null
+  },
+  "10143": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-02-24",
+   "name": "Victoire Pisa",
+   "title": null
+  },
+  "10144": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-03-11",
+   "name": "Marche Lorraine",
+   "title": null
+  },
+  "10145": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-07-30",
+   "name": "Kiseki",
+   "title": null
+  },
+  "20001": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Fuji Kiseki",
+   "title": "[Well, Look Who's Home]"
+  },
+  "20002": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Daiwa Scarlet",
+   "title": "[Nothing Hard Work Can't Solve!]"
+  },
+  "20003": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Hishi Amazon",
+   "title": "[Reach the Top!]"
+  },
+  "20004": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Air Groove",
+   "title": "[Nothing Escapes the Vice Prez]"
+  },
+  "20005": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Agnes Digital",
+   "title": "[Digital's Recharge Station]"
+  },
+  "20006": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Biwa Hayahide",
+   "title": "[Trial Initiation]"
+  },
+  "20007": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Mayano Top Gun",
+   "title": "[Cute + Cute = ?]"
+  },
+  "20008": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Manhattan Cafe",
+   "title": "[My Solo Drawn to Raindrop Drums]"
+  },
+  "20009": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Mihono Bourbon",
+   "title": "[Pal-Assisted Training]"
+  },
+  "20010": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Mejiro Ryan",
+   "title": "[On and Off the Court]"
+  },
+  "20011": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Yukino Bijin",
+   "title": "[City Girl 101]"
+  },
+  "20012": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Agnes Tachyon",
+   "title": "[Experimental Studies on Subject A]"
+  },
+  "20013": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Eishin Flash",
+   "title": "[5:00 a.m.—Right on Schedule]"
+  },
+  "20014": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Narita Taishin",
+   "title": "[Poolside High Tides]"
+  },
+  "20015": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Marvelous Sunday",
+   "title": "[A Marvelous ☆ Plan]"
+  },
+  "20016": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Matikanefukukitaru",
+   "title": "[Fate's Forecast]"
+  },
+  "20017": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Meisho Doto",
+   "title": "[Fighting for Fortune]"
+  },
+  "20018": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Mejiro Dober",
+   "title": "[Ignore the Stares]"
+  },
+  "20019": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Nice Nature",
+   "title": "[It's Just Water]"
+  },
+  "20020": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "King Halo",
+   "title": "[First-Rate Plan]"
+  },
+  "20021": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Aoi Kiryuin",
+   "title": "[Trainers' Teamwork]"
+  },
+  "20022": {
+   "global": true,
+   "release": "2026-02-05",
+   "releaseJp": "2022-01-11",
+   "name": "Tamamo Cross",
+   "title": "[Now Dat's What I Call Grilled Squid!]"
+  },
+  "20023": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-03-02",
+   "name": "Sweep Tosho",
+   "title": "[Lamplit Training of a Witch-to-Be]"
+  },
+  "20024": {
+   "global": true,
+   "release": "2025-07-02",
+   "releaseJp": "2021-03-09",
+   "name": "Daitaku Helios",
+   "title": "[Let's Get This Party Lit!]"
+  },
+  "20025": {
+   "global": true,
+   "release": "2025-07-10",
+   "releaseJp": "2021-03-18",
+   "name": "Ikuno Dictus",
+   "title": "[Never Skip Warm-Ups]"
+  },
+  "20026": {
+   "global": true,
+   "release": "2025-07-16",
+   "releaseJp": "2021-03-30",
+   "name": "Nice Nature",
+   "title": "[Messing Around]"
+  },
+  "20027": {
+   "global": true,
+   "release": "2025-07-27",
+   "releaseJp": "2021-04-15",
+   "name": "Nishino Flower",
+   "title": "[Lifting Your Spirits]"
+  },
+  "20028": {
+   "global": true,
+   "release": "2025-08-03",
+   "releaseJp": "2021-04-26",
+   "name": "Zenno Rob Roy",
+   "title": "[The Perfect Book for You]"
+  },
+  "20029": {
+   "global": true,
+   "release": "2025-08-20",
+   "releaseJp": "2021-05-17",
+   "name": "Seeking the Pearl",
+   "title": "[The World's My Oyster]"
+  },
+  "20030": {
+   "global": true,
+   "release": "2026-02-25",
+   "releaseJp": "2022-02-08",
+   "name": "Ines Fujin",
+   "title": "[You Earned It!]"
+  },
+  "20031": {
+   "global": true,
+   "release": "2025-09-17",
+   "releaseJp": "2021-06-21",
+   "name": "Shinko Windy",
+   "title": "[///WARNING GATE///]"
+  },
+  "20032": {
+   "global": true,
+   "release": "2026-01-15",
+   "releaseJp": "2021-12-14",
+   "name": "Inari One",
+   "title": "[Laughing through the Mud]"
+  },
+  "20033": {
+   "global": true,
+   "release": "2026-06-25",
+   "releaseJp": "2022-07-20",
+   "name": "El Condor Pasa",
+   "title": "[Mud-Caked Compañero]"
+  },
+  "20034": {
+   "global": true,
+   "release": "2025-10-02",
+   "releaseJp": "2021-07-12",
+   "name": "Mejiro Ardan",
+   "title": "[My Heart Will Go On]"
+  },
+  "20035": {
+   "global": true,
+   "release": "2025-10-30",
+   "releaseJp": "2021-08-20",
+   "name": "Tosen Jordan",
+   "title": "[Turf as Nails]"
+  },
+  "20036": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-08-14",
+   "name": "Mejiro Palmer",
+   "title": null
+  },
+  "20037": {
+   "global": true,
+   "release": "2025-11-19",
+   "releaseJp": "2021-09-20",
+   "name": "Fine Motion",
+   "title": "[Grma, Ramen ♪]"
+  },
+  "20038": {
+   "global": true,
+   "release": "2025-12-08",
+   "releaseJp": "2021-10-20",
+   "name": "Sirius Symboli",
+   "title": "[The Brightest Star Shines On]"
+  },
+  "20039": {
+   "global": true,
+   "release": "2025-12-28",
+   "releaseJp": "2021-11-19",
+   "name": "Vodka",
+   "title": "[An Annoying Supervisor]"
+  },
+  "20040": {
+   "global": true,
+   "release": "2026-03-12",
+   "releaseJp": "2022-02-24",
+   "name": "Mejiro Ryan",
+   "title": "[Hot Hearts and Cool Drinks]"
+  },
+  "20041": {
+   "global": true,
+   "release": "2026-03-12",
+   "releaseJp": "2022-02-24",
+   "name": "Admire Vega",
+   "title": "[Aim for the Brightest]"
+  },
+  "20042": {
+   "global": true,
+   "release": "2026-03-12",
+   "releaseJp": "2022-02-24",
+   "name": "Sakura Bakushin O",
+   "title": "[The Perfect Morning Greeting!]"
+  },
+  "20043": {
+   "global": true,
+   "release": "2026-03-12",
+   "releaseJp": "2022-02-24",
+   "name": "Special Week",
+   "title": "[At the End of the Day]"
+  },
+  "20044": {
+   "global": true,
+   "release": "2026-03-22",
+   "releaseJp": "2022-03-07",
+   "name": "Curren Chan",
+   "title": "[Cozy Cute Memory ♪]"
+  },
+  "20045": {
+   "global": true,
+   "release": "2026-04-06",
+   "releaseJp": "2022-04-01",
+   "name": "Smart Falcon",
+   "title": "[Almost... an Umadol?! ♡]"
+  },
+  "20046": {
+   "global": true,
+   "release": "2026-04-12",
+   "releaseJp": "2022-04-11",
+   "name": "Sweep Tosho",
+   "title": "[Reckless Witch Training]"
+  },
+  "20047": {
+   "global": true,
+   "release": "2026-04-30",
+   "releaseJp": "2022-05-10",
+   "name": "Tokai Teio",
+   "title": "[Step! Smile! Wink!]"
+  },
+  "20048": {
+   "global": true,
+   "release": "2026-06-04",
+   "releaseJp": "2022-06-20",
+   "name": "Oguri Cap",
+   "title": "[I Love You... Dear Food]"
+  },
+  "20049": {
+   "global": true,
+   "release": "2026-06-18",
+   "releaseJp": "2022-07-11",
+   "name": "Gold City",
+   "title": "[Going for Gold]"
+  },
+  "20050": {
+   "global": true,
+   "release": "2026-07-16",
+   "releaseJp": "2022-08-19",
+   "name": "Seiun Sky",
+   "title": "[Bobbing with the Waves]"
+  },
+  "20051": {
+   "global": true,
+   "release": "2026-08-12",
+   "releaseJp": "2022-09-20",
+   "name": "K.S.Miracle",
+   "title": "[The 3rd Miracle]"
+  },
+  "20052": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-10-19",
+   "name": "Tsurumaru Tsuyoshi",
+   "title": "[Go, Go! Tsuyoshi!]"
+  },
+  "20053": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-11-17",
+   "name": "Narita Top Road",
+   "title": "[Stop, Prez!]"
+  },
+  "20054": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-12-20",
+   "name": "TM Opera O",
+   "title": "[Mighty Fotografia]"
+  },
+  "20055": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-01-20",
+   "name": "Aston Machan",
+   "title": "[A Clip to Keep Your Heart Warm]"
+  },
+  "20056": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-02-24",
+   "name": "Jungle Pocket",
+   "title": "[Dead End: Blocking the Path]"
+  },
+  "20057": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-02-24",
+   "name": "Mejiro Dober",
+   "title": "[Gentle and Sleek]"
+  },
+  "20058": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-02-24",
+   "name": "Symboli Rudolf",
+   "title": "[Your Laugh After School]"
+  },
+  "20059": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-02-24",
+   "name": "Agnes Tachyon",
+   "title": "[Ah, Wonderful Saccharinity]"
+  },
+  "20060": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-03-20",
+   "name": "Hishi Akebono",
+   "title": "[Try a Sweet Swim Ring]"
+  },
+  "20061": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-04-19",
+   "name": "Gold Ship",
+   "title": "[Golshi's House Specialty]"
+  },
+  "20062": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-05-19",
+   "name": "Maruzensky",
+   "title": "[One Bomb Drive ♪]"
+  },
+  "20063": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-06-09",
+   "name": "Silence Suzuka",
+   "title": "[Summer Evening Shower]"
+  },
+  "20064": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-06-19",
+   "name": "Copano Rickey",
+   "title": "[Gods of Luck Are Early to Rise]"
+  },
+  "20065": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-07-21",
+   "name": "Grass Wonder",
+   "title": "[The Splendid Aftertaste of Good Tea]"
+  },
+  "20066": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-08-31",
+   "name": "Kitasan Black",
+   "title": null
+  },
+  "20067": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-09-20",
+   "name": "Taiki Shuttle",
+   "title": null
+  },
+  "20068": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-10-19",
+   "name": "Nice Nature",
+   "title": null
+  },
+  "20069": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-11-09",
+   "name": "Matikanetannhauser",
+   "title": null
+  },
+  "20070": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-11-20",
+   "name": "Verxina",
+   "title": null
+  },
+  "20071": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-12-20",
+   "name": "Royce and Royce",
+   "title": null
+  },
+  "20072": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-01-19",
+   "name": "Tanino Gimlet",
+   "title": null
+  },
+  "20073": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-02-24",
+   "name": "Tosen Jordan",
+   "title": null
+  },
+  "20074": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-02-24",
+   "name": "Yaeno Muteki",
+   "title": null
+  },
+  "20075": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-03-21",
+   "name": "Tap Dance City",
+   "title": null
+  },
+  "20076": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-04-09",
+   "name": "Air Shakur",
+   "title": null
+  },
+  "20077": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-05-10",
+   "name": "Dantsu Flame",
+   "title": null
+  },
+  "20078": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-07-09",
+   "name": "Matikanefukukitaru",
+   "title": null
+  },
+  "20079": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-08-24",
+   "name": "Marvelous Sunday",
+   "title": null
+  },
+  "20080": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-09-10",
+   "name": "Sakura Laurel",
+   "title": null
+  },
+  "20081": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-11-08",
+   "name": "North Flight",
+   "title": null
+  },
+  "20082": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-12-10",
+   "name": "Bubble Gum Fellow",
+   "title": null
+  },
+  "20083": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-01-10",
+   "name": "Mejiro Ramonu",
+   "title": null
+  },
+  "20084": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-02-24",
+   "name": "Lucky Lilac",
+   "title": null
+  },
+  "20085": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-02-24",
+   "name": "Mejiro McQueen",
+   "title": null
+  },
+  "20086": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-03-11",
+   "name": "Rice Shower",
+   "title": null
+  },
+  "20087": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-04-10",
+   "name": "Daring Heart",
+   "title": null
+  },
+  "20088": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-05-12",
+   "name": "Curren Bouquetd'or",
+   "title": null
+  },
+  "20089": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-07-11",
+   "name": "Kawakami Princess",
+   "title": null
+  },
+  "20090": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-09-09",
+   "name": "Biko Pegasus",
+   "title": null
+  },
+  "20091": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-10-10",
+   "name": "Sakura Chitose O",
+   "title": null
+  },
+  "20092": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-11-10",
+   "name": "Hokko Tarumae",
+   "title": null
+  },
+  "20093": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-12-11",
+   "name": "Mejiro Dober",
+   "title": null
+  },
+  "20094": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-01-08",
+   "name": "Satono Diamond",
+   "title": null
+  },
+  "20095": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-02-24",
+   "name": "Red Desire",
+   "title": null
+  },
+  "20096": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-02-24",
+   "name": "Taiki Shuttle",
+   "title": null
+  },
+  "20097": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-03-11",
+   "name": "Super Creek",
+   "title": null
+  },
+  "20098": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-04-10",
+   "name": "Hishi Amazon",
+   "title": null
+  },
+  "20099": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-05-11",
+   "name": "Mejiro Ardan",
+   "title": null
+  },
+  "20100": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-07-10",
+   "name": "Calstone Light O",
+   "title": null
+  },
+  "30001": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Special Week",
+   "title": "[The Brightest Star in Japan!]"
+  },
+  "30002": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Silence Suzuka",
+   "title": "[Beyond This Shining Moment]"
+  },
+  "30003": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Tokai Teio",
+   "title": "[Dream Big!]"
+  },
+  "30004": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Gold Ship",
+   "title": "[Breakaway Battleship]"
+  },
+  "30005": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Vodka",
+   "title": "[Wild Rider]"
+  },
+  "30006": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Grass Wonder",
+   "title": "[Fairest Fleur]"
+  },
+  "30007": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "El Condor Pasa",
+   "title": "[Champion's Passion]"
+  },
+  "30008": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Seiun Sky",
+   "title": "[Foolproof Plan]"
+  },
+  "30009": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Tamamo Cross",
+   "title": "[Split the Sky, White Lightning!]"
+  },
+  "30010": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Fine Motion",
+   "title": "[Wave of Gratitude]"
+  },
+  "30011": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Ines Fujin",
+   "title": "[Watch My Star Fly!]"
+  },
+  "30012": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Winning Ticket",
+   "title": "[BNWinner!]"
+  },
+  "30013": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Air Shakur",
+   "title": "[7 More Centimeters]"
+  },
+  "30014": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Gold City",
+   "title": "[Run(my)way]"
+  },
+  "30015": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Sakura Bakushin O",
+   "title": "[Eat Fast! Yum Fast!]"
+  },
+  "30016": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Super Creek",
+   "title": "[Piece of Mind]"
+  },
+  "30017": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Smart Falcon",
+   "title": "[My Umadol Way! ☆]"
+  },
+  "30018": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Nishino Flower",
+   "title": "[Even the Littlest Bud]"
+  },
+  "30019": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Haru Urara",
+   "title": "[Urara's Day Off!]"
+  },
+  "30020": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Biko Pegasus",
+   "title": "[Double Carrot Punch!]"
+  },
+  "30021": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Tazuna Hayakawa",
+   "title": "[Tracen Reception]"
+  },
+  "30022": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Mejiro McQueen",
+   "title": "[Your Team Ace]"
+  },
+  "30023": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Rice Shower",
+   "title": "[Showered in Joy]"
+  },
+  "30024": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-03-02",
+   "name": "Oguri Cap",
+   "title": "[Get Lots of Hugs for Me]"
+  },
+  "30025": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-03-02",
+   "name": "Special Week",
+   "title": "[The Setting Sun and Rising Stars]"
+  },
+  "30026": {
+   "global": true,
+   "release": "2025-07-02",
+   "releaseJp": "2021-03-09",
+   "name": "Twin Turbo",
+   "title": "[Turbo Booooost!]"
+  },
+  "30027": {
+   "global": true,
+   "release": "2025-07-10",
+   "releaseJp": "2021-03-18",
+   "name": "Mejiro Palmer",
+   "title": "[Go Ahead and Laugh]"
+  },
+  "30028": {
+   "global": true,
+   "release": "2025-07-16",
+   "releaseJp": "2021-03-30",
+   "name": "Kitasan Black",
+   "title": "[Fire at My Heels]"
+  },
+  "30029": {
+   "global": true,
+   "release": "2025-07-16",
+   "releaseJp": "2021-03-30",
+   "name": "Satono Diamond",
+   "title": "[The Will to Overtake]"
+  },
+  "30030": {
+   "global": true,
+   "release": "2025-07-16",
+   "releaseJp": "2021-03-30",
+   "name": "Matikanetannhauser",
+   "title": "[Just Keep Going]"
+  },
+  "30031": {
+   "global": true,
+   "release": "2025-07-27",
+   "releaseJp": "2021-04-15",
+   "name": "Yukino Bijin",
+   "title": "[Hometown Cheers]"
+  },
+  "30032": {
+   "global": true,
+   "release": "2025-08-03",
+   "releaseJp": "2021-04-26",
+   "name": "Yaeno Muteki",
+   "title": "[Fiery Discipline]"
+  },
+  "30033": {
+   "global": true,
+   "release": "2025-08-03",
+   "releaseJp": "2021-04-26",
+   "name": "Winning Ticket",
+   "title": "[Dreams Do Come True!]"
+  },
+  "30034": {
+   "global": true,
+   "release": "2025-11-06",
+   "releaseJp": "2021-08-30",
+   "name": "Rice Shower",
+   "title": "[Happiness Just around the Bend]"
+  },
+  "30036": {
+   "global": true,
+   "release": "2025-11-06",
+   "releaseJp": "2021-08-30",
+   "name": "Riko Kashimoto",
+   "title": "[Planned Perfection]"
+  },
+  "30037": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-04-19",
+   "name": "Symboli Rudolf",
+   "title": "[The Unequivocal Emperor]"
+  },
+  "30038": {
+   "global": true,
+   "release": "2025-08-20",
+   "releaseJp": "2021-05-17",
+   "name": "Sakura Chiyono O",
+   "title": "[Peak Sakura Season]"
+  },
+  "30039": {
+   "global": true,
+   "release": "2025-08-28",
+   "releaseJp": "2021-05-28",
+   "name": "Kawakami Princess",
+   "title": "[Princess Bride]"
+  },
+  "30040": {
+   "global": true,
+   "release": "2025-08-28",
+   "releaseJp": "2021-05-28",
+   "name": "Hishi Akebono",
+   "title": "[Who Wants the First Bite?]"
+  },
+  "30041": {
+   "global": true,
+   "release": "2025-08-28",
+   "releaseJp": "2021-05-28",
+   "name": "Mejiro Dober",
+   "title": "[My Thoughts, My Desires]"
+  },
+  "30042": {
+   "global": true,
+   "release": "2025-09-17",
+   "releaseJp": "2021-06-21",
+   "name": "Bamboo Memory",
+   "title": "[Head-on Fight!]"
+  },
+  "30043": {
+   "global": true,
+   "release": "2025-12-08",
+   "releaseJp": "2021-10-20",
+   "name": "Nakayama Festa",
+   "title": "[43, 8, 1]"
+  },
+  "30044": {
+   "global": true,
+   "release": "2025-10-07",
+   "releaseJp": "2021-07-20",
+   "name": "Narita Brian",
+   "title": "[Two Pieces]"
+  },
+  "30045": {
+   "global": true,
+   "release": "2025-10-14",
+   "releaseJp": "2021-07-29",
+   "name": "Sweep Tosho",
+   "title": "[It's All Mine!]"
+  },
+  "30046": {
+   "global": true,
+   "release": "2025-10-14",
+   "releaseJp": "2021-07-29",
+   "name": "Winning Ticket",
+   "title": "[Full-Blown Tantrum]"
+  },
+  "30047": {
+   "global": true,
+   "release": "2025-10-14",
+   "releaseJp": "2021-07-29",
+   "name": "Daiwa Scarlet",
+   "title": "[Mini☆Vacation]"
+  },
+  "30048": {
+   "global": true,
+   "release": "2025-10-02",
+   "releaseJp": "2021-07-12",
+   "name": "Mejiro Ryan",
+   "title": "[Winning Pitch]"
+  },
+  "30052": {
+   "global": true,
+   "release": "2026-07-22",
+   "releaseJp": "2022-08-24",
+   "name": "Light Hello",
+   "title": "[From the Ground Up]"
+  },
+  "30053": {
+   "global": true,
+   "release": "2026-06-04",
+   "releaseJp": "2022-06-20",
+   "name": "Taiki Shuttle",
+   "title": "[Hands Up, Crook!]"
+  },
+  "30054": {
+   "global": true,
+   "release": "2025-10-30",
+   "releaseJp": "2021-08-20",
+   "name": "Nice Nature",
+   "title": "[Daring to Dream]"
+  },
+  "30055": {
+   "global": true,
+   "release": "2025-09-21",
+   "releaseJp": "2021-06-29",
+   "name": "Seiun Sky",
+   "title": "[Paint the Sky Red]"
+  },
+  "30056": {
+   "global": true,
+   "release": "2025-09-21",
+   "releaseJp": "2021-06-29",
+   "name": "King Halo",
+   "title": "[Tonight, We Waltz]"
+  },
+  "30057": {
+   "global": true,
+   "release": "2025-09-21",
+   "releaseJp": "2021-06-29",
+   "name": "Gold Ship",
+   "title": "[That Time I Became the Strongest]"
+  },
+  "30058": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2021-05-26",
+   "name": "Tokai Teio",
+   "title": "[Regal Racers]"
+  },
+  "30059": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2021-06-23",
+   "name": "Mihono Bourbon",
+   "title": "[Fugue of Fortune]"
+  },
+  "30060": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2021-07-21",
+   "name": "Twin Turbo",
+   "title": "[Constellation of Stars]"
+  },
+  "30061": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2021-08-18",
+   "name": "Biwa Hayahide",
+   "title": "[Our Resounding Steps]"
+  },
+  "30062": {
+   "global": true,
+   "release": "2025-11-03",
+   "releaseJp": "2021-08-24",
+   "name": "Silence Suzuka",
+   "title": "[Winning Dream]"
+  },
+  "30063": {
+   "global": true,
+   "release": "2025-11-19",
+   "releaseJp": "2021-09-20",
+   "name": "Ikuno Dictus",
+   "title": "[Warm Heart, Soft Steps]"
+  },
+  "30064": {
+   "global": true,
+   "release": "2025-11-24",
+   "releaseJp": "2021-09-29",
+   "name": "Tamamo Cross",
+   "title": "[Beware! Halloween Night!]"
+  },
+  "30065": {
+   "global": true,
+   "release": "2025-11-24",
+   "releaseJp": "2021-09-29",
+   "name": "Zenno Rob Roy",
+   "title": "[Magical Heroine]"
+  },
+  "30066": {
+   "global": true,
+   "release": "2025-11-24",
+   "releaseJp": "2021-09-29",
+   "name": "Mihono Bourbon",
+   "title": "[The Ghost Finds Halloween Magic]"
+  },
+  "30067": {
+   "global": true,
+   "release": "2026-06-25",
+   "releaseJp": "2022-07-20",
+   "name": "The Throne's Assemblage",
+   "title": "[Esteemed and Adored]"
+  },
+  "30068": {
+   "global": true,
+   "release": "2025-12-14",
+   "releaseJp": "2021-10-28",
+   "name": "Curren Chan",
+   "title": "[Cutie Pie with Shining Eyes]"
+  },
+  "30069": {
+   "global": true,
+   "release": "2025-12-14",
+   "releaseJp": "2021-10-28",
+   "name": "Narita Brian",
+   "title": "[The Whistling Arrow's Taunt]"
+  },
+  "30070": {
+   "global": true,
+   "release": "2025-12-14",
+   "releaseJp": "2021-10-28",
+   "name": "Yukino Bijin",
+   "title": "[Dancing Light into the Night]"
+  },
+  "30071": {
+   "global": true,
+   "release": "2025-12-28",
+   "releaseJp": "2021-11-19",
+   "name": "Daitaku Helios",
+   "title": "[Make! Some! NOISE!]"
+  },
+  "30072": {
+   "global": true,
+   "release": "2026-01-05",
+   "releaseJp": "2021-11-29",
+   "name": "Mayano Top Gun",
+   "title": "[Party Formation]"
+  },
+  "30073": {
+   "global": true,
+   "release": "2026-01-05",
+   "releaseJp": "2021-11-29",
+   "name": "Narita Taishin",
+   "title": "[Strict Shopper]"
+  },
+  "30074": {
+   "global": true,
+   "release": "2026-01-05",
+   "releaseJp": "2021-11-29",
+   "name": "Marvelous Sunday",
+   "title": "[Dazzling Day in the Snow]"
+  },
+  "30075": {
+   "global": true,
+   "release": "2026-01-15",
+   "releaseJp": "2021-12-14",
+   "name": "Manhattan Cafe",
+   "title": "[My Solo Spun in Spiraling Runs]"
+  },
+  "30076": {
+   "global": true,
+   "release": "2026-01-22",
+   "releaseJp": "2021-12-22",
+   "name": "Silence Suzuka",
+   "title": "[Searching for Unseen Sights]"
+  },
+  "30077": {
+   "global": true,
+   "release": "2026-01-29",
+   "releaseJp": "2021-12-31",
+   "name": "Admire Vega",
+   "title": "[Lucky Star in the Sky]"
+  },
+  "30078": {
+   "global": true,
+   "release": "2026-01-29",
+   "releaseJp": "2021-12-31",
+   "name": "Matikanefukukitaru",
+   "title": "[Touching Sleeves Is Good Luck! ♪]"
+  },
+  "30079": {
+   "global": true,
+   "release": "2026-01-29",
+   "releaseJp": "2021-12-31",
+   "name": "Meisho Doto",
+   "title": "[Leaping into the Unknown]"
+  },
+  "30080": {
+   "global": true,
+   "release": "2026-02-05",
+   "releaseJp": "2022-01-11",
+   "name": "Sasami Anshinzawa",
+   "title": "[This Might Sting!]"
+  },
+  "30081": {
+   "global": true,
+   "release": "2026-03-26",
+   "releaseJp": "2022-03-18",
+   "name": "Team Sirius",
+   "title": "[Passing the Dream On]"
+  },
+  "30082": {
+   "global": true,
+   "release": "2026-02-18",
+   "releaseJp": "2022-01-28",
+   "name": "Nishino Flower",
+   "title": "[Little Cupcakes, Big Emotions]"
+  },
+  "30083": {
+   "global": true,
+   "release": "2026-02-18",
+   "releaseJp": "2022-01-28",
+   "name": "Sakura Bakushin O",
+   "title": "[Super! Sonic! Flower Power!]"
+  },
+  "30084": {
+   "global": true,
+   "release": "2026-02-18",
+   "releaseJp": "2022-01-28",
+   "name": "Tosen Jordan",
+   "title": "[My Way]"
+  },
+  "30085": {
+   "global": true,
+   "release": "2026-02-25",
+   "releaseJp": "2022-02-08",
+   "name": "Agnes Digital",
+   "title": "[A Fan's Joy]"
+  },
+  "30086": {
+   "global": true,
+   "release": "2026-03-12",
+   "releaseJp": "2022-02-24",
+   "name": "Narita Top Road",
+   "title": "[Peachy Silhouette]"
+  },
+  "30087": {
+   "global": true,
+   "release": "2026-03-12",
+   "releaseJp": "2022-02-24",
+   "name": "Mejiro Bright",
+   "title": "[Little by Little]"
+  },
+  "30088": {
+   "global": true,
+   "release": "2026-03-12",
+   "releaseJp": "2022-02-24",
+   "name": "Satono Diamond",
+   "title": "[Special Dreamers!]"
+  },
+  "30089": {
+   "global": true,
+   "release": "2026-03-22",
+   "releaseJp": "2022-03-07",
+   "name": "Marvelous Sunday",
+   "title": "[A MORE MARVELOUS WORLD! ☆]"
+  },
+  "30090": {
+   "global": true,
+   "release": "2026-04-05",
+   "releaseJp": "2022-03-29",
+   "name": "Symboli Rudolf",
+   "title": "[Enchaînement]"
+  },
+  "30091": {
+   "global": true,
+   "release": "2026-04-05",
+   "releaseJp": "2022-03-29",
+   "name": "Sirius Symboli",
+   "title": "[Escorte Étoile]"
+  },
+  "30092": {
+   "global": true,
+   "release": "2026-04-05",
+   "releaseJp": "2022-03-29",
+   "name": "Air Shakur",
+   "title": "[Mag!c Number]"
+  },
+  "30093": {
+   "global": true,
+   "release": "2026-04-12",
+   "releaseJp": "2022-04-11",
+   "name": "Daiwa Scarlet",
+   "title": "[Number 1 Outfit]"
+  },
+  "30094": {
+   "global": true,
+   "release": "2026-04-26",
+   "releaseJp": "2022-04-28",
+   "name": "Bamboo Memory",
+   "title": "[Make These Feelings Reach You!]"
+  },
+  "30095": {
+   "global": true,
+   "release": "2026-04-26",
+   "releaseJp": "2022-04-28",
+   "name": "Seeking the Pearl",
+   "title": "[Cheer that Changed the World]"
+  },
+  "30096": {
+   "global": true,
+   "release": "2026-04-26",
+   "releaseJp": "2022-04-28",
+   "name": "Kawakami Princess",
+   "title": "[Go Go☆Princess!]"
+  },
+  "30097": {
+   "global": true,
+   "release": "2026-04-30",
+   "releaseJp": "2022-05-10",
+   "name": "Mr. C.B.",
+   "title": "[Dear Mr. C.B.]"
+  },
+  "30098": {
+   "global": true,
+   "release": "2026-05-18",
+   "releaseJp": "2022-05-30",
+   "name": "Haru Urara",
+   "title": "[Sunny Passion ♪]"
+  },
+  "30099": {
+   "global": true,
+   "release": "2026-05-18",
+   "releaseJp": "2022-05-30",
+   "name": "Ikuno Dictus",
+   "title": "[Beloved Orchid Bouquet]"
+  },
+  "30100": {
+   "global": true,
+   "release": "2026-05-18",
+   "releaseJp": "2022-05-30",
+   "name": "Rice Shower",
+   "title": "[Day I Dreamed Of]"
+  },
+  "30101": {
+   "global": true,
+   "release": "2026-07-22",
+   "releaseJp": "2022-08-24",
+   "name": "Agnes Tachyon",
+   "title": "[Q≠0]"
+  },
+  "30102": {
+   "global": true,
+   "release": "2026-06-11",
+   "releaseJp": "2022-06-30",
+   "name": "El Condor Pasa",
+   "title": "[Twinkle in Your Eyes ∞]"
+  },
+  "30103": {
+   "global": true,
+   "release": "2026-06-11",
+   "releaseJp": "2022-06-30",
+   "name": "Matikanetannhauser",
+   "title": "[Machitan☆Adventure]"
+  },
+  "30104": {
+   "global": true,
+   "release": "2026-06-11",
+   "releaseJp": "2022-06-30",
+   "name": "Zenno Rob Roy",
+   "title": "[\"Rhodonite and the Dreamstone\"]"
+  },
+  "30105": {
+   "global": true,
+   "release": "2026-06-25",
+   "releaseJp": "2022-07-20",
+   "name": "Special Week",
+   "title": "[Take Hold of Our Dreams!]"
+  },
+  "30106": {
+   "global": true,
+   "release": "2026-06-18",
+   "releaseJp": "2022-07-11",
+   "name": "Air Groove",
+   "title": "[Tailwind to My Goals]"
+  },
+  "30107": {
+   "global": true,
+   "release": "2026-07-02",
+   "releaseJp": "2022-07-29",
+   "name": "Maruzensky",
+   "title": "[Sentimental Flare ♪]"
+  },
+  "30108": {
+   "global": true,
+   "release": "2026-07-02",
+   "releaseJp": "2022-07-29",
+   "name": "Nakayama Festa",
+   "title": "[Trusting the Dice]"
+  },
+  "30109": {
+   "global": true,
+   "release": "2026-07-02",
+   "releaseJp": "2022-07-29",
+   "name": "Sakura Chiyono O",
+   "title": "[A Good Heart Blossoms to Its Fullest]"
+  },
+  "30110": {
+   "global": true,
+   "release": "2026-07-16",
+   "releaseJp": "2022-08-19",
+   "name": "Manhattan Cafe",
+   "title": "[It's on the House]"
+  },
+  "30111": {
+   "global": true,
+   "release": "2026-07-27",
+   "releaseJp": "2022-08-29",
+   "name": "Tokai Teio",
+   "title": "[Teio-Oo-Oo!!!]"
+  },
+  "30112": {
+   "global": true,
+   "release": "2026-07-27",
+   "releaseJp": "2022-08-29",
+   "name": "Twin Turbo",
+   "title": "[TT Ignition!]"
+  },
+  "30113": {
+   "global": true,
+   "release": "2026-07-27",
+   "releaseJp": "2022-08-29",
+   "name": "Biwa Hayahide",
+   "title": "[Uchronia Architect]"
+  },
+  "30114": {
+   "global": true,
+   "release": "2026-08-12",
+   "releaseJp": "2022-09-20",
+   "name": "Daiichi Ruby",
+   "title": "[Ah, Such Majesty]"
+  },
+  "30115": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-09-29",
+   "name": "Mejiro Palmer",
+   "title": "[Moonlit Devil ♪]"
+  },
+  "30116": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-09-29",
+   "name": "Daitaku Helios",
+   "title": "[Sunlit Angel ♪]"
+  },
+  "30117": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-09-29",
+   "name": "Shinko Windy",
+   "title": "[Onwards, Demon Queen Lackeys!]"
+  },
+  "30118": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-10-19",
+   "name": "Symboli Kris S",
+   "title": "[A Win Foreshadowed]"
+  },
+  "30119": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-10-28",
+   "name": "Mejiro Ardan",
+   "title": "[Hopeful Petals Dancing in the Night]"
+  },
+  "30120": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-10-28",
+   "name": "Yaeno Muteki",
+   "title": "[Pious Flame, Heavens Scorcher]"
+  },
+  "30121": {
+   "global": true,
+   "release": "2026-07-22",
+   "releaseJp": "2022-08-24",
+   "name": "Mihono Bourbon",
+   "title": "[U & Me]"
+  },
+  "30122": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-11-17",
+   "name": "Eishin Flash",
+   "title": "[Danke Schön]"
+  },
+  "30123": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-11-28",
+   "name": "Narita Brian",
+   "title": "[Glad Tidings]"
+  },
+  "30124": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-11-28",
+   "name": "Air Groove",
+   "title": "[Are You Merry?]"
+  },
+  "30125": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-11-28",
+   "name": "Sakura Laurel",
+   "title": "[Don't Stop Anymore!]"
+  },
+  "30126": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-12-20",
+   "name": "Yamanin Zephyr",
+   "title": "[To Winds Untraveled]"
+  },
+  "30127": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-12-29",
+   "name": "Special Week",
+   "title": "[Outrunning Misfortune]"
+  },
+  "30128": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-12-29",
+   "name": "Sweep Tosho",
+   "title": "[Capricious Excellence]"
+  },
+  "30129": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-12-29",
+   "name": "Grass Wonder",
+   "title": "[From Icy Blues to Verdant Hues]"
+  },
+  "30130": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-01-20",
+   "name": "K.S.Miracle",
+   "title": "[To You]"
+  },
+  "30131": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-01-30",
+   "name": "Marvelous Sunday",
+   "title": "[Marvelous☆Chocolate Show]"
+  },
+  "30132": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-01-30",
+   "name": "Biko Pegasus",
+   "title": "[Transform! Garçon Form!]"
+  },
+  "30133": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-01-30",
+   "name": "Hishi Akebono",
+   "title": "[Fondente Smile]"
+  },
+  "30134": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-02-24",
+   "name": "Mejiro Ramonu",
+   "title": "[Radiant]"
+  },
+  "30135": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-02-24",
+   "name": "Katsuragi Ace",
+   "title": "[Hold Aloft the Blazing Torch]"
+  },
+  "30136": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-02-24",
+   "name": "Symboli Kris S",
+   "title": "[Unyielding Resolve]"
+  },
+  "30137": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-03-20",
+   "name": "Ancestors & Guides",
+   "title": "[Chasing Eternal Glory]"
+  },
+  "30138": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-03-29",
+   "name": "Nice Nature",
+   "title": "[Don't Close Your Eyes Now]"
+  },
+  "30139": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-03-29",
+   "name": "Mejiro McQueen",
+   "title": "[Heart Aflutter in the Evening Breeze]"
+  },
+  "30140": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-03-29",
+   "name": "Tokai Teio",
+   "title": "[Soaring Waltz]"
+  },
+  "30141": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-04-28",
+   "name": "Mihono Bourbon",
+   "title": "[Mission: Nourishing the Soul]"
+  },
+  "30142": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-04-28",
+   "name": "Sakura Laurel",
+   "title": "[Among Cherry Blossoms in Bloom]"
+  },
+  "30143": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-04-28",
+   "name": "Ikuno Dictus",
+   "title": "[The View at Journey's End]"
+  },
+  "30145": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-10-17",
+   "name": "Tanino Gimlet",
+   "title": "[Welcome to Umayuru]"
+  },
+  "30146": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-10-28",
+   "name": "Oguri Cap",
+   "title": "[Run Forth! Dash On! Ever Forward!]"
+  },
+  "30147": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-05-19",
+   "name": "Jungle Pocket",
+   "title": "[The Frontier]"
+  },
+  "30148": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-05-29",
+   "name": "Daiwa Scarlet",
+   "title": "[Something Blue]"
+  },
+  "30149": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-05-29",
+   "name": "Aston Machan",
+   "title": "[Haute Couture Memory]"
+  },
+  "30150": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-05-29",
+   "name": "Vodka",
+   "title": "[Heart Ignition!]"
+  },
+  "30151": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-06-19",
+   "name": "Mayano Top Gun",
+   "title": "[Chill Chill Night]"
+  },
+  "30152": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-06-09",
+   "name": "TM Opera O",
+   "title": "[All'alba Vincerò!]"
+  },
+  "30153": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-06-29",
+   "name": "Gold City",
+   "title": "[Gentle Moon]"
+  },
+  "30154": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-06-29",
+   "name": "Mejiro Palmer",
+   "title": "[As the Seagulls Soar]"
+  },
+  "30155": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-06-29",
+   "name": "Daitaku Helios",
+   "title": "[#Summer #NewMe]"
+  },
+  "30156": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-07-21",
+   "name": "Wonder Acute",
+   "title": "[Lifelong Wonder]"
+  },
+  "30157": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-07-31",
+   "name": "Manhattan Cafe",
+   "title": "[The Bubbles We Gaze upon Together]"
+  },
+  "30158": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-07-31",
+   "name": "Jungle Pocket",
+   "title": "[Summer Splash]"
+  },
+  "30159": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-07-31",
+   "name": "Air Groove",
+   "title": "[Seaside Bloom]"
+  },
+  "30160": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-08-24",
+   "name": "Mei Satake",
+   "title": null
+  },
+  "30161": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-08-24",
+   "name": "El Condor Pasa",
+   "title": null
+  },
+  "30162": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-08-24",
+   "name": "Admire Vega",
+   "title": null
+  },
+  "30163": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-08-31",
+   "name": "Nakayama Festa",
+   "title": null
+  },
+  "30164": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-09-20",
+   "name": "Hishi Amazon",
+   "title": null
+  },
+  "30165": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-09-29",
+   "name": "Tanino Gimlet",
+   "title": null
+  },
+  "30166": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-09-29",
+   "name": "Tap Dance City",
+   "title": null
+  },
+  "30167": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-09-29",
+   "name": "Fine Motion",
+   "title": null
+  },
+  "30168": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-10-19",
+   "name": "Gold Ship",
+   "title": null
+  },
+  "30169": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-10-30",
+   "name": "Tsurumaru Tsuyoshi",
+   "title": null
+  },
+  "30170": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-10-30",
+   "name": "King Halo",
+   "title": null
+  },
+  "30171": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-10-30",
+   "name": "Haru Urara",
+   "title": null
+  },
+  "30172": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-11-09",
+   "name": "Mejiro McQueen",
+   "title": null
+  },
+  "30173": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-11-20",
+   "name": "Sounds of Earth",
+   "title": null
+  },
+  "30174": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-11-30",
+   "name": "Mejiro Dober",
+   "title": null
+  },
+  "30175": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-11-30",
+   "name": "Mejiro Ramonu",
+   "title": null
+  },
+  "30176": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-11-30",
+   "name": "Mejiro Ryan",
+   "title": null
+  },
+  "30177": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-12-20",
+   "name": "Vivlos",
+   "title": null
+  },
+  "30178": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-12-28",
+   "name": "Duramente",
+   "title": null
+  },
+  "30179": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-12-28",
+   "name": "Satono Diamond",
+   "title": null
+  },
+  "30180": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-12-28",
+   "name": "Carvers of History",
+   "title": null
+  },
+  "30181": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-12-28",
+   "name": "Twin Turbo",
+   "title": null
+  },
+  "30182": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-01-19",
+   "name": "Hokko Tarumae",
+   "title": null
+  },
+  "30183": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-01-31",
+   "name": "Winning Ticket",
+   "title": null
+  },
+  "30184": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-01-31",
+   "name": "Sakura Bakushin O",
+   "title": null
+  },
+  "30185": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-01-31",
+   "name": "North Flight",
+   "title": null
+  },
+  "30186": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-02-24",
+   "name": "Gentildonna",
+   "title": null
+  },
+  "30187": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-02-24",
+   "name": "Orfevre",
+   "title": null
+  },
+  "30188": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-02-24",
+   "name": "Ryoka Tsurugi",
+   "title": null
+  },
+  "30189": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-01-19",
+   "name": "Kitasan Black",
+   "title": null
+  },
+  "30190": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-02-14",
+   "name": "Duramente",
+   "title": null
+  },
+  "30191": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-03-12",
+   "name": "Sounds of Earth",
+   "title": null
+  },
+  "30192": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-04-09",
+   "name": "Vivlos",
+   "title": null
+  },
+  "30193": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-03-21",
+   "name": "Cheval Grand",
+   "title": null
+  },
+  "30194": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-03-21",
+   "name": "Rhein Kraft",
+   "title": null
+  },
+  "30195": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-03-29",
+   "name": "K.S.Miracle",
+   "title": null
+  },
+  "30196": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-03-29",
+   "name": "Yamanin Zephyr",
+   "title": null
+  },
+  "30197": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-03-29",
+   "name": "Bamboo Memory",
+   "title": null
+  },
+  "30198": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-04-09",
+   "name": "Neo Universe",
+   "title": null
+  },
+  "30199": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-04-30",
+   "name": "Hishi Miracle",
+   "title": null
+  },
+  "30200": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-04-30",
+   "name": "No Reason",
+   "title": null
+  },
+  "30201": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-04-30",
+   "name": "Narita Taishin",
+   "title": null
+  },
+  "30202": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-05-10",
+   "name": "Vodka",
+   "title": null
+  },
+  "30203": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-05-20",
+   "name": "Jungle Pocket",
+   "title": null
+  },
+  "30204": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-05-30",
+   "name": "Seiun Sky",
+   "title": null
+  },
+  "30205": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-05-30",
+   "name": "Verxina",
+   "title": null
+  },
+  "30206": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-05-30",
+   "name": "Vivlos",
+   "title": null
+  },
+  "30207": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-06-26",
+   "name": "Yayoi Akikawa",
+   "title": null
+  },
+  "30208": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-06-26",
+   "name": "Nishino Flower",
+   "title": null
+  },
+  "30209": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-07-09",
+   "name": "Dantsu Flame",
+   "title": null
+  },
+  "30210": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-07-29",
+   "name": "Smart Falcon",
+   "title": null
+  },
+  "30211": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-07-29",
+   "name": "Copano Rickey",
+   "title": null
+  },
+  "30212": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-07-29",
+   "name": "Wonder Acute",
+   "title": null
+  },
+  "30213": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-08-24",
+   "name": "Tokai Teio",
+   "title": null
+  },
+  "30214": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-08-14",
+   "name": "Fine Motion",
+   "title": null
+  },
+  "30215": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-08-24",
+   "name": "Still in Love",
+   "title": null
+  },
+  "30216": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-08-24",
+   "name": "Buena Vista",
+   "title": null
+  },
+  "30217": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-09-20",
+   "name": "Cesario",
+   "title": null
+  },
+  "30218": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-08-30",
+   "name": "Taiki Shuttle",
+   "title": null
+  },
+  "30219": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-08-30",
+   "name": "Fuji Kiseki",
+   "title": null
+  },
+  "30220": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-08-30",
+   "name": "Symboli Kris S",
+   "title": null
+  },
+  "30221": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-08-24",
+   "name": "Satono Diamond",
+   "title": null
+  },
+  "30222": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-09-10",
+   "name": "Espoir City",
+   "title": null
+  },
+  "30223": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-09-30",
+   "name": "Hishi Amazon",
+   "title": null
+  },
+  "30224": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-09-30",
+   "name": "Narita Brian",
+   "title": null
+  },
+  "30225": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-09-30",
+   "name": "Matikanefukukitaru",
+   "title": null
+  },
+  "30226": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-10-29",
+   "name": "Air Shakur",
+   "title": null
+  },
+  "30227": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-10-29",
+   "name": "Daiwa Scarlet",
+   "title": null
+  },
+  "30228": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-11-08",
+   "name": "Symboli Kris S",
+   "title": null
+  },
+  "30229": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-11-28",
+   "name": "Agnes Digital",
+   "title": null
+  },
+  "30230": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-11-28",
+   "name": "Meisho Doto",
+   "title": null
+  },
+  "30231": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-11-28",
+   "name": "TM Opera O",
+   "title": null
+  },
+  "30232": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-12-10",
+   "name": "Blast Onepiece",
+   "title": null
+  },
+  "30233": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-12-27",
+   "name": "Symboli Rudolf",
+   "title": null
+  },
+  "30234": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-12-27",
+   "name": "Mejiro Ardan",
+   "title": null
+  },
+  "30235": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-12-27",
+   "name": "Maruzensky",
+   "title": null
+  },
+  "30236": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-01-10",
+   "name": "Seeking the Pearl",
+   "title": null
+  },
+  "30237": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-01-31",
+   "name": "Curren Chan",
+   "title": null
+  },
+  "30238": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-01-31",
+   "name": "Ikuno Dictus",
+   "title": null
+  },
+  "30239": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-01-31",
+   "name": "Nice Nature",
+   "title": null
+  },
+  "30240": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-02-14",
+   "name": "Jungle Pocket",
+   "title": null
+  },
+  "30241": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-02-24",
+   "name": "Embodiment of Legends",
+   "title": null
+  },
+  "30242": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-02-24",
+   "name": "Almond Eye",
+   "title": null
+  },
+  "30243": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-02-24",
+   "name": "Gran Alegria",
+   "title": null
+  },
+  "30244": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-03-11",
+   "name": "Mejiro Bright",
+   "title": null
+  },
+  "30245": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-03-31",
+   "name": "Vodka",
+   "title": null
+  },
+  "30246": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-03-31",
+   "name": "Dream Journey",
+   "title": null
+  },
+  "30247": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-03-31",
+   "name": "Symboli Kris S",
+   "title": null
+  },
+  "30248": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-04-10",
+   "name": "Daring Tact",
+   "title": null
+  },
+  "30249": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-04-30",
+   "name": "Transcend",
+   "title": null
+  },
+  "30250": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-04-30",
+   "name": "Buena Vista",
+   "title": null
+  },
+  "30251": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-04-30",
+   "name": "Espoir City",
+   "title": null
+  },
+  "30252": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-05-12",
+   "name": "Silence Suzuka",
+   "title": null
+  },
+  "30253": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-05-30",
+   "name": "Rhein Kraft",
+   "title": null
+  },
+  "30254": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-05-30",
+   "name": "Daring Heart",
+   "title": null
+  },
+  "30255": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-05-30",
+   "name": "Air Messiah",
+   "title": null
+  },
+  "30256": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-06-27",
+   "name": "Tamamo Cross",
+   "title": null
+  },
+  "30257": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-06-27",
+   "name": "Tucker Bryne",
+   "title": null
+  },
+  "30258": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-07-11",
+   "name": "Mejiro Ryan",
+   "title": null
+  },
+  "30259": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-07-22",
+   "name": "Fusaichi Pandora",
+   "title": null
+  },
+  "30260": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-04-30",
+   "name": "Mejiro McQueen",
+   "title": null
+  },
+  "30261": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-07-31",
+   "name": "Win Variation",
+   "title": null
+  },
+  "30262": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-07-31",
+   "name": "Duramente",
+   "title": null
+  },
+  "30263": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-07-31",
+   "name": "Vivlos",
+   "title": null
+  },
+  "30264": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-08-24",
+   "name": "Stay Gold",
+   "title": null
+  },
+  "30265": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-08-24",
+   "name": "Admire Groove",
+   "title": null
+  },
+  "30266": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-08-24",
+   "name": "Chrono Genesis",
+   "title": null
+  },
+  "30267": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-08-29",
+   "name": "Calstone Light O",
+   "title": null
+  },
+  "30268": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-08-29",
+   "name": "Durandal",
+   "title": null
+  },
+  "30269": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-08-29",
+   "name": "Dantsu Flame",
+   "title": null
+  },
+  "30270": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-09-09",
+   "name": "Daiichi Ruby",
+   "title": null
+  },
+  "30271": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-09-29",
+   "name": "Fuji Kiseki",
+   "title": null
+  },
+  "30272": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-09-29",
+   "name": "Eishin Flash",
+   "title": null
+  },
+  "30273": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-09-29",
+   "name": "Tosen Jordan",
+   "title": null
+  },
+  "30274": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-10-10",
+   "name": "Curren Bouquetd'or",
+   "title": null
+  },
+  "30275": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-10-29",
+   "name": "Tokai Teio",
+   "title": null
+  },
+  "30276": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-10-29",
+   "name": "Kiyoko Hoshina",
+   "title": null
+  },
+  "30277": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-11-10",
+   "name": "Mihono Bourbon",
+   "title": null
+  },
+  "30278": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-11-28",
+   "name": "Gold Ship",
+   "title": null
+  },
+  "30279": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-11-28",
+   "name": "Fenomeno",
+   "title": null
+  },
+  "30280": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-11-28",
+   "name": "Orfevre",
+   "title": null
+  },
+  "30281": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-12-11",
+   "name": "Inari One",
+   "title": null
+  },
+  "30282": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-12-26",
+   "name": "Air Groove",
+   "title": null
+  },
+  "30283": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-12-26",
+   "name": "Fine Motion",
+   "title": null
+  },
+  "30284": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-12-26",
+   "name": "Bubble Gum Fellow",
+   "title": null
+  },
+  "30285": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-01-08",
+   "name": "King Halo",
+   "title": null
+  },
+  "30286": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-01-30",
+   "name": "Matikanefukukitaru",
+   "title": null
+  },
+  "30287": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-01-30",
+   "name": "Neo Universe",
+   "title": null
+  },
+  "30288": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-01-30",
+   "name": "Silence Suzuka",
+   "title": null
+  },
+  "30289": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-02-24",
+   "name": "Forever Young",
+   "title": null
+  },
+  "30290": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-02-24",
+   "name": "Casino Drive",
+   "title": null
+  },
+  "30291": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-02-24",
+   "name": "Victoire Pisa",
+   "title": null
+  },
+  "30292": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-03-11",
+   "name": "Marche Lorraine",
+   "title": null
+  },
+  "30293": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-03-30",
+   "name": "Daring Tact",
+   "title": null
+  },
+  "30294": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-03-30",
+   "name": "Daring Heart",
+   "title": null
+  },
+  "30295": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-03-30",
+   "name": "Curren Bouquetd'or",
+   "title": null
+  },
+  "30296": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-04-10",
+   "name": "Aston Machan",
+   "title": null
+  },
+  "30297": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-04-30",
+   "name": "Agnes Digital",
+   "title": null
+  },
+  "30298": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-04-30",
+   "name": "Tap Dance City",
+   "title": null
+  },
+  "30299": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-04-30",
+   "name": "Agnes Tachyon",
+   "title": null
+  },
+  "30300": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-05-11",
+   "name": "Sakura Chiyono O",
+   "title": null
+  },
+  "30301": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-05-29",
+   "name": "Gran Alegria",
+   "title": null
+  },
+  "30302": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-05-29",
+   "name": "Satono Diamond",
+   "title": null
+  },
+  "30303": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-05-29",
+   "name": "Blast Onepiece",
+   "title": null
+  },
+  "30304": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-06-29",
+   "name": "Meisho Doto",
+   "title": null
+  },
+  "30305": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-06-29",
+   "name": "Tazuna Hayakawa",
+   "title": null
+  },
+  "30306": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-07-10",
+   "name": "Nice Nature",
+   "title": null
+  },
+  "30307": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-07-30",
+   "name": "Kiseki",
+   "title": null
+  },
+  "30308": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-07-30",
+   "name": "Almond Eye",
+   "title": null
+  },
+  "30309": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-07-30",
+   "name": "Fusaichi Pandora",
+   "title": null
+  },
+  "30310": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-08-12",
+   "name": "Red Desire",
+   "title": null
+  }
+ },
+ "characters": {
+  "100101": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Special Week",
+   "title": "[Special Dreamer]"
+  },
+  "100102": {
+   "global": true,
+   "release": "2025-10-14",
+   "releaseJp": "2021-07-29",
+   "name": "Special Week",
+   "title": "[Hopp'n♪Happy Heart]"
+  },
+  "100103": {
+   "global": true,
+   "release": "2026-06-25",
+   "releaseJp": "2022-07-20",
+   "name": "Special Week",
+   "title": "[Ruler of Japan]"
+  },
+  "100201": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Silence Suzuka",
+   "title": "[Innocent Silence]"
+  },
+  "100202": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-07-31",
+   "name": "Silence Suzuka",
+   "title": "[Emerald Tidings]"
+  },
+  "100301": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Tokai Teio",
+   "title": "[Peak Joy]"
+  },
+  "100302": {
+   "global": true,
+   "release": "2025-07-16",
+   "releaseJp": "2021-03-30",
+   "name": "Tokai Teio",
+   "title": "[Beyond the Horizon]"
+  },
+  "100303": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-10-30",
+   "name": "Tokai Teio",
+   "title": "Dream Butterfly of Purple Clouds"
+  },
+  "100401": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Maruzensky",
+   "title": "[Formula R]"
+  },
+  "100402": {
+   "global": true,
+   "release": "2025-10-14",
+   "releaseJp": "2021-07-29",
+   "name": "Maruzensky",
+   "title": "[Hot☆Summer Night]"
+  },
+  "100403": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-01-10",
+   "name": "Maruzensky",
+   "title": "Auspicious Maiden of Divine Speed"
+  },
+  "100501": {
+   "global": true,
+   "release": "2025-10-02",
+   "releaseJp": "2021-07-12",
+   "name": "Fuji Kiseki",
+   "title": "[Shooting Star Revue]"
+  },
+  "100502": {
+   "global": true,
+   "release": "2026-04-05",
+   "releaseJp": "2022-03-29",
+   "name": "Fuji Kiseki",
+   "title": "[Succès Étoilé]"
+  },
+  "100503": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-04-30",
+   "name": "Fuji Kiseki",
+   "title": "Blanche Étoile"
+  },
+  "100601": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Oguri Cap",
+   "title": "[Starlight Beat]"
+  },
+  "100602": {
+   "global": true,
+   "release": "2026-01-05",
+   "releaseJp": "2021-11-29",
+   "name": "Oguri Cap",
+   "title": "[Ashen Miracle]"
+  },
+  "100603": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-12-11",
+   "name": "Oguri Cap",
+   "title": "Cinderella Gray"
+  },
+  "100701": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Gold Ship",
+   "title": "[Red Strife]"
+  },
+  "100702": {
+   "global": true,
+   "release": "2026-07-02",
+   "releaseJp": "2022-07-29",
+   "name": "Gold Ship",
+   "title": "[RUN! RUIN! LAUNCHER!]"
+  },
+  "100703": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-08-31",
+   "name": "Gold Ship",
+   "title": "La Mode 564"
+  },
+  "100801": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Vodka",
+   "title": "[Wild Top Gear]"
+  },
+  "100802": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-11-28",
+   "name": "Vodka",
+   "title": "[Fiery Aqua Vitae]"
+  },
+  "100901": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Daiwa Scarlet",
+   "title": "[Peak Blue]"
+  },
+  "100902": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-11-28",
+   "name": "Daiwa Scarlet",
+   "title": "[Nuit Étoilée de Scarlet]"
+  },
+  "101001": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Taiki Shuttle",
+   "title": "[Wild Frontier]"
+  },
+  "101002": {
+   "global": true,
+   "release": "2026-06-11",
+   "releaseJp": "2022-06-30",
+   "name": "Taiki Shuttle",
+   "title": "[Bubblegum☆Memories]"
+  },
+  "101003": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-01-30",
+   "name": "Taiki Shuttle",
+   "title": "Baa Baa Patisserie"
+  },
+  "101101": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Grass Wonder",
+   "title": "[Stone-Piercing Blue]"
+  },
+  "101102": {
+   "global": true,
+   "release": "2025-09-21",
+   "releaseJp": "2021-06-29",
+   "name": "Grass Wonder",
+   "title": "[Saintly Jade Cleric]"
+  },
+  "101103": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-12-19",
+   "name": "Grass Wonder",
+   "title": "Honor of the Azure Flame"
+  },
+  "101201": {
+   "global": true,
+   "release": "2025-09-17",
+   "releaseJp": "2021-06-21",
+   "name": "Hishi Amazon",
+   "title": "[Azure Amazon]"
+  },
+  "101202": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-05-29",
+   "name": "Hishi Amazon",
+   "title": "[Hungry Veil]"
+  },
+  "101301": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Mejiro McQueen",
+   "title": "[Frontline Elegance]"
+  },
+  "101302": {
+   "global": true,
+   "release": "2025-07-16",
+   "releaseJp": "2021-03-30",
+   "name": "Mejiro McQueen",
+   "title": "[End of the Skies]"
+  },
+  "101303": {
+   "global": true,
+   "release": "2026-07-02",
+   "releaseJp": "2022-07-29",
+   "name": "Mejiro McQueen",
+   "title": "[Fair Lady of the Waves]"
+  },
+  "101401": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "El Condor Pasa",
+   "title": "[El☆Número 1]"
+  },
+  "101402": {
+   "global": true,
+   "release": "2025-09-21",
+   "releaseJp": "2021-06-29",
+   "name": "El Condor Pasa",
+   "title": "[Kukulkan Warrior]"
+  },
+  "101501": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-03-02",
+   "name": "TM Opera O",
+   "title": "[O Sole Suo!]"
+  },
+  "101502": {
+   "global": true,
+   "release": "2026-01-29",
+   "releaseJp": "2021-12-31",
+   "name": "TM Opera O",
+   "title": "[New Year, Same Radiance!]"
+  },
+  "101601": {
+   "global": true,
+   "release": "2025-08-20",
+   "releaseJp": "2021-05-17",
+   "name": "Narita Brian",
+   "title": "[Maverick]"
+  },
+  "101602": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-12-20",
+   "name": "Narita Brian",
+   "title": "[Ravenous Wolf]"
+  },
+  "101701": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Symboli Rudolf",
+   "title": "[Emperor's Path]"
+  },
+  "101702": {
+   "global": true,
+   "release": "2025-12-14",
+   "releaseJp": "2021-10-28",
+   "name": "Symboli Rudolf",
+   "title": "[Archer by Moonlight]"
+  },
+  "101801": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Air Groove",
+   "title": "[Empress Road]"
+  },
+  "101802": {
+   "global": true,
+   "release": "2025-08-28",
+   "releaseJp": "2021-05-28",
+   "name": "Air Groove",
+   "title": "[Quercus Civilis]"
+  },
+  "101901": {
+   "global": true,
+   "release": "2025-11-19",
+   "releaseJp": "2021-09-20",
+   "name": "Agnes Digital",
+   "title": "[Full-Color Fangirling]"
+  },
+  "101902": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-09-29",
+   "name": "Agnes Digital",
+   "title": "[Fanatic♡Jiangshi]"
+  },
+  "102001": {
+   "global": true,
+   "release": "2025-09-07",
+   "releaseJp": "2021-06-10",
+   "name": "Seiun Sky",
+   "title": "[Reeling in the Big One]"
+  },
+  "102002": {
+   "global": true,
+   "release": "2026-04-05",
+   "releaseJp": "2022-03-29",
+   "name": "Seiun Sky",
+   "title": "[Soirée des Chatons]"
+  },
+  "102003": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-07-30",
+   "name": "Seiun Sky",
+   "title": ""
+  },
+  "102101": {
+   "global": true,
+   "release": "2026-01-22",
+   "releaseJp": "2021-12-22",
+   "name": "Tamamo Cross",
+   "title": "[Fast as Lightning]"
+  },
+  "102102": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-10-28",
+   "name": "Tamamo Cross",
+   "title": "[Raging Thunder]"
+  },
+  "102201": {
+   "global": true,
+   "release": "2026-01-15",
+   "releaseJp": "2021-12-14",
+   "name": "Fine Motion",
+   "title": "[Noble Seamair]"
+  },
+  "102202": {
+   "global": true,
+   "release": "2026-05-18",
+   "releaseJp": "2022-05-30",
+   "name": "Fine Motion",
+   "title": "[Titania]"
+  },
+  "102203": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-07-10",
+   "name": "Fine Motion",
+   "title": ""
+  },
+  "102301": {
+   "global": true,
+   "release": "2025-07-10",
+   "releaseJp": "2021-03-18",
+   "name": "Biwa Hayahide",
+   "title": "[pf. Winning Equation...]"
+  },
+  "102302": {
+   "global": true,
+   "release": "2026-01-05",
+   "releaseJp": "2021-11-29",
+   "name": "Biwa Hayahide",
+   "title": "[Rouge Caroler]"
+  },
+  "102303": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-10-29",
+   "name": "Biwa Hayahide",
+   "title": "Engineered Victory"
+  },
+  "102401": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Mayano Top Gun",
+   "title": "[Scramble☆Zone]"
+  },
+  "102402": {
+   "global": true,
+   "release": "2025-08-28",
+   "releaseJp": "2021-05-28",
+   "name": "Mayano Top Gun",
+   "title": "[Sunlight Bouquet]"
+  },
+  "102403": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-09-30",
+   "name": "Mayano Top Gun",
+   "title": "Rocking☆MewMeow"
+  },
+  "102501": {
+   "global": true,
+   "release": "2025-12-08",
+   "releaseJp": "2021-10-20",
+   "name": "Manhattan Cafe",
+   "title": "[Creeping Shadow]"
+  },
+  "102502": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-01-31",
+   "name": "Manhattan Cafe",
+   "title": "Willow-Green Evening"
+  },
+  "102503": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-05-29",
+   "name": "Manhattan Cafe",
+   "title": ""
+  },
+  "102601": {
+   "global": true,
+   "release": "2025-07-02",
+   "releaseJp": "2021-03-09",
+   "name": "Mihono Bourbon",
+   "title": "[MB-19890425]"
+  },
+  "102602": {
+   "global": true,
+   "release": "2026-02-18",
+   "releaseJp": "2022-01-28",
+   "name": "Mihono Bourbon",
+   "title": "[CODE: ICING]"
+  },
+  "102701": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Mejiro Ryan",
+   "title": "[Down the Line]"
+  },
+  "102702": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-01-30",
+   "name": "Mejiro Ryan",
+   "title": "[Marguerite Latte]"
+  },
+  "102801": {
+   "global": true,
+   "release": "2025-11-11",
+   "releaseJp": "2021-09-10",
+   "name": "Hishi Akebono",
+   "title": "[Buono ☆ Alla Moda]"
+  },
+  "102802": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-09-29",
+   "name": "Hishi Akebono",
+   "title": "Magic Night Garland"
+  },
+  "102901": {
+   "global": true,
+   "release": "2026-08-05",
+   "releaseJp": "2022-09-12",
+   "name": "Yukino Bijin",
+   "title": "[Darl'n Snowflake]"
+  },
+  "102902": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-01-31",
+   "name": "Yukino Bijin",
+   "title": "Snowy Girl of Tea and Cake"
+  },
+  "103001": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Rice Shower",
+   "title": "[Rosy Dreams]"
+  },
+  "103002": {
+   "global": true,
+   "release": "2025-11-24",
+   "releaseJp": "2021-09-29",
+   "name": "Rice Shower",
+   "title": "[Vampire Makeover!]"
+  },
+  "103003": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-07-09",
+   "name": "Rice Shower",
+   "title": "Yummy Dreamy Fairy"
+  },
+  "103101": {
+   "global": true,
+   "release": "2026-04-30",
+   "releaseJp": "2022-05-10",
+   "name": "Ines Fujin",
+   "title": "[Always Electrifying]"
+  },
+  "103102": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-01-30",
+   "name": "Ines Fujin",
+   "title": "[Melt Your Heart]"
+  },
+  "103103": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-07-11",
+   "name": "Ines Fujin",
+   "title": "Hello Hello Island"
+  },
+  "103201": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Agnes Tachyon",
+   "title": "[tach-nology]"
+  },
+  "103202": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-07-31",
+   "name": "Agnes Tachyon",
+   "title": "[Lunatic Lab]"
+  },
+  "103203": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-05-10",
+   "name": "Agnes Tachyon",
+   "title": "Σ Experiment"
+  },
+  "103301": {
+   "global": true,
+   "release": "2026-03-05",
+   "releaseJp": "2022-02-16",
+   "name": "Admire Vega",
+   "title": "[Starry Nocturne]"
+  },
+  "103302": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-11-28",
+   "name": "Admire Vega",
+   "title": "Glacialis Vega"
+  },
+  "103401": {
+   "global": true,
+   "release": "2026-05-28",
+   "releaseJp": "2022-06-10",
+   "name": "Inari One",
+   "title": "[Edomurasaki]"
+  },
+  "103402": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-10-28",
+   "name": "Inari One",
+   "title": "[Golden Dream]"
+  },
+  "103501": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Winning Ticket",
+   "title": "[Get to Winning!]"
+  },
+  "103502": {
+   "global": true,
+   "release": "2026-07-27",
+   "releaseJp": "2022-08-29",
+   "name": "Winning Ticket",
+   "title": "[Dream Deliverer]"
+  },
+  "103503": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-04-09",
+   "name": "Winning Ticket",
+   "title": "Glorious Coat"
+  },
+  "103601": {
+   "global": true,
+   "release": "2026-06-18",
+   "releaseJp": "2022-07-11",
+   "name": "Air Shakur",
+   "title": "[unsigned]"
+  },
+  "103602": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-09-29",
+   "name": "Air Shakur",
+   "title": "Belphegor's Prime"
+  },
+  "103701": {
+   "global": true,
+   "release": "2025-10-30",
+   "releaseJp": "2021-08-20",
+   "name": "Eishin Flash",
+   "title": "[Meisterschaft]"
+  },
+  "103702": {
+   "global": true,
+   "release": "2026-02-18",
+   "releaseJp": "2022-01-28",
+   "name": "Eishin Flash",
+   "title": "[Precise Chocolatier]"
+  },
+  "103703": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-07-29",
+   "name": "Eishin Flash",
+   "title": "Reines Plätschern"
+  },
+  "103801": {
+   "global": true,
+   "release": "2025-07-27",
+   "releaseJp": "2021-04-15",
+   "name": "Curren Chan",
+   "title": "[Fille Éclair]"
+  },
+  "103802": {
+   "global": true,
+   "release": "2026-05-18",
+   "releaseJp": "2022-05-30",
+   "name": "Curren Chan",
+   "title": "[Ma Chérie of the New Moon]"
+  },
+  "103901": {
+   "global": true,
+   "release": "2025-12-01",
+   "releaseJp": "2021-10-11",
+   "name": "Kawakami Princess",
+   "title": "[Princess of Pink]"
+  },
+  "103902": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-10-30",
+   "name": "Kawakami Princess",
+   "title": "Suikan Beauty"
+  },
+  "104001": {
+   "global": true,
+   "release": "2025-10-07",
+   "releaseJp": "2021-07-20",
+   "name": "Gold City",
+   "title": "[Authentic / 1928]"
+  },
+  "104002": {
+   "global": true,
+   "release": "2025-12-14",
+   "releaseJp": "2021-10-28",
+   "name": "Gold City",
+   "title": "[Autumn Cosmos]"
+  },
+  "104003": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-06-27",
+   "name": "Gold City",
+   "title": "Boho Flare"
+  },
+  "104101": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Sakura Bakushin O",
+   "title": "[Blossom in Learning]"
+  },
+  "104102": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-04-28",
+   "name": "Sakura Bakushin O",
+   "title": "[Red Hot☆Leader]"
+  },
+  "104103": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-03-30",
+   "name": "Sakura Bakushin O",
+   "title": "雷の韋駄天"
+  },
+  "104201": {
+   "global": true,
+   "release": "2026-08-12",
+   "releaseJp": "2022-09-20",
+   "name": "Seeking the Pearl",
+   "title": "[Rocket☆Star]"
+  },
+  "104202": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-09-30",
+   "name": "Seeking the Pearl",
+   "title": "Be♪Witched"
+  },
+  "104301": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-02-13",
+   "name": "Shinko Windy",
+   "title": "[Wicked Punk]"
+  },
+  "104401": {
+   "global": true,
+   "release": "2026-06-04",
+   "releaseJp": "2022-06-20",
+   "name": "Sweep Tosho",
+   "title": "[Platanus Witch]"
+  },
+  "104402": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-05-30",
+   "name": "Sweep Tosho",
+   "title": "Realize・Rune"
+  },
+  "104501": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Super Creek",
+   "title": "[Murmuring Stream]"
+  },
+  "104502": {
+   "global": true,
+   "release": "2025-11-24",
+   "releaseJp": "2021-09-29",
+   "name": "Super Creek",
+   "title": "[Chiffon-Wrapped Mummy]"
+  },
+  "104503": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-04-30",
+   "name": "Super Creek",
+   "title": "Flowery Shadow Amongst the Gentle Rain"
+  },
+  "104601": {
+   "global": true,
+   "release": "2025-08-11",
+   "releaseJp": "2021-05-06",
+   "name": "Smart Falcon",
+   "title": "[LOVE☆4EVER]"
+  },
+  "104602": {
+   "global": true,
+   "release": "2026-07-22",
+   "releaseJp": "2022-08-24",
+   "name": "Smart Falcon",
+   "title": "[Twilight Triumph]"
+  },
+  "104603": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-04-30",
+   "name": "Smart Falcon",
+   "title": "Luminous ☆ Twirler"
+  },
+  "104701": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-12-12",
+   "name": "Zenno Rob Roy",
+   "title": "[Heroic Author]"
+  },
+  "104702": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-08-30",
+   "name": "Zenno Rob Roy",
+   "title": "Inlaid Stories"
+  },
+  "104801": {
+   "global": true,
+   "release": "2025-12-18",
+   "releaseJp": "2021-11-08",
+   "name": "Tosen Jordan",
+   "title": "[Jokester ☆ Vibes]"
+  },
+  "104802": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-06-29",
+   "name": "Tosen Jordan",
+   "title": "[Aurore☆Vacances]"
+  },
+  "104803": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-10-10",
+   "name": "Tosen Jordan",
+   "title": "Highkey ☆ Hallowed"
+  },
+  "104901": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-11-09",
+   "name": "Nakayama Festa",
+   "title": "[Desperate Measures]"
+  },
+  "104902": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-11-28",
+   "name": "Nakayama Festa",
+   "title": "Festive Play"
+  },
+  "105001": {
+   "global": true,
+   "release": "2025-08-03",
+   "releaseJp": "2021-04-26",
+   "name": "Narita Taishin",
+   "title": "[Nevertheless]"
+  },
+  "105002": {
+   "global": true,
+   "release": "2026-07-27",
+   "releaseJp": "2022-08-29",
+   "name": "Narita Taishin",
+   "title": "[Difference Engineer]"
+  },
+  "105003": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-11-08",
+   "name": "Narita Taishin",
+   "title": "Stray Light Override"
+  },
+  "105101": {
+   "global": true,
+   "release": "2026-04-12",
+   "releaseJp": "2022-04-11",
+   "name": "Nishino Flower",
+   "title": "[Layered Petals]"
+  },
+  "105102": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-05-29",
+   "name": "Nishino Flower",
+   "title": "[Sweet Juneberry]"
+  },
+  "105201": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Haru Urara",
+   "title": "[Bestest Prize ♪]"
+  },
+  "105202": {
+   "global": true,
+   "release": "2026-01-29",
+   "releaseJp": "2021-12-31",
+   "name": "Haru Urara",
+   "title": "[New Year ♪ New Urara!]"
+  },
+  "105301": {
+   "global": true,
+   "release": "2026-07-07",
+   "releaseJp": "2022-08-10",
+   "name": "Bamboo Memory",
+   "title": "[Iron Ambition]"
+  },
+  "105302": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-06-29",
+   "name": "Bamboo Memory",
+   "title": "[Ultra☆Marine]"
+  },
+  "105401": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-02-14",
+   "name": "Biko Pegasus",
+   "title": "Gale Pegasus Type Zero"
+  },
+  "105501": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-06-19",
+   "name": "Marvelous Sunday",
+   "title": "[★Super∞Marvel∞Tastic☆]"
+  },
+  "105502": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-09-29",
+   "name": "Marvelous Sunday",
+   "title": "Trick ☆ Ribonetta"
+  },
+  "105601": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Matikanefukukitaru",
+   "title": "[Rising☆Fortune]"
+  },
+  "105602": {
+   "global": true,
+   "release": "2025-11-06",
+   "releaseJp": "2021-08-30",
+   "name": "Matikanefukukitaru",
+   "title": "[Lucky Tidings]"
+  },
+  "105701": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-02-24",
+   "name": "Mr. C.B.",
+   "title": "[Clear Bliss]"
+  },
+  "105702": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-12-27",
+   "name": "Mr. C.B.",
+   "title": "Dazzling Kabuki Flower"
+  },
+  "105801": {
+   "global": true,
+   "release": "2025-10-21",
+   "releaseJp": "2021-08-11",
+   "name": "Meisho Doto",
+   "title": "[Turbulent Blue]"
+  },
+  "105802": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-09-29",
+   "name": "Meisho Doto",
+   "title": "[Dot-o'-Lantern]"
+  },
+  "105901": {
+   "global": true,
+   "release": "2025-12-28",
+   "releaseJp": "2021-11-19",
+   "name": "Mejiro Dober",
+   "title": "[Off the Line]"
+  },
+  "105902": {
+   "global": true,
+   "release": "2026-06-11",
+   "releaseJp": "2022-06-30",
+   "name": "Mejiro Dober",
+   "title": "[Sapphire Sojourn]"
+  },
+  "106001": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "Nice Nature",
+   "title": "[Poinsettia Ribbon]"
+  },
+  "106002": {
+   "global": true,
+   "release": "2026-04-26",
+   "releaseJp": "2022-04-28",
+   "name": "Nice Nature",
+   "title": "[Run & Win]"
+  },
+  "106003": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-01-09",
+   "name": "Nice Nature",
+   "title": "Converging Wishes"
+  },
+  "106101": {
+   "global": true,
+   "release": "2025-06-26",
+   "releaseJp": "2021-02-24",
+   "name": "King Halo",
+   "title": "[King of Emeralds]"
+  },
+  "106102": {
+   "global": true,
+   "release": "2026-04-26",
+   "releaseJp": "2022-04-28",
+   "name": "King Halo",
+   "title": "[Cheerleader in Noble White]"
+  },
+  "106103": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-05-30",
+   "name": "King Halo",
+   "title": "Evergreen Identity"
+  },
+  "106201": {
+   "global": true,
+   "release": "2026-03-12",
+   "releaseJp": "2022-02-24",
+   "name": "Matikanetannhauser",
+   "title": "[Clippety-Tippety-Clop]"
+  },
+  "106202": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-04-28",
+   "name": "Matikanetannhauser",
+   "title": "[Blue Turbulence]"
+  },
+  "106301": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-02-24",
+   "name": "Ikuno Dictus",
+   "title": "Mantle of Steel"
+  },
+  "106302": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-12-26",
+   "name": "Ikuno Dictus",
+   "title": "Strolling an Orderly Path"
+  },
+  "106401": {
+   "global": true,
+   "release": "2026-05-10",
+   "releaseJp": "2022-05-20",
+   "name": "Mejiro Palmer",
+   "title": "[Line Breakthrough]"
+  },
+  "106402": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-11-30",
+   "name": "Mejiro Palmer",
+   "title": "Warm-Hearted Reindeer"
+  },
+  "106501": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-01-20",
+   "name": "Daitaku Helios",
+   "title": "[Fun☆Fun☆Party Night]"
+  },
+  "106502": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-03-29",
+   "name": "Daitaku Helios",
+   "title": "Joyful Jamboree!"
+  },
+  "106601": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-02-24",
+   "name": "Twin Turbo",
+   "title": "[Turbo Engine! Full Throttle!]"
+  },
+  "106701": {
+   "global": true,
+   "release": "2026-03-22",
+   "releaseJp": "2022-03-07",
+   "name": "Satono Diamond",
+   "title": "[Natural Brilliance]"
+  },
+  "106702": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-12-29",
+   "name": "Satono Diamond",
+   "title": "[Jade's Prosperity]"
+  },
+  "106703": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-09-11",
+   "name": "Satono Diamond",
+   "title": "Chevalier Bleu"
+  },
+  "106801": {
+   "global": true,
+   "release": "2026-03-12",
+   "releaseJp": "2022-02-24",
+   "name": "Kitasan Black",
+   "title": "[Gilded Shrine to Glory]"
+  },
+  "106802": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-12-29",
+   "name": "Kitasan Black",
+   "title": "[Crane's Ambition]"
+  },
+  "106803": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-12-28",
+   "name": "Kitasan Black",
+   "title": "Final Bloom"
+  },
+  "106901": {
+   "global": true,
+   "release": "2026-02-11",
+   "releaseJp": "2022-01-20",
+   "name": "Sakura Chiyono O",
+   "title": "[Strength in Full Bloom]"
+  },
+  "106902": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-03-29",
+   "name": "Sakura Chiyono O",
+   "title": "[Fleur Enneigée]"
+  },
+  "107001": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-07-21",
+   "name": "Sirius Symboli",
+   "title": "[Féroce]"
+  },
+  "107002": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-04-10",
+   "name": "Sirius Symboli",
+   "title": "Louve Stellaire"
+  },
+  "107101": {
+   "global": true,
+   "release": "2026-02-25",
+   "releaseJp": "2022-02-08",
+   "name": "Mejiro Ardan",
+   "title": "[Crystalline]"
+  },
+  "107102": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-03-29",
+   "name": "Mejiro Ardan",
+   "title": "[Neige Émeraude]"
+  },
+  "107201": {
+   "global": true,
+   "release": "2026-04-20",
+   "releaseJp": "2022-04-19",
+   "name": "Yaeno Muteki",
+   "title": "[Blazed Head, Covered Fists]"
+  },
+  "107202": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-04-30",
+   "name": "Yaeno Muteki",
+   "title": "Black General, Zen"
+  },
+  "107301": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-02-14",
+   "name": "Tsurumaru Tsuyoshi",
+   "title": "Dream Bold, Stand Tall, Tsuyoshi!"
+  },
+  "107401": {
+   "global": true,
+   "release": "2026-03-26",
+   "releaseJp": "2022-03-18",
+   "name": "Mejiro Bright",
+   "title": "[Brunissage Line]"
+  },
+  "107402": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-11-30",
+   "name": "Mejiro Bright",
+   "title": "Starry Snow Lolita"
+  },
+  "107403": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-07-30",
+   "name": "Mejiro Bright",
+   "title": ""
+  },
+  "107601": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-04-10",
+   "name": "Sakura Laurel",
+   "title": "[Saisir le rêve]"
+  },
+  "107602": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-12-26",
+   "name": "Sakura Laurel",
+   "title": "Nouvelle Pousse"
+  },
+  "107701": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-08-24",
+   "name": "Narita Top Road",
+   "title": "The Proud Road"
+  },
+  "107702": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-11-28",
+   "name": "Narita Top Road",
+   "title": "Celestial Road"
+  },
+  "107703": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-06-29",
+   "name": "Narita Top Road",
+   "title": ""
+  },
+  "107801": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-10-19",
+   "name": "Yamanin Zephyr",
+   "title": "[Fluttertail Spirit]"
+  },
+  "107802": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-01-31",
+   "name": "Yamanin Zephyr",
+   "title": "Sugary Wind"
+  },
+  "107901": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-01-20",
+   "name": "Furioso",
+   "title": "Triumphant Return of the Auspicious Star"
+  },
+  "108001": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-03-12",
+   "name": "Transcend",
+   "title": "ZOKU-ZOKU GIZMO"
+  },
+  "108002": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-10-29",
+   "name": "Transcend",
+   "title": "Twilit Neo-Kagura"
+  },
+  "108101": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-09-09",
+   "name": "Espoir City",
+   "title": "Red Devil Gear"
+  },
+  "108201": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-05-20",
+   "name": "North Flight",
+   "title": "Looking Fly!"
+  },
+  "108202": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-03-30",
+   "name": "North Flight",
+   "title": "水縹の一閃"
+  },
+  "108301": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-03-20",
+   "name": "Symboli Kris S",
+   "title": "[Onyx Soldier]"
+  },
+  "108302": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-09-29",
+   "name": "Symboli Kris S",
+   "title": "Jetblack Automaton"
+  },
+  "108401": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-05-19",
+   "name": "Tanino Gimlet",
+   "title": "[Mantle of Keravnos]"
+  },
+  "108402": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-03-31",
+   "name": "Tanino Gimlet",
+   "title": "With a Twist"
+  },
+  "108501": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-03-10",
+   "name": "Daiichi Ruby",
+   "title": "[Opulent Gem]"
+  },
+  "108502": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-03-29",
+   "name": "Daiichi Ruby",
+   "title": "Flowing Blue"
+  },
+  "108601": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-10-19",
+   "name": "Mejiro Ramonu",
+   "title": "Onyx Line"
+  },
+  "108602": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-05-30",
+   "name": "Mejiro Ramonu",
+   "title": "Untouchable Eden"
+  },
+  "108701": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-10-11",
+   "name": "Aston Machan",
+   "title": "[Flare]"
+  },
+  "108702": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-01-31",
+   "name": "Aston Machan",
+   "title": "Everlasting Sweet Treat"
+  },
+  "108801": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-12-11",
+   "name": "Satono Crown",
+   "title": "Emerald Journey"
+  },
+  "108802": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-07-31",
+   "name": "Satono Crown",
+   "title": "Sunny Island Floral Beauty"
+  },
+  "108901": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-12-20",
+   "name": "Cheval Grand",
+   "title": "Grand Itinéraire"
+  },
+  "108902": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-07-31",
+   "name": "Cheval Grand",
+   "title": "Summer Lull Navy Drop"
+  },
+  "109001": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-05-12",
+   "name": "Verxina",
+   "title": "Le Beau Sommet"
+  },
+  "109101": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-01-19",
+   "name": "Vivlos",
+   "title": "Voyage Étincelant"
+  },
+  "109102": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-08-14",
+   "name": "Vivlos",
+   "title": "Éclat d'été"
+  },
+  "109201": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-10-18",
+   "name": "Dantsu Flame",
+   "title": "Center ◎ Spotlight"
+  },
+  "109301": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-09-20",
+   "name": "K.S.Miracle",
+   "title": "Prism"
+  },
+  "109302": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-08-29",
+   "name": "K.S.Miracle",
+   "title": "Andante in Autumn Hues"
+  },
+  "109401": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-06-13",
+   "name": "Jungle Pocket",
+   "title": "Ruler's Battle Cry"
+  },
+  "109402": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-04-30",
+   "name": "Jungle Pocket",
+   "title": "Vermilion Head"
+  },
+  "109501": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-09-19",
+   "name": "Believe",
+   "title": "Purity"
+  },
+  "109601": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-03-21",
+   "name": "No Reason",
+   "title": "Swift Crimson Armor"
+  },
+  "109701": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-08-24",
+   "name": "Still in Love",
+   "title": "Scarlet Vow Raiment"
+  },
+  "109801": {
+   "global": true,
+   "release": "2026-07-16",
+   "releaseJp": "2022-08-19",
+   "name": "Copano Rickey",
+   "title": "[Eightfold☆Fortune]"
+  },
+  "109802": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-04-30",
+   "name": "Copano Rickey",
+   "title": "Dazzling ☆ Lucky Wear"
+  },
+  "109901": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-01-10",
+   "name": "Hokko Tarumae",
+   "title": "[Starry Lightship]"
+  },
+  "109902": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-07-29",
+   "name": "Hokko Tarumae",
+   "title": "Pastel Marine Locodol"
+  },
+  "110001": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2022-11-17",
+   "name": "Wonder Acute",
+   "title": "[Butterfly Sting]"
+  },
+  "110002": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-11-10",
+   "name": "Wonder Acute",
+   "title": "Soft Light・Hot Spring Scent"
+  },
+  "110201": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-04-19",
+   "name": "Sounds of Earth",
+   "title": "Ritmo Della Terra"
+  },
+  "110202": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-01-30",
+   "name": "Sounds of Earth",
+   "title": "Sonata alla Menta"
+  },
+  "110301": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-02-14",
+   "name": "Royce and Royce",
+   "title": "Inspiring Genius"
+  },
+  "110401": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-07-10",
+   "name": "Katsuragi Ace",
+   "title": "[Dragon Rising]"
+  },
+  "110402": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-12-27",
+   "name": "Katsuragi Ace",
+   "title": "Pen Name: Ink Dragon"
+  },
+  "110501": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-04-19",
+   "name": "Neo Universe",
+   "title": "[Universe-Naut]"
+  },
+  "110502": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-08-30",
+   "name": "Neo Universe",
+   "title": "Like “ZEER”"
+  },
+  "110601": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-05-10",
+   "name": "Hishi Miracle",
+   "title": "[Miracle Maker]"
+  },
+  "110602": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-08-29",
+   "name": "Hishi Miracle",
+   "title": "Happy Little Notes"
+  },
+  "110701": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2023-11-20",
+   "name": "Tap Dance City",
+   "title": "GLITTER!"
+  },
+  "110702": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-03-31",
+   "name": "Tap Dance City",
+   "title": "Tap! Tap! Tap!"
+  },
+  "110801": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-02-24",
+   "name": "Duramente",
+   "title": "Red in Black"
+  },
+  "110901": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-03-21",
+   "name": "Rhein Kraft",
+   "title": "Dream Successor"
+  },
+  "110902": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-07-22",
+   "name": "Rhein Kraft",
+   "title": "Eternal Fairytale"
+  },
+  "111001": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-09-10",
+   "name": "Cesario",
+   "title": "Future Weaver"
+  },
+  "111002": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-05-30",
+   "name": "Cesario",
+   "title": "Twinbell Queen"
+  },
+  "111101": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-11-18",
+   "name": "Air Messiah",
+   "title": "Inherited Hope"
+  },
+  "111201": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-05-11",
+   "name": "Daring Heart",
+   "title": "Daring Darling!"
+  },
+  "111301": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-07-22",
+   "name": "Fusaichi Pandora",
+   "title": "Assorted Cuteness♡"
+  },
+  "111302": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-08-14",
+   "name": "Fusaichi Pandora",
+   "title": "Snatchin' Hearts ♡"
+  },
+  "111401": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-11-19",
+   "name": "Buena Vista",
+   "title": "Heroína Inocente"
+  },
+  "111501": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-02-24",
+   "name": "Orfevre",
+   "title": "Total Dominion"
+  },
+  "111601": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-08-24",
+   "name": "Gentildonna",
+   "title": "Regina dei Fiori"
+  },
+  "111602": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-05-29",
+   "name": "Gentildonna",
+   "title": "La dama perfetta"
+  },
+  "111701": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-12-10",
+   "name": "Win Variation",
+   "title": "Dramatic Tutu"
+  },
+  "111801": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-04-20",
+   "name": "Admire Groove",
+   "title": "Glacial Queen"
+  },
+  "111901": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-06-26",
+   "name": "Dream Journey",
+   "title": "Dreamland Memento"
+  },
+  "111902": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-11-28",
+   "name": "Dream Journey",
+   "title": "Snow-White Dream Road"
+  },
+  "112001": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-07-19",
+   "name": "Calstone Light O",
+   "title": "One True Path"
+  },
+  "112101": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-09-20",
+   "name": "Durandal",
+   "title": "Chevalier Fidèle"
+  },
+  "112401": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2024-10-11",
+   "name": "Bubble Gum Fellow",
+   "title": "POPPING!"
+  },
+  "112402": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-01-08",
+   "name": "Bubble Gum Fellow",
+   "title": "Dawn Light"
+  },
+  "112701": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-04-21",
+   "name": "Fenomeno",
+   "title": "Black Flame of Righteousness"
+  },
+  "112901": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-02-24",
+   "name": "Almond Eye",
+   "title": "The Changer"
+  },
+  "113001": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-04-10",
+   "name": "Lucky Lilac",
+   "title": "Standard of Unyielding Resolve"
+  },
+  "113101": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-03-11",
+   "name": "Gran Alegria",
+   "title": "sMile My Way!"
+  },
+  "113201": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-05-21",
+   "name": "Loves Only You",
+   "title": "9927 Wishes"
+  },
+  "113202": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-03-11",
+   "name": "Loves Only You",
+   "title": "Love-Linked Aster"
+  },
+  "113301": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-06-13",
+   "name": "Chrono Genesis",
+   "title": "Prismatic Curator"
+  },
+  "113401": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-06-15",
+   "name": "Curren Bouquetd'or",
+   "title": ""
+  },
+  "113501": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2025-12-21",
+   "name": "Stay Gold",
+   "title": "Sunlit Outsider"
+  },
+  "113601": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-05-20",
+   "name": "Red Desire",
+   "title": "Divine Raiment"
+  },
+  "113701": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-01-19",
+   "name": "Kiseki",
+   "title": "Miracle Author"
+  },
+  "114301": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-03-19",
+   "name": "Victoire Pisa",
+   "title": "Lueur Angélique"
+  },
+  "114501": {
+   "global": false,
+   "release": null,
+   "releaseJp": "2026-07-21",
+   "name": "Rulership",
+   "title": "Monochrome GM"
+  }
+ }
+}

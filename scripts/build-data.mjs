@@ -4,8 +4,10 @@
 //   node scripts/build-data.mjs [--local <path to uma-tools checkout>] [--no-gametora]
 //
 // Two sources feed the build:
-//   1. the Global client's master-database dump (structure + the release filter)
-//   2. GameTora (release dates + canonical Global spellings), best-effort
+//   1. the Global client's master-database dump (ids, names, numbers)
+//   2. GameTora's release table (`release_en`), which decides what is actually
+//      out on Global — and is snapshotted so a later build survives GameTora
+//      being unreachable
 //
 // Output lands in docs/data/. Everything is precomputed here so the browser
 // only ever loads flat arrays.
@@ -24,6 +26,7 @@ import {
 
 const ROOT = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
 const OUT = path.join(ROOT, 'docs', 'data');
+const SNAPSHOT = path.join(ROOT, 'data-cache', 'gametora-releases.json');
 
 const args = process.argv.slice(2);
 const argOf = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : null; };
@@ -147,7 +150,7 @@ function mergeEffects(effects) {
 
 /* -------------------------------------------------------------- characters */
 
-function buildCharacters(dump, skillById, overrides = {}) {
+function buildCharacters(dump, skillById, overrides = {}, gametora = null) {
   const out = [];
   for (const [charaId, chara] of Object.entries(dump.umas)) {
     const outfits = [];
@@ -158,12 +161,22 @@ function buildCharacters(dump, skillById, overrides = {}) {
       const uniqueId = uniqueSkillForOutfit(outfitId);
       const skillIds = (o.awakenings || []).filter((s) => skillById.has(s));
 
-      // The Global client ships data slightly ahead of the banner, so an
-      // outfit can be present here before it is playable. Overrides pin those.
+      // The Global client ships data slightly ahead of the banner, so an outfit
+      // can be present in the dump before it is playable. GameTora's Global
+      // release date settles it; a manual override beats both.
+      const gt = gametora?.characters?.[outfitId];
       const pinned = overrides[outfitId] ?? overrides[charaId];
+
+      let isGlobal = true;
+      let releaseSource = 'global dump';
+      if (gt) { isGlobal = gt.global; releaseSource = gametora.source; }
+      if (pinned !== undefined) { isGlobal = !!pinned; releaseSource = 'manual override'; }
+
       outfits.push({
         id: outfitId,
-        global: pinned === undefined ? true : !!pinned,
+        global: isGlobal,
+        release: gt?.release ?? null,
+        releaseSource,
         epithet: (o.epithet || '').replace(/^\[|\]$/g, ''),
         stars: o.rarity,
         strategy: o.strategy,
@@ -186,29 +199,35 @@ function buildCharacters(dump, skillById, overrides = {}) {
 function buildSupports(dump, globalSkillIds, overrides, gametora) {
   const out = [];
   for (const [id, card] of Object.entries(dump.cards)) {
-    const eventSkills = card.event || [];
-    const hintSkills = card.hints || [];
-    const all = [...eventSkills, ...hintSkills];
+    const all = [...(card.event || []), ...(card.hints || [])];
     const missing = all.filter((s) => !globalSkillIds.has(s));
+    // A handful of Global cards teach a skill the umalator dump does not carry
+    // (passives it never has to simulate). Nothing downstream can render or
+    // score those, so drop them from the lists and keep the count instead —
+    // exactly what buildCharacters already does with outfit skills.
+    const eventSkills = (card.event || []).filter((s) => globalSkillIds.has(s));
+    const hintSkills = (card.hints || []).filter((s) => globalSkillIds.has(s));
 
+    // Support cards ship as one combined JP+Global list, so something has to
+    // decide what is actually out on Global. GameTora's `release_en` is that
+    // something; the skill-set heuristic below only covers cards GameTora has
+    // never heard of, and anything it decides is flagged `unverified`.
     let isGlobal = missing.length === 0;
     let releaseSource = 'skill-set inference';
     let release = null;
 
     const gt = gametora?.supports?.[id];
-    if (gt && (gt.release !== undefined)) {
-      isGlobal = !!gt.release;
+    if (gt) {
+      isGlobal = gt.global;
       release = gt.release;
-      releaseSource = 'gametora';
+      releaseSource = gametora.source;
     }
     if (Object.prototype.hasOwnProperty.call(overrides, id)) {
       isGlobal = !!overrides[id];
       releaseSource = 'manual override';
     }
 
-    // Cards released long after the Global frontier that only pass because they
-    // reuse old skills are flagged rather than silently trusted.
-    const unverified = releaseSource === 'skill-set inference' && isGlobal && Number(id.slice(1)) > 200;
+    const unverified = releaseSource === 'skill-set inference' && isGlobal;
 
     out.push({
       id,
@@ -289,21 +308,58 @@ async function readOverrides(file) {
   } catch { return {}; }
 }
 
+/**
+ * The Global release table, live from GameTora when it is reachable and from
+ * the committed snapshot when it is not.
+ *
+ * Refusing to build without either is deliberate: falling back to the skill-set
+ * heuristic silently would republish ~80 Japan-only cards as if they were live,
+ * which is exactly the bug this table exists to prevent. `--no-gametora` is the
+ * explicit way to ask for the heuristic anyway.
+ */
+async function loadReleaseTable() {
+  if (!useGametora) {
+    log('GameTora pass skipped — falling back to the skill-set heuristic.');
+    return null;
+  }
+
+  log('Loading the GameTora release table…');
+  try {
+    const live = await loadGametora({ log });
+    if (!live.ok) throw new Error('empty payload');
+    await mkdir(path.dirname(SNAPSHOT), { recursive: true });
+    await writeFile(SNAPSHOT, `${JSON.stringify({
+      fetchedAt: new Date().toISOString(),
+      counts: live.counts,
+      supports: live.supports,
+      characters: live.characters,
+    }, null, 1)}\n`);
+    log(`  snapshot written to ${path.relative(ROOT, SNAPSHOT)}`);
+    return { ...live, source: 'gametora', fetchedAt: new Date().toISOString() };
+  } catch (err) {
+    log(`  gametora: unreachable (${err.message}) — trying the snapshot`);
+  }
+
+  try {
+    const snap = JSON.parse(await readFile(SNAPSHOT, 'utf8'));
+    log(`  snapshot: ok, taken ${snap.fetchedAt}`);
+    return { ...snap, ok: true, source: 'gametora snapshot' };
+  } catch (err) {
+    throw new Error(
+      `GameTora is unreachable and no usable snapshot exists at ${path.relative(ROOT, SNAPSHOT)} (${err.message}).\n`
+      + 'Refusing to build: without the release table the Japan-only cards cannot be told apart from the Global ones.\n'
+      + 'Re-run with --no-gametora if you really want the skill-set heuristic instead.',
+    );
+  }
+}
+
 async function main() {
   log('Loading master-database dump…');
   const dump = await loadMasterDump({ localRoot, log });
 
   const trackName = (id) => dump.trackNames[id]?.[1] ?? `track ${id}`;
 
-  let gametora = null;
-  if (useGametora) {
-    log('Checking GameTora…');
-    try {
-      gametora = await loadGametora({ log });
-    } catch (err) {
-      log(`  gametora: failed (${err.message}) — continuing with dump data`);
-    }
-  }
+  const gametora = await loadReleaseTable();
 
   log('Building skills…');
   const skills = buildSkills(dump, trackName);
@@ -311,7 +367,7 @@ async function main() {
 
   log('Building characters…');
   const characterOverrides = await readOverrides('characters.json');
-  const characters = buildCharacters(dump, skillById, characterOverrides);
+  const characters = buildCharacters(dump, skillById, characterOverrides, gametora);
 
   log('Building support cards…');
   const globalSkillIds = new Set(Object.keys(dump.skillMeta));
@@ -349,23 +405,31 @@ async function main() {
   }
 
   const globalSupports = supports.filter((s) => s.global);
+  const countBy = (list) => list.reduce((acc, k) => ({ ...acc, [k]: (acc[k] ?? 0) + 1 }), {});
   const meta = {
     generatedAt: new Date().toISOString(),
     counts: {
       skills: skills.length,
       learnableSkills: skills.filter((s) => !s.inherited).length,
-      characters: characters.length,
-      outfits: characters.reduce((n, c) => n + c.outfits.length, 0),
+      characters: characters.filter((c) => c.global).length,
+      charactersAll: characters.length,
+      outfits: characters.reduce((n, c) => n + c.outfits.filter((o) => o.global).length, 0),
+      outfitsAll: characters.reduce((n, c) => n + c.outfits.length, 0),
       supports: globalSupports.length,
       supportsAll: supports.length,
       supportsUnverified: globalSupports.filter((s) => s.unverified).length,
       outfitsHidden: characters.reduce((n, c) => n + c.outfits.filter((o) => !o.global).length, 0),
       courses: courses.length,
     },
-    gametora: gametora ? { ok: gametora.ok, counts: gametora.counts, notes: gametora.notes.slice(0, 6) } : { ok: false, notes: ['skipped'] },
+    gametora: gametora
+      ? { ok: true, source: gametora.source, fetchedAt: gametora.fetchedAt ?? null, counts: gametora.counts }
+      : { ok: false, source: 'skipped' },
+    releaseSources: countBy(
+      [...supports.map((s) => s.releaseSource), ...characters.flatMap((c) => c.outfits.map((o) => o.releaseSource))],
+    ),
     sources: [
       { name: 'Global master database dump', via: 'alpha123/uma-tools (umalator-global)' },
-      { name: 'GameTora', via: 'release dates and Global naming', ok: !!gametora?.ok },
+      { name: 'GameTora', via: 'Global release dates (release_en)', ok: !!gametora },
     ],
   };
 

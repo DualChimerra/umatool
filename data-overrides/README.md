@@ -1,10 +1,10 @@
 # Manual overrides
 
-The automatic Global filter is right for the overwhelming majority of entries,
-but the Global client ships data slightly ahead of the banner, and a brand-new
-Japanese support card that only reuses old skills can pass the check. These two
-files pin anything the inference gets wrong. Both win over the inference *and*
-over GameTora.
+What is live on Global is read from GameTora's `release_en` dates, which is right
+for the overwhelming majority of entries. These two files pin anything it gets
+wrong — a card that went out on Global before GameTora recorded it, or an entry
+whose date is simply mistyped upstream. Both win over the release table, over the
+snapshot in `data-cache/`, and over the skill-set fallback.
 
 ## `supports.json`
 
@@ -30,5 +30,5 @@ page, the team picker and every skill's source list.
 }
 ```
 
-After editing, rebuild with `npm run build:data:offline` (or just let the daily
-workflow do it) and commit the regenerated `docs/data/`.
+After editing, rebuild with `npm run build:data` (or just let the daily workflow
+do it) and commit the regenerated `docs/data/`.
