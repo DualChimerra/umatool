@@ -34,6 +34,25 @@ write yourself** — every deck is then scored on how much of it you cover, and 
 missing. Team level: style spread, total expected lengths, and which cards you are running
 in more than one deck.
 
+Both pickers are ranked, not alphabetical. Umas are sorted by what their own unique and
+skill list is worth on this course, discounted for missing aptitude. Support cards are
+sorted by **what they would add to that specific deck** — priority skills first, then
+expected lengths — and every card is listed with all of its skills, tagged event or hint,
+with priority hits ringed and skills the deck already has dimmed out.
+
+A **What to fix next** panel reads the whole entry and says what to do: stamina shortfalls
+with the number of points or the percentage of recovery that would close them, aptitudes
+below A, empty slots, unreachable priority skills together with the card that would cover
+the most of them, which stat the next 100 points should go into, and whether the three
+decks have collapsed into the same list.
+
+Builds are kept automatically between visits, and can be saved by name and switched
+between.
+
+**Collection** — tick the umas and support cards you actually own. With the restriction
+on, the deck builder offers only those, plus **one borrowed card per deck** — the slot you
+fill from a friend.
+
 Click any skill anywhere in the app for the full breakdown: what it does, the exact
 condition from the game data, its complete valuation on the current course, and **every
 uma and support card that can give it to you** — split into unique, uma skill list,
@@ -133,8 +152,13 @@ content through Jekyll, which it has no reason to do here.
   conditions like being boxed in. Every factor applied is shown next to the skill.
 * **Stat ceilings are not hardcoded.** Set the cap your scenario gives you and the inputs
   and target ranges follow it.
-* **Power is not modelled.** It drives acceleration and lane changes, which this build does
-  not simulate, so its sensitivity column is deliberately blank rather than invented.
+* **Power** enters through acceleration: `0.0006 · √(500 · Power)` scaled per phase and
+  reduced by the going, applied to the opening dash out of the gate and the ramp into the
+  last spurt. Both cost seconds, and both get cheaper with Power. Its effect on cornering
+  and lane changes is still not simulated.
+* **Recovery is scored against how tight your stamina actually is.** Once the last spurt is
+  fully paid for, healing buys almost nothing and drops down the ranking by itself — it
+  only climbs back when the spurt is short.
 * Support card **training effects** (friendship bonus, specialty rate, stat gains),
   character growth bonuses and training event choices are not in the dump this build
   reads, so they are not shown.

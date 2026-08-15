@@ -40,6 +40,36 @@ const GROUND_HP = {
   2: { 1: 1.0, 2: 1.0, 3: 1.01, 4: 1.02 },
 };
 
+// Per-phase acceleration coefficients, and the effective Power penalty the
+// going applies.
+const ACCEL_COEF = {
+  1: [1.0, 1.0, 0.996],
+  2: [0.985, 1.0, 0.996],
+  3: [0.975, 1.0, 1.0],
+  4: [0.945, 1.0, 0.997],
+};
+const GROUND_POWER = {
+  1: { 1: 0, 2: 0, 3: -50, 4: -50 },
+  2: { 1: -100, 2: -50, 3: -50, 4: -100 },
+};
+
+// The opening dash adds a large flat bonus until ~85% of the opening target
+// speed is reached, which is why the start is over in about a second.
+const START_DASH_ACCEL = 24;
+
+/** Acceleration in m/s², the one place Power enters the model. */
+export function accelRate(power, strategy, phaseIdx, surface = 1, ground = 1) {
+  const effective = Math.max(1, power + (GROUND_POWER[surface]?.[ground] ?? 0));
+  return 0.0006 * Math.sqrt(500 * effective) * (ACCEL_COEF[strategy] ?? ACCEL_COEF[2])[phaseIdx];
+}
+
+/**
+ * Seconds lost ramping from `from` to `to` at rate `a`, compared with an
+ * instant change. Distance covered while accelerating is (v²−u²)/2a, so the
+ * penalty is (v−u)² / (2·a·v).
+ */
+const rampLoss = (from, to, a) => (to <= from ? 0 : (to - from) ** 2 / (2 * a * to));
+
 /**
  * Where each style sits, as bands over the field expressed in fractions of the
  * field from the front. Discretised onto the actual field size at run time, so
@@ -144,7 +174,27 @@ export function simulateRace({ course, strategy, stats, ground = 1, recoveryPct 
 
   const needHp = before + hpFullSpurt;
   const requiredStamina = Math.max(0, (needHp / (1 + recoveryPct / 100) - d) / (0.8 * hpCoef));
-  const time = seg[0] / v0 + seg[1] / v1 + (seg[2] - spurtDistance) / v2 + spurtDistance / spurt;
+
+  // Acceleration: the opening dash out of the gate and the ramp into the last
+  // spurt. Both are paid in seconds and both get cheaper with Power.
+  const aOpen = accelRate(stats.power, strategy, 0, course.surface, ground);
+  const aFinal = accelRate(stats.power, strategy, 2, course.surface, ground);
+  const dashTarget = 0.85 * v0;
+  const startLoss = (dashTarget / (aOpen + START_DASH_ACCEL) + (v0 - dashTarget) / aOpen)
+    - ((dashTarget ** 2) / (2 * (aOpen + START_DASH_ACCEL)) + (v0 ** 2 - dashTarget ** 2) / (2 * aOpen)) / v0;
+  const spurtLoss = spurtDistance > 0 ? rampLoss(v2, spurt, aFinal) : 0;
+  const accelLoss = startLoss + spurtLoss;
+
+  const time = seg[0] / v0 + seg[1] / v1 + (seg[2] - spurtDistance) / v2 + spurtDistance / spurt + accelLoss;
+
+  // Recovery is only worth something while the last spurt is not fully paid
+  // for. Once it is, extra healing buys nothing but a small buffer against
+  // pace-ups, so it must not dominate a ranking.
+  const surplus = available - hpFullSpurt;
+  const spurtCoverage = spurtDistance / seg[2];
+  const staminaPressure = spurtCoverage >= 1
+    ? Math.max(0, 0.12 * (1 - Math.min(1, surplus / (0.2 * hpFullSpurt))))
+    : Math.min(1, 1 - spurtCoverage);
 
   return {
     maxHp,
@@ -152,16 +202,17 @@ export function simulateRace({ course, strategy, stats, ground = 1, recoveryPct 
     hpBeforeFinal: before,
     hpFullSpurt,
     available,
-    surplus: available - hpFullSpurt,
+    surplus,
     requiredStamina: Math.ceil(requiredStamina),
     spurtDistance,
-    spurtCoverage: spurtDistance / seg[2],
+    spurtCoverage,
     speeds: { base, v0, v1, v2, spurt },
     rates: { spurt: rateSpurt, cruise: rateCruise },
+    accel: { opening: aOpen, final: aFinal, startLoss, spurtLoss, total: accelLoss },
     gutsMul,
     groundMul,
     time,
-    staminaPressure: Math.max(0, Math.min(1, 1 - (available - hpFullSpurt) / Math.max(1, hpFullSpurt))),
+    staminaPressure,
   };
 }
 
@@ -408,7 +459,7 @@ export function statSensitivity(ctx, skills, step = 100) {
   const base = simulateRace({ course, strategy, stats, ground, recoveryPct: ctx.recoveryPct ?? 0 });
   const out = {};
 
-  for (const key of ['speed', 'stamina', 'guts']) {
+  for (const key of ['speed', 'stamina', 'guts', 'power']) {
     const bumped = simulateRace({
       course, strategy, ground, recoveryPct: ctx.recoveryPct ?? 0,
       stats: { ...stats, [key]: stats[key] + step },
@@ -422,7 +473,7 @@ export function statSensitivity(ctx, skills, step = 100) {
     return rankSkills(skills, c, { limit: 12 }).reduce((n, r) => n + r.bashin, 0);
   };
   out.wit = { bashin: valueAt(stats.wit + step) - valueAt(stats.wit), modelled: true, viaSkills: true };
-  out.power = { bashin: null, modelled: false };
+  out.power.viaAccel = true;
   return out;
 }
 

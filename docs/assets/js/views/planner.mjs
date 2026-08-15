@@ -19,6 +19,7 @@ export function renderPlanner(root) {
           <p>Pick the race you are preparing for. Everything below — and the Team page — is derived from it.</p>
         </div>
       </div>
+      <nav class="jump" data-role="jump"></nav>
       <div data-role="out" class="stack"></div>
     </section>
   </div>`);
@@ -171,6 +172,11 @@ export function renderPlanner(root) {
     const recovery = learnable.filter((r) => r.skill.effects.some((e) => e.kind === 'recovery'));
     const sensitivity = statSensitivity({ ...full, recoveryPct: cm.recovery }, db.learnable);
 
+    layout.querySelector('[data-role="jump"]').innerHTML = [
+      ['course', 'Course'], ['stats', 'Stat targets'], ['field', 'Field model'],
+      ['skills', 'Best skills'], ['uniques', 'Uniques'], ['cards', 'Cards'],
+    ].map(([id, label]) => `<a href="#/planner" data-jump="${id}">${label}</a>`).join('');
+
     out.replaceChildren(
       courseCard(course, sim),
       statCards(course, sim),
@@ -188,7 +194,7 @@ export function renderPlanner(root) {
 
   function courseCard(course, sim) {
     const d = course.derived;
-    return el(`<section class="panel">
+    return el(`<section class="panel" data-section="course">
       <div class="panel__head">
         <h3>${esc(course.trackName)} · ${course.distance}m ${esc(course.surfaceName)}</h3>
         <div class="row">
@@ -284,7 +290,7 @@ export function renderPlanner(root) {
       </tr>`;
     }).join('');
 
-    return el(`<section class="panel">
+    return el(`<section class="panel" data-section="stats">
       <div class="panel__head"><h3>Stat targets and where the next 100 points go</h3></div>
       <div class="panel__body" style="gap:8px">
         <table>
@@ -304,7 +310,7 @@ export function renderPlanner(root) {
     const maxW = Math.max(...rows.map(([, w]) => w));
     const wit = activationRate(ctx.stats.wit);
 
-    return el(`<section class="panel">
+    return el(`<section class="panel" data-section="field">
       <div class="panel__head">
         <h3>Field model</h3>
         <span class="sk-count">${ctx.fieldSize} runners · ${esc(STRATEGY[ctx.strategy].name)}</span>
@@ -350,7 +356,7 @@ export function renderPlanner(root) {
   function rankCard(title, rows, total, hidden = null) {
     if (!rows.length) return el('<span hidden></span>');
     const max = rows[0].score || 1;
-    const node = el(`<section class="panel">
+    const node = el(`<section class="panel" data-section="skills">
       <div class="panel__head">
         <h3>${esc(title)}</h3>
         <div class="row">
@@ -397,7 +403,7 @@ export function renderPlanner(root) {
     const aptKey = ['', 'sprint', 'mile', 'medium', 'long'][course.distanceType];
     const surfKey = course.surface === 1 ? 'turf' : 'dirt';
 
-    return el(`<section class="panel">
+    return el(`<section class="panel" data-section="uniques">
       <div class="panel__head"><h3>Uniques that land on this course</h3><span class="sk-count">${rows.length} of ${total}</span></div>
       <div class="panel__body" style="padding:0">
         <div class="rank-list">
@@ -448,7 +454,7 @@ export function renderPlanner(root) {
     const rows = scored.slice(0, 12);
     if (!rows.length) return el('<span hidden></span>');
 
-    return el(`<section class="panel">
+    return el(`<section class="panel" data-section="cards">
       <div class="panel__head"><h3>Support cards carrying those skills</h3><span class="sk-count">top ${rows.length}</span></div>
       <div class="panel__body" style="padding:0">
         <div class="rank-list">
@@ -476,6 +482,11 @@ export function renderPlanner(root) {
       </div>
     </section>`);
   }
+
+  on(layout, 'click', '[data-jump]', (e, t) => {
+    e.preventDefault();
+    out.querySelector(`[data-section="${t.dataset.jump}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
 
   paint();
   root.replaceChildren(layout);

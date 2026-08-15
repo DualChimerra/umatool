@@ -7,6 +7,7 @@ import { renderTeam } from './views/team.mjs';
 import { renderUmas } from './views/umas.mjs';
 import { renderCards } from './views/cards.mjs';
 import { renderSkills } from './views/skills.mjs';
+import { renderCollection } from './views/collection.mjs';
 import { renderData } from './views/data.mjs';
 
 const views = {
@@ -15,6 +16,7 @@ const views = {
   umas: renderUmas,
   cards: renderCards,
   skills: renderSkills,
+  collection: renderCollection,
   data: renderData,
 };
 
