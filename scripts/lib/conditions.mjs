@@ -68,6 +68,9 @@ const PHASE_RU = { 0: 'старт', 1: 'середина', 2: 'финальны�
 const WEATHER_RU = { 1: 'ясно', 2: 'облачно', 3: 'дождь', 4: 'снег' };
 const SEASON_RU = { 1: 'весна', 2: 'лето', 3: 'осень', 4: 'зима', 5: 'сезон сакуры' };
 const ROTATION_RU = { 1: 'правый круг', 2: 'левый круг' };
+const GRADE_RU = { 100: 'G1', 200: 'G2', 300: 'G3', 400: 'OP', 800: 'Pre-OP' };
+const MOTIVATION_RU = { 1: 'ужасный', 2: 'плохой', 3: 'обычный', 4: 'хороший', 5: 'отличный' };
+const TIME_RU = { 1: 'утро', 2: 'день', 3: 'вечер', 4: 'ночь' };
 const phaseRu = (v) => PHASE_RU[v] ?? `фаза ${v}`;
 
 /**
@@ -285,7 +288,112 @@ const HANDLERS = {
   base_wiz: { describe: (op, v) => `базовый Wit ${cmpWord[op]} ${v}`, apply: () => {} },
   always: { describe: () => 'всегда активно', apply: (op, v, f) => f.passive = true },
   is_lastspurt_gap: { describe: (op, v) => `${cmpWord[op]} ${v} в последний спурт`, apply: () => {} },
+
+  // Ниже — только текст. `apply` у всех намеренно пустой: выставить этим ключам
+  // фасеты значило бы поменять оценку скиллов, а это правка перевода, а не
+  // модели. Фасеты для них как не считались, так и не считаются.
+  // Ключи без обработчика раньше уходили в запасной вариант, который печатает
+  // само имя ключа с подчёркиваниями через пробел — то есть английский текст
+  // прямо в русской фразе. Ниже закрыт весь остаток, встречающийся в данных.
+  random_lot: {
+    describe: (op, v) => (op === '==' ? `случайный шанс ${v}%` : `случайный бросок ${cmpWord[op]} ${v}`),
+    apply: () => {},
+  },
+  blocked_front: {
+    describe: (op, v) => (v === 1 ? 'когда зажали спереди' : 'когда не зажали спереди'),
+    apply: () => {},
+  },
+  is_surrounded: {
+    describe: (op, v) => (v === 1 ? 'когда окружена соперницами' : 'когда не окружена соперницами'),
+    apply: () => {},
+  },
+  behind_near_lane_time: {
+    describe: (op, v) => `после ${v}s позади соперницы на соседней дорожке`,
+    apply: () => {},
+  },
+  behind_near_lane_time_set1: {
+    describe: (op, v) => `после ${v}s позади соперницы на соседней дорожке`,
+    apply: () => {},
+  },
+  compete_fight_count: {
+    describe: (op, v) => `${cmpWord[op]} ${v} борьб корпус в корпус`,
+    apply: () => {},
+  },
+  lastspurt: {
+    describe: (op, v) => (v === 2 ? 'в полном последнем спурте' : `последний спурт, режим ${v}`),
+    apply: () => {},
+  },
+  overtake_target_no_order_up_time: {
+    describe: (op, v) => `после ${v}s преследования без отыгранного места`,
+    apply: () => {},
+  },
+  change_order_up_finalcorner_after: {
+    describe: (op, v) => `после ${v} отыгранных мест за последним поворотом`,
+    apply: () => {},
+  },
+  activate_count_end_after: {
+    describe: (op, v) => `после ${cmpWord[op]} ${v} скиллов на финальном отрезке`,
+    apply: () => {},
+  },
+  running_style_count_same: {
+    describe: (op, v) => `${cmpWord[op]} ${v} соперниц того же стиля`,
+    apply: () => {},
+  },
+  running_style_count_same_rate: {
+    describe: (op, v) => `${cmpWord[op]} ${v}% поля бежит тем же стилем`,
+    apply: () => {},
+  },
+  running_style_equal_popularity_one: {
+    describe: (op, v) => (v === 1 ? 'когда фаворит бежит тем же стилем' : 'когда фаворит бежит другим стилем'),
+    apply: () => {},
+  },
+  temptation_opponent_count_infront: {
+    describe: (op, v) => `${cmpWord[op]} ${v} соперниц впереди, способных ускорить темп`,
+    apply: () => {},
+  },
+  temptation_opponent_count_behind: {
+    describe: (op, v) => `${cmpWord[op]} ${v} соперниц сзади, способных ускорить темп`,
+    apply: () => {},
+  },
+  same_skill_horse_count: {
+    describe: (op, v) => `${cmpWord[op]} ${v} соперниц с тем же скиллом`,
+    apply: () => {},
+  },
+  is_other_character_activate_advantage_skill: {
+    describe: (op, v) => (v === 1 ? 'после того как соперница активировала скилл преимущества' : 'пока соперницы не активировали скилл преимущества'),
+    apply: () => {},
+  },
+  is_dirtgrade: {
+    describe: (op, v) => (v === 1 ? 'в градуированном забеге на Dirt' : 'вне градуированного забега на Dirt'),
+    apply: () => {},
+  },
+  grade: {
+    describe: (op, v) => `класс забега ${cmpWord[op]} ${GRADE_RU[v] ?? v}`,
+    apply: () => {},
+  },
+  motivation: {
+    describe: (op, v) => `настрой ${cmpWord[op]} ${MOTIVATION_RU[v] ?? v}`,
+    apply: () => {},
+  },
+  time: {
+    describe: (op, v) => `время старта ${cmpWord[op]} ${TIME_RU[v] ?? v}`,
+    apply: () => {},
+  },
 };
+
+// `order_rate_inN_continue` / `order_rate_outN_continue` — сколько секунд ты уже
+// держишься внутри верхних N% поля или вне их. Значения N в данных меняются, так
+// что таблица строится, а не перечисляется руками.
+for (const n of [10, 20, 30, 40, 50, 60, 70, 80, 90]) {
+  HANDLERS[`order_rate_in${n}_continue`] = {
+    describe: (op, v) => `после ${v}s в верхних ${n}%`,
+    apply: () => {},
+  };
+  HANDLERS[`order_rate_out${n}_continue`] = {
+    describe: (op, v) => `после ${v}s вне верхних ${n}%`,
+    apply: () => {},
+  };
+}
 
 for (const [style, key] of [[1, 'nige'], [2, 'senko'], [3, 'sashi'], [4, 'oikomi']]) {
   HANDLERS[`running_style_count_${key}`] = {
@@ -304,6 +412,16 @@ for (const [style, key] of [[1, 'nige'], [2, 'senko'], [3, 'sashi'], [4, 'oikomi
     describe: () => `когда фаворит — ${RUNNING_STYLE[style].name}`,
     apply: () => {},
   };
+}
+
+/**
+ * Условие, для которого ещё нет обработчика. Раньше здесь печаталось имя ключа
+ * с подчёркиваниями через пробел, и оно читалось как английская фраза посреди
+ * русской. Ключ — это идентификатор из игровых данных, поэтому он остаётся как
+ * есть, но подписан так, что видно: это сырое условие, а не перевод.
+ */
+function unknownTerm(term) {
+  return `условие \`${term.key}\` ${cmpWord[term.op] ?? term.op} ${term.value}`;
 }
 
 /** Terms that are always true and only add noise to the readable text. */
@@ -401,7 +519,7 @@ export function analyseCondition(condition, precondition, ctx = {}) {
       } else if (term.op === '?') {
         phrases.push(term.raw);
       } else {
-        phrases.push(`${term.key.replace(/_/g, ' ')} ${cmpWord[term.op] ?? term.op} ${term.value}`);
+        phrases.push(unknownTerm(term));
       }
     }
     altTexts.push(phrases.join(', '));
@@ -410,7 +528,7 @@ export function analyseCondition(condition, precondition, ctx = {}) {
 
   const preTexts = pre.map((alt) => alt.map((term) => {
     const h = HANDLERS[term.key];
-    return h ? h.describe(term.op, term.value, ctx) : `${term.key.replace(/_/g, ' ')} ${cmpWord[term.op] ?? term.op} ${term.value}`;
+    return h ? h.describe(term.op, term.value, ctx) : unknownTerm(term);
   }).filter(Boolean).join(', ')).filter(Boolean);
 
   const text = [

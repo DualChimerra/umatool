@@ -4,9 +4,9 @@ import { createSkillFilter, toggleGroup, searchField, selectField } from '../fil
 import { STRATEGY } from '../model.mjs';
 
 const APT = [
-  ['sprint', 'Spr'], ['mile', 'Mil'], ['medium', 'Med'], ['long', 'Lng'],
-  ['front', 'Frt'], ['pace', 'Pce'], ['late', 'Lte'], ['end', 'End'],
-  ['turf', 'Trf'], ['dirt', 'Drt'],
+  ['sprint', 'Spr', 'Sprint'], ['mile', 'Mil', 'Mile'], ['medium', 'Med', 'Medium'], ['long', 'Lng', 'Long'],
+  ['front', 'Frt', 'Front Runner'], ['pace', 'Pce', 'Pace Chaser'], ['late', 'Lte', 'Late Surger'], ['end', 'End', 'End Closer'],
+  ['turf', 'Trf', 'Turf'], ['dirt', 'Drt', 'Dirt'],
 ];
 const GRADES = ['-', 'G', 'F', 'E', 'D', 'C', 'B', 'A', 'S'];
 
@@ -15,7 +15,9 @@ const SORTS = [
   { value: 'stars', label: 'Редкость ★' },
   { value: 'gold', label: 'Золото в списке' },
   { value: 'score', label: 'Сумма очков скиллов' },
-  ...APT.map(([k, l]) => ({ value: `apt:${k}`, label: `Аптитюд · ${l}` })),
+  // В сетке аптитюдов ячейки узкие, поэтому там сокращения; в выпадающем списке
+  // места хватает на полное название из игры.
+  ...APT.map(([k, , full]) => ({ value: `apt:${k}`, label: `Аптитюд · ${full}` })),
 ];
 
 export function renderUmas(root) {

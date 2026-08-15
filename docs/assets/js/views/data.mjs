@@ -1,6 +1,17 @@
 import { db } from '../store.mjs';
 import { el, esc, fmt } from '../ui.mjs';
 
+// Счётчики последней сверки приходят объектом; раньше он печатался как сырой
+// JSON прямо посреди предложения.
+const COUNT_RU = {
+  supports: 'карт всего', supportsGlobal: 'карт на Global',
+  outfits: 'нарядов всего', outfitsGlobal: 'нарядов на Global',
+  characters: 'ум', skills: 'скиллов',
+};
+const countsRu = (counts) => Object.entries(counts)
+  .map(([k, v]) => `${COUNT_RU[k] ?? k}: ${v}`)
+  .join(', ');
+
 export function renderData(root) {
   const m = db.meta;
   const when = m.generatedAt ? new Date(m.generatedAt) : null;
@@ -47,7 +58,7 @@ export function renderData(root) {
           <p style="margin-top:8px"><b>GameTora.</b> Задача обновления также сверяется с
           <a href="https://gametora.com/umamusume" style="color:var(--accent)">gametora.com</a> — за датами релизов и
           каноническим написанием названий на Global. Статус последней попытки:
-          <b>${gt.ok ? 'успех' : 'не применено'}</b>${gt.counts ? ` (${esc(JSON.stringify(gt.counts))})` : ''}.
+          <b>${gt.ok ? 'успех' : 'не применено'}</b>${gt.counts ? ` (${esc(countsRu(gt.counts))})` : ''}.
           Когда сверка не применяется, работает только фильтр по мастер-базе, а названия остаются такими, как в клиенте
           Global — то есть в той же формулировке, что показывает GameTora.</p>
         </div>

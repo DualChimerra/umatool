@@ -314,8 +314,11 @@ export function recommendations(analyses) {
     if (ordered.length) {
       const [bestStat, bestVal] = ordered[0];
       const [worstStat, worstVal] = ordered[ordered.length - 1];
-      push('tip', `${label}: следующие очки — в ${bestStat.charAt(0).toUpperCase() + bestStat.slice(1)}`,
-        `+100 ${bestStat} стоят здесь ${bestVal.bashin.toFixed(2)} корпуса против ${worstVal.bashin.toFixed(2)} у ${worstStat}. Посчитано повторным прогоном забега с добавленными очками.`,
+      // Ключи статов пишутся в нижнем регистре, а на экране это названия из
+      // игры — Speed, Wit, — так что в текст они идут только капитализированными.
+      const statName = (k) => k.charAt(0).toUpperCase() + k.slice(1);
+      push('tip', `${label}: следующие очки — в ${statName(bestStat)}`,
+        `+100 ${statName(bestStat)} стоят здесь ${bestVal.bashin.toFixed(2)} корпуса против ${worstVal.bashin.toFixed(2)} у ${statName(worstStat)}. Посчитано повторным прогоном забега с добавленными очками.`,
         { slot: i });
     }
 
