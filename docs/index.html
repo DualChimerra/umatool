@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Paddock — Champions Meeting prep for Uma Musume (Global)</title>
+<meta name="description" content="Champions Meeting preparation tool for Uma Musume Pretty Derby Global: every uma with their full skill list, support cards indexed by event and hint skills, deep multi-skill search, and a course planner that ranks skills and works out stat targets.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🏇</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap">
+<link rel="stylesheet" href="./assets/css/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <a class="brand" href="#/planner">
+      <span class="brand__mark" aria-hidden="true"></span>
+      <span class="brand__text">
+        <strong>Paddock</strong>
+        <span>Champions Meeting prep · Global</span>
+      </span>
+    </a>
+
+    <nav class="tabs" id="tabs" aria-label="Sections">
+      <a href="#/planner" data-view="planner">Planner</a>
+      <a href="#/umas" data-view="umas">Umas</a>
+      <a href="#/cards" data-view="cards">Support cards</a>
+      <a href="#/skills" data-view="skills">Skills</a>
+      <a href="#/data" data-view="data">Data</a>
+    </nav>
+
+    <div class="topbar__tools">
+      <button class="icon-btn" id="theme-toggle" type="button" title="Switch theme" aria-label="Switch theme">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="app" class="app">
+  <div class="boot" id="boot">
+    <div class="boot__spin" aria-hidden="true"></div>
+    <p>Loading Global data…</p>
+  </div>
+</main>
+
+<footer class="footer">
+  <p>
+    Fan-made planning tool. Not affiliated with Cygames. Game data belongs to its owners.
+    <span id="footer-meta"></span>
+  </p>
+</footer>
+
+<div id="tooltip" class="tooltip" hidden></div>
+
+<script type="module" src="./assets/js/app.mjs"></script>
+</body>
+</html>

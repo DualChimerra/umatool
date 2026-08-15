@@ -1,0 +1,58 @@
+name: Refresh game data
+
+# Rebuilds docs/data/*.json from the Global master-database dump and, when it is
+# reachable, from GameTora. Commits only when something actually changed.
+
+on:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+    inputs:
+      skip_gametora:
+        description: 'Skip the GameTora pass'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Rebuild data
+        run: |
+          if [ "${{ inputs.skip_gametora }}" = "true" ]; then
+            node scripts/build-data.mjs --no-gametora
+          else
+            node scripts/build-data.mjs
+          fi
+
+      - name: Refresh icons for anything new
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check Pillow
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/alpha123/uma-tools /tmp/uma-tools
+          git -C /tmp/uma-tools sparse-checkout set icons icons.json
+          python3 scripts/build_icons.py /tmp/uma-tools
+
+      - name: Commit if changed
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add docs/data docs/img
+          if git diff --cached --quiet; then
+            echo 'No data changes.'
+            exit 0
+          fi
+          git commit -m "chore(data): refresh Global data set"
+          git push
