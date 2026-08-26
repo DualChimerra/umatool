@@ -96,7 +96,7 @@ loadData().then(() => {
   const meta = db.meta;
   if (meta.generatedAt) {
     document.getElementById('footer-meta').textContent =
-      ` · Data rebuilt ${new Date(meta.generatedAt).toISOString().slice(0, 10)} · ${meta.counts.learnableSkills} skills, ${meta.counts.supports} Global support cards, ${meta.counts.outfits} outfits.`;
+      ` Data rebuilt ${new Date(meta.generatedAt).toISOString().slice(0, 10)} — ${meta.counts.learnableSkills} skills, ${meta.counts.supports} Global support cards, ${meta.counts.outfits} outfits.`;
   }
   if (!location.hash) location.hash = '#/planner';
   app.dataset.view = currentView();

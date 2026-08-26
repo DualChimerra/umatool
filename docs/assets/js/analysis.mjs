@@ -317,7 +317,7 @@ export function recommendations(analyses) {
 
   for (const [i, a] of analyses.entries()) {
     if (!a.outfit) continue;
-    const label = `Uma ${i + 1} · ${a.outfit.charaName}`;
+    const label = `Uma ${i + 1}, ${a.outfit.charaName}`;
 
     const deficit = a.sim.requiredStamina - a.ctx.stats.stamina;
     if (deficit > 0) {

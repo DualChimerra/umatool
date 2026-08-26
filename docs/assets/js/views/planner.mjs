@@ -1,10 +1,12 @@
 import { db, isObtainable } from '../store.mjs';
-import { el, esc, on, skillPill, effectSummary, fmt, turnLabel } from '../ui.mjs';
+import {
+  el, esc, on, skillPill, effectTags, icon, valueBar, skillTrack, fmt, turnLabel,
+} from '../ui.mjs';
 import { cm, commitContext, currentCourse, scoringContext, DEFAULT_STATS } from '../context.mjs';
 import {
   simulateRace, rankSkills, statGuide, statSensitivity, STRATEGY,
   orderDistribution, orderRate, activationRate, effectiveStats, courseSpeedModifier,
-  staminaMatrix, raceProfile, BASHIN, CM_FIELD_SIZE,
+  staminaMatrix, raceProfile, skillFiring, skillOverlaps, BASHIN, CM_FIELD_SIZE,
 } from '../model.mjs';
 import { cardSkills, rankUniques } from '../analysis.mjs';
 
@@ -55,14 +57,14 @@ export function renderPlanner(root) {
       <div class="field">
         <label>Field size</label>
         <div class="toggle-grid" data-role="field">
-          ${[9, 12, 18].map((n) => `<button type="button" data-v="${n}" aria-pressed="${n === cm.fieldSize}">${n}${n === CM_FIELD_SIZE ? ' · CM' : ''}</button>`).join('')}
+          ${[9, 12, 18].map((n) => `<button type="button" data-v="${n}" aria-pressed="${n === cm.fieldSize}">${n}${n === CM_FIELD_SIZE ? '<b class="pill-note">CM</b>' : ''}</button>`).join('')}
         </div>
       </div>
     </div>
   </section>`);
 
   const statsPanel = el(`<section class="panel">
-    <div class="panel__head"><h3>Your stats</h3><button class="btn btn--ghost btn--sm" data-act="stat-reset" type="button">Reset</button></div>
+    <div class="panel__head"><h3>${icon('gauge', { size: 14 })}Your stats</h3><button class="btn btn--ghost btn--sm" data-act="stat-reset" type="button">Reset</button></div>
     <div class="panel__body">
       <div class="field">
         <label>Stat ceiling</label>
@@ -100,7 +102,7 @@ export function renderPlanner(root) {
 
   function fillCourses(trackName, preferId = null) {
     const list = db.courses.filter((c) => c.trackName === trackName);
-    courseSel.innerHTML = list.map((c) => `<option value="${esc(c.id)}">${c.distance}m ${esc(c.surfaceName)} · ${esc(turnLabel(c.turnName))}</option>`).join('');
+    courseSel.innerHTML = list.map((c) => `<option value="${esc(c.id)}">${c.distance}m ${esc(c.surfaceName)} — ${esc(turnLabel(c.turnName))}</option>`).join('');
     const chosen = preferId && list.some((c) => c.id === preferId) ? preferId : list[0]?.id;
     courseSel.value = chosen;
     cm.courseId = chosen;
@@ -178,8 +180,8 @@ export function renderPlanner(root) {
     const sensitivity = statSensitivity({ ...full, recoveryPct: cm.recovery }, db.learnable);
 
     layout.querySelector('[data-role="jump"]').innerHTML = [
-      ['course', 'Course'], ['stats', 'Stat targets'], ['matrix', 'Going & style'],
-      ['skills', 'Best skills'], ['uniques', 'Uniques'], ['cards', 'Cards'],
+      ['course', 'Course'], ['stats', 'Stat targets'], ['matrix', 'Going and style'],
+      ['skills', 'Best skills'], ['overlap', 'Timing'], ['uniques', 'Uniques'], ['cards', 'Cards'],
     ].map(([id, label]) => `<a href="#/planner" data-jump="${id}">${label}</a>`).join('');
 
     out.replaceChildren(
@@ -187,8 +189,9 @@ export function renderPlanner(root) {
       statCards(course, sim),
       guideCard(course, sim, sensitivity),
       matrixCard(course),
-      rankCard('Best skills for this course', learnable.slice(0, 30), learnable.length, hiddenCount),
-      recovery.length ? rankCard('Best recovery skills', recovery.slice(0, 12), recovery.length) : el('<span hidden></span>'),
+      rankCard('Best skills for this course', learnable.slice(0, 30), learnable.length, sim, hiddenCount),
+      overlapCard(learnable, course, sim),
+      recovery.length ? rankCard('Best recovery skills', recovery.slice(0, 12), recovery.length, sim) : el('<span hidden></span>'),
       uniqueCard(uniques.slice(0, 20), uniques.length),
       cardSourcesCard(learnable.slice(0, 24)),
       fieldCard(ctx),
@@ -201,7 +204,7 @@ export function renderPlanner(root) {
     const d = course.derived;
     return el(`<section class="panel" data-section="course">
       <div class="panel__head">
-        <h3>${esc(course.trackName)} · ${course.distance}m ${esc(course.surfaceName)}</h3>
+        <h3>${icon('route', { size: 14 })}${esc(course.trackName)} <span class="hdr-sep">${course.distance}m ${esc(course.surfaceName)}</span></h3>
         <div class="row">
           <span class="chip chip--${course.surface === 1 ? 'turf' : 'dirt'}">${esc(course.surfaceName)}</span>
           <span class="chip">${esc(course.distanceTypeName)}</span>
@@ -247,10 +250,17 @@ export function renderPlanner(root) {
       .map((pt, i) => `${i ? 'L' : 'M'}${x(pt.x).toFixed(1)},${fn(pt[key]).toFixed(1)}`).join('');
 
     const spurtBand = seg(profile.spurtStart, course.distance, 'color-mix(in srgb, var(--gold) 16%, transparent)', top, bottom - top);
+    // Drop a label when it would sit on top of the previous one rather than
+    // letting the two overprint.
+    let lastLabelX = -Infinity;
     const marks = [[profile.marks.openingEnd, 'middle'], [profile.marks.middleEnd, 'final leg'], [profile.spurtStart, 'spurt']]
-      .map(([m, label]) => `
-        <line x1="${x(m).toFixed(1)}" y1="${top}" x2="${x(m).toFixed(1)}" y2="${bottom}" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3"/>
-        <text x="${(x(m) + 4).toFixed(1)}" y="${top + 9}" font-size="10" fill="var(--ink-3)">${label}</text>`).join('');
+      .map(([m, label]) => {
+        const px = x(m);
+        const show = px - lastLabelX > 58;
+        if (show) lastLabelX = px;
+        return `<line x1="${px.toFixed(1)}" y1="${top}" x2="${px.toFixed(1)}" y2="${bottom}" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3"/>
+        ${show ? `<text x="${(px + 5).toFixed(1)}" y="${top + 10}" font-size="10" fill="var(--ink-3)">${label}</text>` : ''}`;
+      }).join('');
 
     return `<svg class="track-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img"
       aria-label="Course profile with this build's speed and stamina">
@@ -292,7 +302,7 @@ export function renderPlanner(root) {
       <div class="stat-tile">
         <h4>Estimated time</h4>
         <div class="big">${formatTime(sim.time)}</div>
-        <div class="sub">spurt ${sim.speeds.spurt.toFixed(2)} m/s · cruise ${sim.speeds.v1.toFixed(2)} m/s</div>
+        <div class="sub">spurt ${sim.speeds.spurt.toFixed(2)} m/s, cruise ${sim.speeds.v1.toFixed(2)} m/s</div>
       </div>
     </div>`);
   }
@@ -304,7 +314,7 @@ export function renderPlanner(root) {
       .sort((a, b) => sens[b].bashin - sens[a].bashin)[0];
 
     const rows = order.map((k) => {
-      const range = k === 'stamina' ? `${fmt.int(sim.requiredStamina)}+` : `${fmt.int(guide[k][0])} – ${fmt.int(guide[k][1])}`;
+      const range = k === 'stamina' ? `${fmt.int(sim.requiredStamina)}+` : `${fmt.int(guide[k][0])}\u2013${fmt.int(guide[k][1])}`;
       const s = sens[k];
       const marginal = s?.bashin == null ? '—' : `${s.bashin >= 0 ? '+' : '−'}${Math.abs(s.bashin).toFixed(2)} len`;
       const note = k === 'stamina' ? 'solved from this course, style and going'
@@ -319,7 +329,7 @@ export function renderPlanner(root) {
     }).join('');
 
     return el(`<section class="panel" data-section="stats">
-      <div class="panel__head"><h3>Stat targets and where the next 100 points go</h3></div>
+      <div class="panel__head"><h3>${icon('gauge', { size: 14 })}Stat targets and where the next 100 points go</h3></div>
       <div class="panel__body" style="gap:8px">
         <table>
           <thead><tr><th>Stat</th><th class="num">Target</th><th class="num">+100 is worth</th><th>How it was worked out</th></tr></thead>
@@ -378,7 +388,7 @@ export function renderPlanner(root) {
     };
     return el(`<section class="panel" data-section="matrix">
       <div class="panel__head">
-        <h3>Going and style, against your Stamina</h3>
+        <h3>${icon('layers', { size: 14 })}Going and style, against your Stamina</h3>
         <span class="sk-count">you have ${fmt.int(have)}</span>
       </div>
       <div class="panel__body" style="gap:8px">
@@ -409,7 +419,7 @@ export function renderPlanner(root) {
 
     return el(`<section class="panel" data-section="field">
       <details class="explain explain--panel">
-        <summary>Field and order model · ${ctx.fieldSize} runners, ${esc(STRATEGY[ctx.strategy].name)}</summary>
+        <summary>Field and order model, ${ctx.fieldSize} runners as ${esc(STRATEGY[ctx.strategy].name)}</summary>
         <p>Champions Meeting runs ${CM_FIELD_SIZE} umamusume, so <code>order_rate</code> moves in steps of
         ${(100 / ctx.fieldSize).toFixed(1)}%. That is what decides whether a “top 30% of the field” skill is reachable at all.</p>
         <table>
@@ -445,12 +455,12 @@ export function renderPlanner(root) {
     </details>`;
   }
 
-  function rankCard(title, rows, total, hidden = null) {
+  function rankCard(title, rows, total, sim, hidden = null) {
     if (!rows.length) return el('<span hidden></span>');
     const max = rows[0].score || 1;
     const node = el(`<section class="panel" data-section="skills">
       <div class="panel__head">
-        <h3>${esc(title)}</h3>
+        <h3>${icon('spark', { size: 14 })}${esc(title)}</h3>
         <div class="row">
           ${hidden === null ? '' : `<div class="seg" data-role="obtainable">
             <button type="button" data-v="1" aria-pressed="${cm.obtainableOnly !== false}">Obtainable</button>
@@ -460,7 +470,7 @@ export function renderPlanner(root) {
         </div>
       </div>
       <div class="panel__body" style="padding:0">
-        <div class="rank-list">${rows.map((r, i) => rankRow(r, i, max)).join('')}</div>
+        <div class="rank-list">${rows.map((r, i) => rankRow(r, i, max, currentCourse(), sim)).join('')}</div>
       </div>
     </section>`);
     if (hidden !== null) {
@@ -476,20 +486,96 @@ export function renderPlanner(root) {
     return node;
   }
 
-  function rankRow(r, i, max) {
-    const why = [effectSummary(r.skill), ...r.reasons].filter(Boolean).join(' · ');
-    return `<div class="rank-row">
+  function rankRow(r, i, max, course, sim) {
+    const firing = skillFiring(r.skill, r, course, sim);
+    const notes = r.reasons.slice(0, 2);
+    return `<div class="rank-row rank-row--skill">
       <span class="rank-row__i">${i + 1}</span>
       <span style="min-width:0">
         ${skillPill(r.skill)}
-        <span class="rank-row__why">${esc(why)}</span>
+        <span class="rank-row__why">
+          ${effectTags(r.skill)}
+          ${notes.map((n) => `<span class="etag etag--note">${esc(n)}</span>`).join('')}
+        </span>
       </span>
       <span class="rank-row__mid">
-        <div class="bar"><i style="width:${Math.max(3, (r.score / max) * 100).toFixed(0)}%"></i></div>
-        <span class="tiny muted num">${fmt.pct(r.probability)} × ${(r.metres / BASHIN).toFixed(2)} len</span>
+        ${skillTrack(firing, course, { height: 16 })}
+        <span class="tiny muted num">${firing ? (firing.length < 5
+    ? `at ${Math.round(firing.start)}m, instant`
+    : `${Math.round(firing.start)}\u2013${Math.round(firing.end)}m`) : ''}</span>
+      </span>
+      <span class="rank-row__mid">
+        ${valueBar(r.parts)}
+        <span class="tiny muted num">${fmt.pct(r.probability)} of ${(r.metres / BASHIN).toFixed(2)} len</span>
       </span>
       <span class="rank-row__score">${r.bashin.toFixed(2)}</span>
     </div>`;
+  }
+
+  /**
+   * Which of the top skills are live at the same time.
+   *
+   * A ranking is a list of skills considered one at a time, and that is not how
+   * a race goes: two speed skills overlapping stack into one bigger push, and
+   * four skills all crowded into the same 150m are worth less together than the
+   * list makes them look. This is the part the per-skill number cannot say.
+   */
+  function overlapCard(rows, course, sim) {
+    const entries = rows.slice(0, 12)
+      .map((r) => ({ skill: r.skill, scored: r, firing: skillFiring(r.skill, r, course, sim) }))
+      .filter((e) => e.firing);
+    if (entries.length < 2) return el('<span hidden></span>');
+    const overlaps = skillOverlaps(entries).slice(0, 6);
+
+    const W = 640; const rowH = 22;
+    const x = (m) => (m / course.distance) * W;
+    const spurtStart = course.distance - sim.spurtDistance;
+    const lanes = entries.map((e, i) => `
+      <rect x="${x(e.firing.start).toFixed(1)}" y="${i * rowH + 4}" rx="4"
+        width="${Math.max(3, x(e.firing.end) - x(e.firing.start)).toFixed(1)}" height="${rowH - 8}"
+        fill="${e.firing.random ? 'color-mix(in srgb, var(--accent) 45%, transparent)' : 'var(--accent)'}"/>`).join('');
+    const H = entries.length * rowH + 6;
+
+    return el(`<section class="panel" data-section="overlap">
+      <div class="panel__head">
+        <h3>${icon('layers', { size: 14 })}When the top skills actually fire</h3>
+        <span class="sk-count">${entries.length} skills</span>
+      </div>
+      <div class="panel__body">
+        <div class="gantt">
+          <ul class="gantt__names">
+            ${entries.map((e) => `<li title="${esc(e.skill.name)}">${esc(e.skill.name)}</li>`).join('')}
+          </ul>
+          <svg class="gantt__chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"
+            style="height:${H}px" role="img"
+            aria-label="When each of the top skills fires along the course">
+            <rect x="${x(spurtStart).toFixed(1)}" y="0" width="${(W - x(spurtStart)).toFixed(1)}" height="${H}"
+              fill="color-mix(in srgb, var(--gold) 13%, transparent)"/>
+            ${[course.distance / 6, (course.distance * 2) / 3].map((m) => `<line x1="${x(m).toFixed(1)}" y1="0" x2="${x(m).toFixed(1)}" y2="${H}" stroke="var(--line)" stroke-width="1"/>`).join('')}
+            ${lanes}
+          </svg>
+        </div>
+        <div class="legend">
+          <span><i style="background:var(--accent)"></i>fixed start</span>
+          <span><i style="background:color-mix(in srgb, var(--accent) 45%, transparent)"></i>random start, drawn at its expected point</span>
+          <span><i style="background:color-mix(in srgb, var(--gold) 30%, transparent)"></i>last spurt</span>
+        </div>
+        ${overlaps.length ? `<div>
+          <h4 class="drawer__h4">Pairs that run together</h4>
+          <div class="stack" style="gap:5px">
+            ${overlaps.map((o) => `<div class="pair">
+              <span class="pair__names">${esc(o.a.skill.name)} + ${esc(o.b.skill.name)}</span>
+              <span class="pair__span">${Math.round(o.metres)}m together${o.certain ? '' : ', if the random one lands here'}</span>
+            </div>`).join('')}
+          </div>
+        </div>` : '<p class="small muted">None of the top skills overlap — they are spread across the race rather than stacked.</p>'}
+        <details class="explain">
+          <summary>Why overlap matters</summary>
+          <p>Speed effects add together while both are live, so two overlapping speed skills give one larger push rather than two separate ones. An acceleration skill overlapping a speed skill is worth more than either alone, because it reaches the higher target speed sooner.</p>
+          <p>The reverse is also true: skills crowded into the same stretch compete for ground that is only there once, and the per-skill numbers in the ranking above are each measured as if that skill ran alone.</p>
+        </details>
+      </div>
+    </section>`);
   }
 
   function uniqueCard(rows, total) {
@@ -498,7 +584,7 @@ export function renderPlanner(root) {
 
     return el(`<section class="panel" data-section="uniques">
       <div class="panel__head">
-        <h3>Uniques that land on this course</h3>
+        <h3>${icon('spark', { size: 14 })}Uniques that land on this course</h3>
         <span class="sk-count">${rows.length} of ${total}</span>
       </div>
       <div class="panel__body" style="padding:0">
@@ -512,7 +598,7 @@ export function renderPlanner(root) {
               <img src="./img/chara/${esc(o.id)}.webp" alt="" width="34" height="34" loading="lazy" class="rank-row__face">
               <span style="min-width:0">
                 ${skillPill(r.skill)}
-                <span class="rank-row__why">${esc(`${o.charaName} · ${o.epithet}`)}</span>
+                <span class="rank-row__why"><span class="etag">${esc(o.charaName)}</span><span class="etag etag--note">${esc(o.epithet)}</span></span>
               </span>
               <span class="rank-row__mid chips">
                 <span class="chip${offStyle ? ' chip--accent' : ''}">${esc(STRATEGY[r.strategy].short)}</span>
@@ -552,7 +638,7 @@ export function renderPlanner(root) {
     if (!rows.length) return el('<span hidden></span>');
 
     return el(`<section class="panel" data-section="cards">
-      <div class="panel__head"><h3>Support cards carrying those skills</h3><span class="sk-count">top ${rows.length}</span></div>
+      <div class="panel__head"><h3>${icon('flag', { size: 14 })}Support cards carrying those skills</h3><span class="sk-count">top ${rows.length}</span></div>
       <div class="panel__body" style="padding:0">
         <div class="rank-list">
           ${rows.map(({ card, events, hints, value }) => `

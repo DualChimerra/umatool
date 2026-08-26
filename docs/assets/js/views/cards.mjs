@@ -1,5 +1,5 @@
 import { db } from '../store.mjs';
-import { el, esc, on, skillPill, readState, writeState } from '../ui.mjs';
+import { el, esc, on, skillPill, icon, readState, writeState } from '../ui.mjs';
 import { createSkillFilter, toggleGroup, searchField, selectField } from '../filters.mjs';
 
 const TYPES = [
@@ -104,7 +104,7 @@ export function renderCards(root) {
   rail.append(basics, skillFilter.element);
 
   const sortSel = selectField({ title: 'Sort by', options: SORTS, value: state.sort, onChange: (v) => { state.sort = v; paint(); } });
-  const dirBtn = el('<button class="btn btn--sm" type="button" title="Reverse order">↕</button>');
+  const dirBtn = el(`<button class="btn btn--sm" type="button" title="Reverse order" aria-label="Reverse order">${icon('sort')}</button>`);
   dirBtn.addEventListener('click', () => { state.dir = state.dir === 'desc' ? 'asc' : 'desc'; paint(); });
   layout.querySelector('[data-role="sortbar"]').append(sortSel.element, dirBtn);
 

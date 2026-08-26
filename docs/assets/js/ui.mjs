@@ -37,15 +37,25 @@ export const TIER_LABEL = { normal: 'Normal', gold: 'Gold', unique: 'Unique', ev
 const TURN_LABEL = { Left: 'left-handed', Right: 'right-handed', Straight: 'straight' };
 export const turnLabel = (turnName) => TURN_LABEL[turnName] ?? turnName;
 
-/** One-line summary of what a skill actually does. */
-export function effectSummary(skill) {
-  if (!skill.effects.length) return '—';
-  return skill.effects.map((e) => {
+/** Each effect of a skill as its own readable phrase. */
+export function effectParts(skill) {
+  return (skill.effects ?? []).map((e) => {
     if (e.kind === 'stat') return `${e.label} ${fmt.signed(e.value, 0)}`;
     if (e.unit === 'm/s' || e.unit === 'm/s²') return `${e.label} ${fmt.signed(e.value, 2)}${e.unit}`;
     if (e.unit) return `${e.label} ${fmt.signed(e.value, 1)}${e.unit === '% max HP' ? '%' : e.unit}`;
     return `${e.label} ${fmt.signed(e.value, 2)}`;
-  }).join(' · ');
+  });
+}
+
+/** One-line summary of what a skill actually does. */
+export function effectSummary(skill) {
+  const parts = effectParts(skill);
+  return parts.length ? parts.join(', ') : '—';
+}
+
+/** The same phrases as separate tags, for anywhere with room to lay them out. */
+export function effectTags(skill) {
+  return effectParts(skill).map((t) => `<span class="etag">${esc(t)}</span>`).join('');
 }
 
 export function skillPill(skill, { tag = null, match = false, dim = false, count = null } = {}) {
@@ -62,6 +72,96 @@ export function skillPill(skill, { tag = null, match = false, dim = false, count
     ${tag ? `<span class="skill__tag">${esc(tag)}</span>` : ''}
     ${count != null ? `<span class="sk-count">${count}</span>` : ''}
   </button>`;
+}
+
+/* ------------------------------------------------------------------- icons */
+
+/**
+ * A small stroked icon set, inline so it inherits colour and needs no request.
+ *
+ * These replace the typographic stand-ins the interface used to lean on — an
+ * up-down arrow for sort, a triangle for a disclosure, a multiplication sign for
+ * close. Glyphs render at whatever weight and baseline the font feels like,
+ * which is why they never sat straight next to text.
+ */
+const ICONS = {
+  sort: '<path d="M7 4v16m0 0-3-3.5M7 20l3-3.5M17 20V4m0 0-3 3.5M17 4l3 3.5"/>',
+  chevron: '<path d="m9 6 6 6-6 6"/>',
+  close: '<path d="M6 6l12 12M18 6 6 18"/>',
+  check: '<path d="m4 12 5.5 5.5L20 7"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  spark: '<path d="M12 3v4m0 10v4M3 12h4m10 0h4M5.6 5.6l2.8 2.8m7.2 7.2 2.8 2.8m0-12.8-2.8 2.8M8.4 15.6l-2.8 2.8"/>',
+  flag: '<path d="M5 21V4m0 0h11l-2 4 2 4H5"/>',
+  gauge: '<path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm1.5-3.5L18 7M4 19a9 9 0 1 1 16 0"/>',
+  clock: '<path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-14v5l3.5 2"/>',
+  route: '<path d="M6 20a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Zm12-11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Zm0 2.5v1a4 4 0 0 1-4 4h-4a4 4 0 0 0-4 4"/>',
+  layers: '<path d="m12 3 9 5-9 5-9-5 9-5Zm9 11-9 5-9-5"/>',
+  warn: '<path d="M12 9v4m0 3h.01M10.3 4.3 2.6 17.6A2 2 0 0 0 4.3 21h15.4a2 2 0 0 0 1.7-3.4L13.7 4.3a2 2 0 0 0-3.4 0Z"/>',
+  info: '<path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-9v5m0-8h.01"/>',
+};
+
+export function icon(name, { size = 16, cls = '' } = {}) {
+  const body = ICONS[name];
+  if (!body) return '';
+  return `<svg class="ico ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"
+    aria-hidden="true" focusable="false">${body}</svg>`;
+}
+
+/* --------------------------------------------------------- skill analytics */
+
+const PART_COLOR = {
+  speed: 'var(--accent)',
+  accel: 'var(--gold)',
+  recovery: 'var(--turf)',
+  stat: 'var(--unique)',
+  utility: 'var(--ink-3)',
+};
+export const PART_NAME = {
+  speed: 'Speed', accel: 'Acceleration', recovery: 'Recovery', stat: 'Stat boost', utility: 'Utility',
+};
+
+/**
+ * Where the number came from. A skill worth 1.4 lengths made entirely of
+ * acceleration is a different thing from one made of raw speed, and the ranking
+ * column alone cannot say which.
+ */
+export function valueBar(parts) {
+  const entries = Object.entries(parts ?? {}).filter(([, v]) => v > 0);
+  if (!entries.length) return '';
+  const total = entries.reduce((n, [, v]) => n + v, 0);
+  return `<span class="vbar" role="img" aria-label="${esc(entries.map(([k, v]) => `${PART_NAME[k] ?? k} ${Math.round((v / total) * 100)}%`).join(', '))}">
+    ${entries.map(([k, v]) => `<i style="width:${((v / total) * 100).toFixed(1)}%;background:${PART_COLOR[k] ?? 'var(--ink-3)'}"></i>`).join('')}
+  </span>`;
+}
+
+/**
+ * A skill drawn against the course: the stretch it is eligible on, and the
+ * stretch the effect is actually live over.
+ */
+export function skillTrack(firing, course, { height = 20, showPhases = true } = {}) {
+  if (!firing) return '';
+  const W = 300;
+  const x = (m) => (m / course.distance) * W;
+  const mid = height / 2;
+  const eligible = firing.eligible
+    .map(([a, b]) => `<rect x="${x(a).toFixed(1)}" y="${mid - 4}" width="${Math.max(1, x(b) - x(a)).toFixed(1)}" height="8" rx="2" fill="var(--line-strong)"/>`)
+    .join('');
+  const phases = showPhases
+    ? [course.distance / 6, (course.distance * 2) / 3]
+      .map((m) => `<line x1="${x(m).toFixed(1)}" y1="1" x2="${x(m).toFixed(1)}" y2="${height - 1}" stroke="var(--line-soft)" stroke-width="1"/>`)
+      .join('')
+    : '';
+  // An instant effect — recovery, a stat boost — occupies no stretch of track, so
+  // it is drawn as a marker rather than a bar three pixels wide pretending to be one.
+  const w = x(firing.end) - x(firing.start);
+  const live = w < 3
+    ? `<rect x="${(x(firing.start) - 1.5).toFixed(1)}" y="${mid - 7}" width="3" height="14" rx="1.5" fill="var(--accent)"/>`
+    : `<rect x="${x(firing.start).toFixed(1)}" y="${mid - 6}" width="${w.toFixed(1)}" height="12" rx="3" fill="var(--accent)"/>`;
+  return `<svg class="strack" viewBox="0 0 ${W} ${height}" preserveAspectRatio="none" role="img"
+    aria-label="Fires from ${Math.round(firing.start)} to ${Math.round(firing.end)} metres">
+    ${phases}${eligible}${live}
+  </svg>`;
 }
 
 /* ------------------------------------------------------- missing artwork */
@@ -99,7 +199,7 @@ function tooltipHtml(skill) {
     sources.characters.length ? `${sources.characters.length} uma skill lists` : '',
     sources.event.length ? `${sources.event.length} card events` : '',
     sources.hint.length ? `${sources.hint.length} card hints` : '',
-  ].filter(Boolean).join(' · ') || 'Not obtainable from cards or umas';
+  ].filter(Boolean).join(', ') || 'Not obtainable from cards or umas';
 
   return `<h5>${esc(skill.name)}</h5>
     <div class="chips" style="margin-bottom:6px">

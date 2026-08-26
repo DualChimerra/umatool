@@ -511,6 +511,79 @@ export function scoreSkill(skill, ctx) {
   };
 }
 
+/** Speed at a point on the course, for this build. */
+export function speedAt(course, sim, metres) {
+  if (metres < course.distance / 6) return sim.speeds.v0;
+  if (metres < (course.distance * 2) / 3) return sim.speeds.v1;
+  return metres >= course.distance - sim.spurtDistance ? sim.speeds.spurt : sim.speeds.v2;
+}
+
+/**
+ * Where a skill actually happens, in metres.
+ *
+ * `scoreSkill` already works out the eligible window and how many seconds of the
+ * effect fit before the line; this turns that into something drawable: the
+ * stretch of track the skill is allowed to fire on, and the stretch it is
+ * actually running over. Those are different — a skill eligible across 800m of
+ * corner fires once, somewhere in it — and the difference is most of what makes
+ * a ranking number hard to trust.
+ */
+export function skillFiring(skill, scored, course, sim) {
+  if (!scored) return null;
+  const d = course.distance;
+  const start = Math.min(d, Math.max(0, scored.at));
+  // Walk the distance covered while the effect runs, since speed changes under it.
+  let x = start;
+  let left = scored.durSec;
+  while (left > 0 && x < d) {
+    const v = speedAt(course, sim, x);
+    const stepSeconds = Math.min(left, 0.25);
+    x = Math.min(d, x + v * stepSeconds);
+    left -= stepSeconds;
+  }
+  const end = x;
+  const phaseOf = (m) => (m < d / 6 ? 'opening' : m < (d * 2) / 3 ? 'middle' : m >= d - sim.spurtDistance ? 'spurt' : 'final');
+  return {
+    start,
+    end,
+    length: end - start,
+    eligible: (scored.window?.ranges ?? []).map(([a, b]) => [a, b]),
+    random: !!skill.facets.random,
+    phase: phaseOf(start),
+    inSpurt: end >= d - sim.spurtDistance,
+    secondsClipped: Math.max(0, (skill.duration * (d / 1000)) - scored.durSec),
+  };
+}
+
+/**
+ * Skills whose effects are live at the same time.
+ *
+ * Two speed skills overlapping stack into one bigger push; a speed skill and an
+ * acceleration skill overlapping are worth more together than apart, because the
+ * acceleration reaches the higher target sooner. Skills that never overlap are
+ * spread across the race, which is usually what you want for recovery and
+ * usually not what you want in the last 200m.
+ */
+export function skillOverlaps(entries) {
+  const out = [];
+  for (let i = 0; i < entries.length; i += 1) {
+    for (let j = i + 1; j < entries.length; j += 1) {
+      const a = entries[i];
+      const b = entries[j];
+      if (!a.firing || !b.firing) continue;
+      const from = Math.max(a.firing.start, b.firing.start);
+      const to = Math.min(a.firing.end, b.firing.end);
+      if (to - from <= 1) continue;
+      // A random-window skill only *might* land here, so say so rather than
+      // presenting a coincidence as a plan.
+      const certain = !a.firing.random && !b.firing.random;
+      out.push({ a, b, from, to, metres: to - from, certain });
+    }
+  }
+  out.sort((x, y) => y.metres - x.metres);
+  return out;
+}
+
 export function rankSkills(skills, ctx, { tiers = null, limit = 0 } = {}) {
   const out = [];
   for (const s of skills) {
