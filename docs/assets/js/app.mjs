@@ -1,5 +1,5 @@
 import { loadData, db } from './store.mjs';
-import { initTooltips, esc, el } from './ui.mjs';
+import { initTooltips, initImageFallback, esc, el } from './ui.mjs';
 import { initContext } from './context.mjs';
 import { initSkillDrawer } from './views/detail.mjs';
 import { renderPlanner } from './views/planner.mjs';
@@ -60,7 +60,7 @@ function route() {
     setupMobileRail(app);
   } catch (err) {
     console.error(err);
-    app.innerHTML = `<div class="empty">Не получилось отрисовать эту страницу.<br><code>${esc(err.message)}</code></div>`;
+    app.innerHTML = `<div class="empty">Something went wrong rendering this page.<br><code>${esc(err.message)}</code></div>`;
   }
 }
 
@@ -73,7 +73,7 @@ function setupMobileRail(root) {
   const rail = root.querySelector('.rail');
   if (!rail || !rail.children.length) return;
   rail.classList.add('rail--collapsible');
-  const btn = el('<button class="btn filters-toggle" type="button" aria-expanded="false">Фильтры и настройки</button>');
+  const btn = el('<button class="btn filters-toggle" type="button" aria-expanded="false">Filters &amp; options</button>');
   btn.addEventListener('click', () => {
     btn.setAttribute('aria-expanded', String(rail.classList.toggle('rail--open')));
   });
@@ -91,16 +91,17 @@ window.addEventListener('hashchange', () => {
 loadData().then(() => {
   initContext();
   initTooltips(document.body);
+  initImageFallback(document);
   initSkillDrawer(document.body);
   const meta = db.meta;
   if (meta.generatedAt) {
     document.getElementById('footer-meta').textContent =
-      ` · Данные пересобраны ${new Date(meta.generatedAt).toISOString().slice(0, 10)} · ${meta.counts.learnableSkills} скиллов, ${meta.counts.supports} карт поддержки на Global, ${meta.counts.outfits} нарядов.`;
+      ` · Data rebuilt ${new Date(meta.generatedAt).toISOString().slice(0, 10)} · ${meta.counts.learnableSkills} skills, ${meta.counts.supports} Global support cards, ${meta.counts.outfits} outfits.`;
   }
   if (!location.hash) location.hash = '#/planner';
   app.dataset.view = currentView();
   route();
 }).catch((err) => {
   console.error(err);
-  app.innerHTML = `<div class="empty">Не удалось загрузить набор данных.<br><code>${esc(err.message)}</code></div>`;
+  app.innerHTML = `<div class="empty">Could not load the data set.<br><code>${esc(err.message)}</code></div>`;
 });

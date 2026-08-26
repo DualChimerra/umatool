@@ -9,7 +9,6 @@ import { cardSkills } from '../analysis.mjs';
 
 const GROUND = [[1, 'Firm'], [2, 'Good'], [3, 'Soft'], [4, 'Heavy']];
 const STATS = [['speed', 'Speed'], ['stamina', 'Stamina'], ['power', 'Power'], ['guts', 'Guts'], ['wit', 'Wit']];
-const STAT_RU = { speed: 'Speed', stamina: 'Stamina', power: 'Power', guts: 'Guts', wit: 'Wit' };
 
 export function renderPlanner(root) {
   const layout = el(`<div class="layout">
@@ -17,8 +16,8 @@ export function renderPlanner(root) {
     <section class="stack">
       <div class="page-head">
         <div>
-          <h1>Планировщик</h1>
-          <p>Выбери забег, к которому готовишься. Всё ниже — и страница «Команда» — считается от него.</p>
+          <h1>Champions Meeting planner</h1>
+          <p>Pick the race you are preparing for. Everything below — and the Team page — is derived from it.</p>
         </div>
       </div>
       <nav class="jump" data-role="jump"></nav>
@@ -29,31 +28,31 @@ export function renderPlanner(root) {
   const rail = layout.querySelector('.rail');
   const out = layout.querySelector('[data-role="out"]');
 
-  /* ---------------------------------------------------------- управление */
+  /* ------------------------------------------------------------- controls */
 
   const tracks = [...new Set(db.courses.map((c) => c.trackName))].sort();
   const controls = el(`<section class="panel">
-    <div class="panel__head"><h3>Забег</h3></div>
+    <div class="panel__head"><h3>Race</h3></div>
     <div class="panel__body">
       <div class="field">
-        <label>Ипподром</label>
+        <label>Racecourse</label>
         <select class="select" data-role="track">${tracks.map((t) => `<option value="${esc(t)}">${esc(t)}</option>`).join('')}</select>
       </div>
-      <div class="field"><label>Дистанция</label><select class="select" data-role="course"></select></div>
+      <div class="field"><label>Course</label><select class="select" data-role="course"></select></div>
       <div class="field">
-        <label>Стиль бега</label>
+        <label>Running style</label>
         <div class="toggle-grid" data-role="strategy">
           ${Object.entries(STRATEGY).map(([v, s]) => `<button type="button" data-v="${v}" aria-pressed="${Number(v) === cm.strategy}">${esc(s.name)}</button>`).join('')}
         </div>
       </div>
       <div class="field">
-        <label>Состояние грунта</label>
+        <label>Going</label>
         <div class="toggle-grid" data-role="ground">
           ${GROUND.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${v === cm.ground}">${l}</button>`).join('')}
         </div>
       </div>
       <div class="field">
-        <label>Участниц в забеге</label>
+        <label>Field size</label>
         <div class="toggle-grid" data-role="field">
           ${[9, 12, 18].map((n) => `<button type="button" data-v="${n}" aria-pressed="${n === cm.fieldSize}">${n}${n === CM_FIELD_SIZE ? ' · CM' : ''}</button>`).join('')}
         </div>
@@ -62,10 +61,10 @@ export function renderPlanner(root) {
   </section>`);
 
   const statsPanel = el(`<section class="panel">
-    <div class="panel__head"><h3>Твои статы</h3><button class="btn btn--ghost btn--sm" data-act="stat-reset" type="button">Сброс</button></div>
+    <div class="panel__head"><h3>Your stats</h3><button class="btn btn--ghost btn--sm" data-act="stat-reset" type="button">Reset</button></div>
     <div class="panel__body">
       <div class="field">
-        <label>Потолок статов</label>
+        <label>Stat ceiling</label>
         <div class="toggle-grid" data-role="cap">
           ${[1200, 1400, 1600, 1800, 2000].map((n) => `<button type="button" data-v="${n}" aria-pressed="${n === cm.statCap}">${n}</button>`).join('')}
         </div>
@@ -79,16 +78,16 @@ export function renderPlanner(root) {
           </div>
         </div>`).join('')}
       <div class="field">
-        <label>Восстановление со скиллов</label>
+        <label>Recovery from skills</label>
         <div class="range-row">
           <input type="range" min="0" max="60" step="1" data-role="recovery" value="${cm.recovery}">
           <output data-out="recovery">${cm.recovery}%</output>
         </div>
       </div>
       <details class="explain">
-        <summary>Про потолок и восстановление</summary>
-        <p>Сценарии продолжают поднимать потолок статов, поэтому здесь ничего не зашито в 1200: поставь то, что позволяет твой сценарий, — ползунки и целевые диапазоны подстроятся.</p>
-        <p>Восстановление — суммарный процент от запаса выносливости, который лечащие скиллы возвращают за забег.</p>
+        <summary>About the ceiling and recovery</summary>
+        <p>Scenarios keep raising the stat cap, so nothing here is hardcoded to 1200 — set what your scenario allows and the sliders and target ranges follow.</p>
+        <p>Recovery is the total % of max stamina your healing skills give back across the race.</p>
       </details>
     </div>
   </section>`);
@@ -161,7 +160,7 @@ export function renderPlanner(root) {
     syncStatInputs(); commitContext(); paint();
   });
 
-  /* ---------------------------------------------------------------- отрисовка */
+  /* ----------------------------------------------------------------- paint */
 
   function paint() {
     const course = currentCourse();
@@ -178,23 +177,23 @@ export function renderPlanner(root) {
     const sensitivity = statSensitivity({ ...full, recoveryPct: cm.recovery }, db.learnable);
 
     layout.querySelector('[data-role="jump"]').innerHTML = [
-      ['course', 'Курс'], ['stats', 'Цели по статам'],
-      ['skills', 'Лучшие скиллы'], ['uniques', 'Уники'], ['cards', 'Карты'],
+      ['course', 'Course'], ['stats', 'Stat targets'],
+      ['skills', 'Best skills'], ['uniques', 'Uniques'], ['cards', 'Cards'],
     ].map(([id, label]) => `<a href="#/planner" data-jump="${id}">${label}</a>`).join('');
 
     out.replaceChildren(
       courseCard(course, sim),
       statCards(course, sim),
       guideCard(course, sim, sensitivity),
-      rankCard('Лучшие скиллы для этого курса', learnable.slice(0, 30), learnable.length, hiddenCount),
-      recovery.length ? rankCard('Лучшие скиллы на восстановление', recovery.slice(0, 12), recovery.length) : el('<span hidden></span>'),
+      rankCard('Best skills for this course', learnable.slice(0, 30), learnable.length, hiddenCount),
+      recovery.length ? rankCard('Best recovery skills', recovery.slice(0, 12), recovery.length) : el('<span hidden></span>'),
       uniqueCard(uniques.slice(0, 24), uniques.length),
       cardSourcesCard(learnable.slice(0, 24)),
       fieldCard(ctx),
     );
   }
 
-  /* ------------------------------------------------------------- фрагменты */
+  /* ------------------------------------------------------------- fragments */
 
   function courseCard(course, sim) {
     const d = course.derived;
@@ -210,12 +209,12 @@ export function renderPlanner(root) {
       <div class="panel__body">
         ${trackSvg(course, sim)}
         <div class="factlist">
-          <span>поворотов <b class="num">${d.cornerCount}</b> (${fmt.int(d.cornerLength)}m)</span>
-          <span>последний поворот на <b class="num">${d.finalCornerStart != null ? fmt.int(d.finalCornerStart) : '—'}</b>m</span>
-          <span>финишная прямая <b class="num">${fmt.int(d.lastStraightLength)}</b>m</span>
-          <span>подъём <b class="num">${fmt.int(d.uphillLength)}</b>m</span>
-          <span>спуск <b class="num">${fmt.int(d.downhillLength)}</b>m</span>
-          <span>спурт с <b class="num">${fmt.int(course.distance - sim.spurtDistance)}</b>m</span>
+          <span><b class="num">${d.cornerCount}</b> corners (${fmt.int(d.cornerLength)}m)</span>
+          <span>final corner at <b class="num">${d.finalCornerStart != null ? fmt.int(d.finalCornerStart) : '—'}</b>m</span>
+          <span>home straight <b class="num">${fmt.int(d.lastStraightLength)}</b>m</span>
+          <span>uphill <b class="num">${fmt.int(d.uphillLength)}</b>m</span>
+          <span>downhill <b class="num">${fmt.int(d.downhillLength)}</b>m</span>
+          <span>last spurt from <b class="num">${fmt.int(course.distance - sim.spurtDistance)}</b>m</span>
         </div>
       </div>
     </section>`);
@@ -232,14 +231,14 @@ export function renderPlanner(root) {
     const down = course.derived.downhill.map((s) => seg(s.start, s.start + s.length, 'color-mix(in srgb, var(--turf) 60%, transparent)', 46, 7)).join('');
     const spurt = seg(course.distance - sim.spurtDistance, course.distance, 'color-mix(in srgb, var(--gold) 45%, transparent)', 20, 4);
 
-    const marks = [[course.distance / 6, 'середина'], [(course.distance * 2) / 3, 'финальный отрезок']].map(([m, label]) => `
+    const marks = [[course.distance / 6, 'middle leg'], [(course.distance * 2) / 3, 'final leg']].map(([m, label]) => `
       <line x1="${x(m).toFixed(1)}" y1="18" x2="${x(m).toFixed(1)}" y2="60" stroke="var(--ink-3)" stroke-width="1" stroke-dasharray="3 3"/>
       <text x="${(x(m) + 4).toFixed(1)}" y="14" font-size="11" fill="var(--ink-3)">${label}</text>`).join('');
 
-    return `<svg class="track-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Профиль курса">
+    return `<svg class="track-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Course profile">
       ${straights}${corners}${up}${down}${spurt}${marks}
-      <text x="2" y="70" font-size="11" fill="var(--ink-3)">старт</text>
-      <text x="${W - 4}" y="70" font-size="11" fill="var(--ink-3)" text-anchor="end">финиш</text>
+      <text x="2" y="70" font-size="11" fill="var(--ink-3)">start</text>
+      <text x="${W - 4}" y="70" font-size="11" fill="var(--ink-3)" text-anchor="end">finish</text>
     </svg>`;
   }
 
@@ -250,25 +249,25 @@ export function renderPlanner(root) {
     const coverage = Math.round(sim.spurtCoverage * 100);
     return el(`<div class="plan-grid">
       <div class="stat-tile ${ok ? 'stat-tile--ok' : 'stat-tile--bad'}">
-        <h4>Нужно Stamina</h4>
+        <h4>Stamina needed</h4>
         <div class="big">${fmt.int(need)}</div>
-        <div class="sub">${ok ? `запас ${fmt.int(have - need)}` : `не хватает ${fmt.int(need - have)} на полный спурт`}</div>
+        <div class="sub">${ok ? `${fmt.int(have - need)} to spare` : `${fmt.int(need - have)} short of a full spurt`}</div>
       </div>
       <div class="stat-tile">
-        <h4>Спурт покрыт</h4>
+        <h4>Last spurt covered</h4>
         <div class="big">${coverage}%</div>
-        <div class="sub">${fmt.int(sim.spurtDistance)}m из ${fmt.int(course.distance / 3)}m финального отрезка</div>
+        <div class="sub">${fmt.int(sim.spurtDistance)}m of the ${fmt.int(course.distance / 3)}m final leg</div>
         <div class="bar" style="margin-top:8px"><i style="width:${coverage}%"></i></div>
       </div>
       <div class="stat-tile">
-        <h4>Запас выносливости</h4>
+        <h4>Max stamina pool</h4>
         <div class="big">${fmt.int(sim.maxHp)}</div>
-        <div class="sub">${fmt.int(sim.hpBeforeFinal)} тратится до финального отрезка</div>
+        <div class="sub">${fmt.int(sim.hpBeforeFinal)} spent before the final leg</div>
       </div>
       <div class="stat-tile">
-        <h4>Оценка времени</h4>
+        <h4>Estimated time</h4>
         <div class="big">${formatTime(sim.time)}</div>
-        <div class="sub">спурт ${sim.speeds.spurt.toFixed(2)} m/s · крейсер ${sim.speeds.v1.toFixed(2)} m/s</div>
+        <div class="sub">spurt ${sim.speeds.spurt.toFixed(2)} m/s · cruise ${sim.speeds.v1.toFixed(2)} m/s</div>
       </div>
     </div>`);
   }
@@ -282,12 +281,12 @@ export function renderPlanner(root) {
     const rows = order.map((k) => {
       const range = k === 'stamina' ? `${fmt.int(sim.requiredStamina)}+` : `${fmt.int(guide[k][0])} – ${fmt.int(guide[k][1])}`;
       const s = sens[k];
-      const marginal = s?.bashin == null ? '—' : `${s.bashin >= 0 ? '+' : '−'}${Math.abs(s.bashin).toFixed(2)} корп.`;
-      const note = k === 'stamina' ? 'решено из курса, стиля и грунта'
-        : s?.viaSkills ? 'поднимает шанс срабатывания скиллов с проверкой Wit'
-          : s?.modelled ? 'измерено на модели HP/скорости' : 'влияет на ускорение и смену дорожек — здесь не моделируется';
+      const marginal = s?.bashin == null ? '—' : `${s.bashin >= 0 ? '+' : '−'}${Math.abs(s.bashin).toFixed(2)} len`;
+      const note = k === 'stamina' ? 'solved from this course, style and going'
+        : s?.viaSkills ? 'raises the Wit activation roll on checked skills'
+          : s?.modelled ? 'measured on the HP/speed model' : 'drives acceleration and lane changes — not simulated here';
       return `<tr>
-        <td style="font-weight:500">${STAT_RU[k]}${k === best ? ' <span class="chip chip--accent">сюда следующие очки</span>' : ''}</td>
+        <td style="font-weight:500">${k.charAt(0).toUpperCase() + k.slice(1)}${k === best ? ' <span class="chip chip--accent">best next point</span>' : ''}</td>
         <td class="num">${esc(range)}</td>
         <td class="num">${esc(marginal)}</td>
         <td class="small muted">${esc(note)}</td>
@@ -295,16 +294,16 @@ export function renderPlanner(root) {
     }).join('');
 
     return el(`<section class="panel" data-section="stats">
-      <div class="panel__head"><h3>Цели по статам и куда пойдут следующие 100 очков</h3></div>
+      <div class="panel__head"><h3>Stat targets and where the next 100 points go</h3></div>
       <div class="panel__body" style="gap:8px">
         <table>
-          <thead><tr><th>Стат</th><th class="num">Цель</th><th class="num">+100 стоят</th><th>Откуда это</th></tr></thead>
+          <thead><tr><th>Stat</th><th class="num">Target</th><th class="num">+100 is worth</th><th>How it was worked out</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
         <details class="explain">
-          <summary>Как это посчитано</summary>
-          <p>Stamina решается из модели HP так, чтобы хватило на последний спурт целиком. Колонка «+100 стоят» — конечная разность по модели: забег прогоняется заново со 100 очками сверху, а сэкономленное время переводится в корпуса на финише. Так видно, какого стата сейчас реально не хватает.</p>
-          <p>Целевые диапазоны масштабируются вместе с выставленным потолком статов.</p>
+          <summary>How this was worked out</summary>
+          <p>Stamina is solved from the HP model for a full-length last spurt. The “+100 is worth” column is a finite difference on the model — it re-runs the race with 100 more of that stat and converts the time saved into lengths at the finish, so it tells you which stat is actually starved right now.</p>
+          <p>Target ranges scale with the stat ceiling you set.</p>
         </details>
       </div>
     </section>`);
@@ -318,39 +317,39 @@ export function renderPlanner(root) {
 
     return el(`<section class="panel" data-section="field">
       <details class="explain explain--panel">
-        <summary>Модель поля и порядка · ${ctx.fieldSize} участниц, ${esc(STRATEGY[ctx.strategy].name)}</summary>
-        <p>В Champions Meeting бегут ${CM_FIELD_SIZE} умамусуме, поэтому <code>order_rate</code> меняется шагами по
-        ${(100 / ctx.fieldSize).toFixed(1)}%. Именно это решает, достижим ли вообще скилл с условием «в топ-30% поля».</p>
+        <summary>Field and order model · ${ctx.fieldSize} runners, ${esc(STRATEGY[ctx.strategy].name)}</summary>
+        <p>Champions Meeting runs ${CM_FIELD_SIZE} umamusume, so <code>order_rate</code> moves in steps of
+        ${(100 / ctx.fieldSize).toFixed(1)}%. That is what decides whether a “top 30% of the field” skill is reachable at all.</p>
         <table>
-          <thead><tr><th>Место</th><th class="num">order_rate</th><th class="num">Шанс</th><th></th></tr></thead>
+          <thead><tr><th>Place</th><th class="num">order_rate</th><th class="num">Chance</th><th></th></tr></thead>
           <tbody>
             ${rows.map(([o, w]) => `<tr>
-              <td>${o}</td>
+              <td>${o}${o === 1 ? 'st' : o === 2 ? 'nd' : o === 3 ? 'rd' : 'th'}</td>
               <td class="num">${orderRate(o, ctx.fieldSize).toFixed(1)}%</td>
               <td class="num">${(w * 100).toFixed(0)}%</td>
               <td style="width:40%"><div class="bar"><i style="width:${((w / maxW) * 100).toFixed(0)}%"></i></div></td>
             </tr>`).join('')}
           </tbody>
         </table>
-        <p>Wit ${ctx.stats.wit} → скиллы с проверкой Wit срабатывают в <b>${(wit * 100).toFixed(1)}%</b> случаев
-        (<code>100 − 9000 / Wit</code>, но не ниже 20%).</p>
+        <p>Wit ${ctx.stats.wit} → Wit-checked skills fire <b>${(wit * 100).toFixed(1)}%</b> of the time
+        (<code>100 − 9000 / Wit</code>, floored at 20%).</p>
       </details>
     </section>`);
   }
 
   function scoringExplainer() {
     return `<details class="explain">
-      <summary>Как ранжируются «лучшие скиллы»</summary>
-      <p>Каждый скилл оценивается как <b>ожидаемые корпуса именно на этом курсе</b>, а не по тир-листу. По порядку:</p>
+      <summary>How “best skills” is ranked</summary>
+      <p>Every skill is scored as <b>expected lengths gained on this exact course</b>, not by a tier list. In order:</p>
       <ol>
-        <li><b>Может ли он сработать вообще?</b> Стиль бега, дистанционная категория, покрытие, направление круга, ипподром, грунт и требуемый рельеф — жёсткие условия: не прошло хоть одно, и скилл выбрасывается, а не штрафуется.</li>
-        <li><b>Где он сработает?</b> Окно срабатывания пересекается с реальным курсом: фаза забега, повороты, прямые, уклоны и любые границы <code>distance_rate</code> / <code>remain_distance</code>. Отсюда берётся метр, с которого он начинается.</li>
-        <li><b>Сколько времени ему достанется?</b> Длительность масштабируется от дистанции, а затем обрезается тем, сколько осталось до финиша: шестисекундный скилл на скорость, сработавший за 100m до линии, получит только то, что влезло.</li>
-        <li><b>Сколько это в метрах?</b> Скорость даёт m/s × секунды. Ускорение откалибровано так, что +0.2 m/s² за 3s ≈ +0.35 m/s за 3s. Восстановление переводится через модель HP в лишние секунды спурта и зависит от того, насколько туго с выносливостью на самом деле.</li>
-        <li><b>Как часто это случится?</b> Умножается на P(позиции) из распределения порядка для ${cm.fieldSize} участниц, на P(проверки Wit) и на штраф за условия вроде «зажали» или «обгоняешь».</li>
-        <li><b>Когда это случится?</b> Вес 0.55 / 0.78 / 1.25 / 1.45 для старта, середины, финального отрезка и последних 10%.</li>
+        <li><b>Can it fire at all?</b> Running style, distance band, surface, track handedness, track id, going and required terrain are hard gates — fail one and the skill is dropped, not penalised.</li>
+        <li><b>Where does it fire?</b> The trigger window is intersected with the real course: race phase, corners, straights, slopes, and any <code>distance_rate</code> / <code>remain_distance</code> bound. That gives the metre mark it starts at.</li>
+        <li><b>How long does it get?</b> Duration scales with race distance, then is capped by the time left to the finish from that point — a 6-second speed skill firing 100m out only gets what fits.</li>
+        <li><b>How much ground is that?</b> Speed effects give m/s × seconds. Acceleration is calibrated so +0.2 m/s² over 3s ≈ +0.35 m/s over 3s. Recovery is converted through the HP model into extra last-spurt seconds, and scales with how tight your stamina actually is.</li>
+        <li><b>How often does it happen?</b> Multiply by P(position) from the ${cm.fieldSize}-runner order distribution, P(Wit roll) for Wit-checked skills, and a penalty for conditions like being blocked or overtaking.</li>
+        <li><b>When does it happen?</b> A weight of 0.55 / 0.78 / 1.25 / 1.45 for opening, middle, final leg and the last 10%.</li>
       </ol>
-      <p>Открой любой скилл, чтобы увидеть все эти числа для него отдельно и где его взять.</p>
+      <p>Open any skill to see all of those numbers for that specific skill, plus where to get it.</p>
     </details>`;
   }
 
@@ -362,10 +361,10 @@ export function renderPlanner(root) {
         <h3>${esc(title)}</h3>
         <div class="row">
           ${hidden === null ? '' : `<div class="seg" data-role="obtainable">
-            <button type="button" data-v="1" aria-pressed="${cm.obtainableOnly !== false}">Доступные</button>
-            <button type="button" data-v="0" aria-pressed="${cm.obtainableOnly === false}">Все</button>
+            <button type="button" data-v="1" aria-pressed="${cm.obtainableOnly !== false}">Obtainable</button>
+            <button type="button" data-v="0" aria-pressed="${cm.obtainableOnly === false}">All</button>
           </div>`}
-          <span class="sk-count">${rows.length} из ${total}</span>
+          <span class="sk-count">${rows.length} of ${total}</span>
         </div>
       </div>
       <div class="panel__body" style="padding:0">
@@ -374,7 +373,7 @@ export function renderPlanner(root) {
     </section>`);
     if (hidden !== null) {
       node.insertAdjacentHTML('beforeend', `<div class="panel__foot">
-        ${hidden ? `<p class="tiny muted">Ещё ${hidden} скиллов набирают очки здесь, но их не даёт ни одна ума и ни одна карта на Global — награды сценариев и подобное. Переключись на <b>Все</b>, чтобы увидеть их.</p>` : ''}
+        ${hidden ? `<p class="tiny muted">${hidden} more skills score here but no Global uma or support card teaches them — scenario rewards and the like. Switch to <b>All</b> to see them.</p>` : ''}
         ${scoringExplainer()}
       </div>`);
     }
@@ -395,7 +394,7 @@ export function renderPlanner(root) {
       </span>
       <span class="rank-row__mid">
         <div class="bar"><i style="width:${Math.max(3, (r.score / max) * 100).toFixed(0)}%"></i></div>
-        <span class="tiny muted num">${fmt.pct(r.probability)} × ${(r.metres / BASHIN).toFixed(2)} корп.</span>
+        <span class="tiny muted num">${fmt.pct(r.probability)} × ${(r.metres / BASHIN).toFixed(2)} len</span>
       </span>
       <span class="rank-row__score">${r.bashin.toFixed(2)}</span>
     </div>`;
@@ -408,7 +407,7 @@ export function renderPlanner(root) {
     const surfKey = course.surface === 1 ? 'turf' : 'dirt';
 
     return el(`<section class="panel" data-section="uniques">
-      <div class="panel__head"><h3>Уники, которые заходят на этом курсе</h3><span class="sk-count">${rows.length} из ${total}</span></div>
+      <div class="panel__head"><h3>Uniques that land on this course</h3><span class="sk-count">${rows.length} of ${total}</span></div>
       <div class="panel__body" style="padding:0">
         <div class="rank-list">
           ${rows.map((r, i) => {
@@ -422,12 +421,12 @@ export function renderPlanner(root) {
               ${owner ? `<img src="./img/chara/${esc(owner.id)}.webp" alt="" width="34" height="34" loading="lazy" style="border-radius:7px;background:var(--sunken)">` : '<span></span>'}
               <span style="min-width:0">
                 ${skillPill(r.skill)}
-                <span class="rank-row__why">${esc(owner ? `${owner.charaName} (${owner.epithet}) · ${owner.strategyName}` : 'нет умы на Global с этим уником')}${esc(r.reasons.length ? ` · ${r.reasons[0]}` : '')}</span>
+                <span class="rank-row__why">${esc(owner ? `${owner.charaName} (${owner.epithet}) · ${owner.strategyName}` : 'no Global uma carries this')}${esc(r.reasons.length ? ` · ${r.reasons[0]}` : '')}</span>
               </span>
               <span class="rank-row__mid row" style="gap:4px">
                 ${apt ? `<span class="chip">${esc(course.distanceTypeName)} ${esc(apt)}</span>` : ''}
                 ${surf ? `<span class="chip chip--${surfKey}">${esc(surf)}</span>` : ''}
-                ${styleOk ? '' : '<span class="chip chip--warn">стиль</span>'}
+                ${styleOk ? '' : '<span class="chip chip--warn">style</span>'}
               </span>
               <span class="rank-row__score">${r.bashin.toFixed(2)}</span>
             </div>`;
@@ -435,7 +434,7 @@ export function renderPlanner(root) {
         </div>
       </div>
       <div class="panel__foot">
-        <p class="tiny muted">Перечислены только уники, способные сработать со стилем ${esc(STRATEGY[cm.strategy].name)} на этом курсе, и оценены они так же, как всё остальное. Чипы показывают аптитюд этой умы к дистанции и покрытию — сразу видно, нужен ли ей предмет, чтобы бежать здесь.</p>
+        <p class="tiny muted">Only uniques that can fire with ${esc(STRATEGY[cm.strategy].name)} on this course are listed, scored the same way as everything else. The chips show that uma's aptitude for this distance and surface, so you can see straight away whether running them here needs a shoe.</p>
       </div>
     </section>`);
   }
@@ -445,8 +444,8 @@ export function renderPlanner(root) {
     const scored = [];
     for (const card of db.supports) {
       if (!card.global) continue;
-      // cardSkills убирает дубли: у 72 карт один и тот же скилл лежит и в
-      // ивенте, и в хинтах, и раньше он считался дважды.
+      // cardSkills drops the duplicates: 72 cards list the same skill both as
+      // their event skill and as a hint, and it used to be counted twice.
       const taught = cardSkills(card).filter(({ skill }) => wanted.has(skill.id));
       if (!taught.length) continue;
       const events = taught.filter((t) => t.kind === 'event').map((t) => t.skill.id);
@@ -460,7 +459,7 @@ export function renderPlanner(root) {
     if (!rows.length) return el('<span hidden></span>');
 
     return el(`<section class="panel" data-section="cards">
-      <div class="panel__head"><h3>Карты поддержки с этими скиллами</h3><span class="sk-count">топ ${rows.length}</span></div>
+      <div class="panel__head"><h3>Support cards carrying those skills</h3><span class="sk-count">top ${rows.length}</span></div>
       <div class="panel__body" style="padding:0">
         <div class="rank-list">
           ${rows.map(({ card, events, hints, value }) => `
@@ -469,8 +468,8 @@ export function renderPlanner(root) {
               <span style="min-width:0">
                 <div style="font-weight:500">${esc(card.name)}</div>
                 <div class="chips" style="margin-top:4px">
-                  ${events.map((id) => skillPill(db.skillById.get(id), { tag: 'ивент' })).join('')}
-                  ${hints.map((id) => skillPill(db.skillById.get(id), { tag: 'хинт' })).join('')}
+                  ${events.map((id) => skillPill(db.skillById.get(id), { tag: 'event' })).join('')}
+                  ${hints.map((id) => skillPill(db.skillById.get(id), { tag: 'hint' })).join('')}
                 </div>
               </span>
               <span class="row" style="justify-content:flex-end">
@@ -482,7 +481,7 @@ export function renderPlanner(root) {
         </div>
       </div>
       <div class="panel__foot">
-        <p class="tiny muted">Ценность карты = сумма ожидаемых корпусов с топовых скиллов, которым она учит. Ивент-скиллы считаются полностью, потому что они гарантированы; хинты — на 60%, потому что их ещё надо выбить и купить.</p>
+        <p class="tiny muted">Card value = sum of the expected lengths of the top-ranked skills it teaches. Event skills count in full because they are guaranteed; hints count at 60% because you still have to roll and buy them.</p>
       </div>
     </section>`);
   }

@@ -9,13 +9,13 @@ const TYPES = [
 const RARITIES = [[2, 'SSR'], [1, 'SR'], [0, 'R']];
 
 const SORTS = [
-  { value: 'match', label: 'Совпавшие скиллы' },
-  { value: 'rarity', label: 'Редкость' },
-  { value: 'name', label: 'Название' },
-  { value: 'gold', label: 'Золотые хинты' },
-  { value: 'hints', label: 'Число хинтов' },
-  { value: 'score', label: 'Сумма очков хинтов' },
-  { value: 'newest', label: 'Номер карты' },
+  { value: 'match', label: 'Matched skills' },
+  { value: 'rarity', label: 'Rarity' },
+  { value: 'name', label: 'Name' },
+  { value: 'gold', label: 'Gold hints' },
+  { value: 'hints', label: 'Hint count' },
+  { value: 'score', label: 'Total hint score' },
+  { value: 'newest', label: 'Card number' },
 ];
 
 export function renderCards(root) {
@@ -32,8 +32,8 @@ export function renderCards(root) {
   };
 
   const skillFilter = createSkillFilter({
-    label: 'Фильтр по скиллам',
-    hint: 'Найти карты, которые дают нужный скилл. Значок на пилюле говорит, приходит он с ивента карты или со случайного хинта.',
+    label: 'Filter by skills',
+    hint: 'Find the cards that carry a skill — the badge on each pill says whether it comes from the card event or from a random hint.',
     onChange: () => paint(),
   });
 
@@ -42,8 +42,8 @@ export function renderCards(root) {
     <section>
       <div class="page-head">
         <div>
-          <h1>Карты поддержки</h1>
-          <p>Все карты поддержки на Global, разложенные по скиллам, которые они дают: ивент-скиллы и хинты — отдельно.</p>
+          <h1>Support cards</h1>
+          <p>Every Global support card indexed by the skills it hands out — event skills and hint skills kept apart.</p>
         </div>
         <div class="page-head__right" data-role="sortbar"></div>
       </div>
@@ -59,15 +59,15 @@ export function renderCards(root) {
   const basics = el('<section class="panel"><div class="panel__body"></div></section>');
   const body = basics.querySelector('.panel__body');
   body.append(
-    searchField({ placeholder: 'Поиск по названию карты…', value: state.q, onChange: (v) => { state.q = v; paint(); } }).element,
+    searchField({ placeholder: 'Search card name…', value: state.q, onChange: (v) => { state.q = v; paint(); } }).element,
     toggleGroup({
-      title: 'Тип карты',
+      title: 'Card type',
       options: TYPES.map(([v, l]) => ({ value: v, label: l })),
       value: state.types,
       onChange: (v) => { state.types = v; paint(); },
     }).element,
     toggleGroup({
-      title: 'Редкость',
+      title: 'Rarity',
       options: RARITIES.map(([v, l]) => ({ value: String(v), label: l })),
       value: state.rarities.map(String),
       onChange: (v) => { state.rarities = v.map(Number); paint(); },
@@ -75,11 +75,11 @@ export function renderCards(root) {
   );
 
   const whereField = el(`<div class="field">
-    <label>Скилл должен приходить с</label>
+    <label>Skill has to come from</label>
     <div class="seg" data-role="where">
-      <button type="button" data-w="any" aria-pressed="${state.where === 'any'}">Любого</button>
-      <button type="button" data-w="event" aria-pressed="${state.where === 'event'}">Ивента</button>
-      <button type="button" data-w="hint" aria-pressed="${state.where === 'hint'}">Хинта</button>
+      <button type="button" data-w="any" aria-pressed="${state.where === 'any'}">Either</button>
+      <button type="button" data-w="event" aria-pressed="${state.where === 'event'}">Event</button>
+      <button type="button" data-w="hint" aria-pressed="${state.where === 'hint'}">Hint</button>
     </div>
   </div>`);
   on(whereField, 'click', 'button[data-w]', (e, t) => {
@@ -91,20 +91,20 @@ export function renderCards(root) {
 
   const globalToggle = el(`<label class="check">
     <input type="checkbox" ${state.globalOnly ? 'checked' : ''}>
-    <span>Только релизы Global<small>Карты, которых ещё нет на сервере Global, скрыты.</small></span>
+    <span>Global releases only<small>Cards not yet on the Global server are hidden.</small></span>
   </label>`);
   globalToggle.querySelector('input').addEventListener('change', (e) => { state.globalOnly = e.target.checked; paint(); });
   const hideUnverified = el(`<label class="check">
     <input type="checkbox" ${state.hideUnverified ? 'checked' : ''}>
-    <span>Скрыть непроверенные релизы<small>Карты за текущей границей Global, которые проходят автопроверку только потому, что переиспользуют старые скиллы.</small></span>
+    <span>Hide unverified releases<small>Cards past the current Global frontier that only pass the automatic check because they reuse old skills.</small></span>
   </label>`);
   hideUnverified.querySelector('input').addEventListener('change', (e) => { state.hideUnverified = e.target.checked; paint(); });
   body.append(globalToggle, hideUnverified);
 
   rail.append(basics, skillFilter.element);
 
-  const sortSel = selectField({ title: 'Сортировка', options: SORTS, value: state.sort, onChange: (v) => { state.sort = v; paint(); } });
-  const dirBtn = el('<button class="btn btn--sm" type="button" title="Обратный порядок">↕</button>');
+  const sortSel = selectField({ title: 'Sort by', options: SORTS, value: state.sort, onChange: (v) => { state.sort = v; paint(); } });
+  const dirBtn = el('<button class="btn btn--sm" type="button" title="Reverse order">↕</button>');
   dirBtn.addEventListener('click', () => { state.dir = state.dir === 'desc' ? 'asc' : 'desc'; paint(); });
   layout.querySelector('[data-role="sortbar"]').append(sortSel.element, dirBtn);
 
@@ -162,9 +162,9 @@ export function renderCards(root) {
       }
     });
 
-    count.textContent = `карт: ${rows.length}`
-      + (skillFilter.active ? ` · совпадений по скиллам: ${skillFilter.state.ids.length}` : '');
-    grid.innerHTML = rows.length ? rows.map(cardHtml).join('') : '<div class="empty">Под эти фильтры не подходит ни одна карта.</div>';
+    count.textContent = `${rows.length} card${rows.length === 1 ? '' : 's'}`
+      + (skillFilter.active ? ` matching ${skillFilter.state.ids.length} skill${skillFilter.state.ids.length === 1 ? '' : 's'}` : '');
+    grid.innerHTML = rows.length ? rows.map(cardHtml).join('') : '<div class="empty">No support card matches these filters.</div>';
   }
 
   function cardHtml({ card, hints, events, hits }) {
@@ -181,25 +181,25 @@ export function renderCards(root) {
             <span class="chip chip--accent">${esc(card.rarityName)}</span>
             <span class="chip">${esc(card.typeName)}</span>
             <span class="chip">#${esc(card.id)}</span>
-            ${card.global ? '' : '<span class="chip chip--warn">Нет на Global</span>'}
-            ${card.unverified ? '<span class="chip chip--warn" title="Проходит проверку по набору скиллов, но находится за текущей границей релизов Global — верить с осторожностью, пока не подтвердит проход по GameTora">не проверено</span>' : ''}
+            ${card.global ? '' : '<span class="chip chip--warn">Not on Global</span>'}
+            ${card.unverified ? '<span class="chip chip--warn" title="Passes the skill-set check but sits past the current Global release frontier — treat with suspicion until the GameTora pass confirms it">unverified</span>' : ''}
           </div>
         </div>
       </div>
       <div class="card__body">
         ${events.length ? `<div class="card__section">
-          <h4>Ивент-скиллы <span class="sk-count">${events.length}</span></h4>
-          <div class="chips">${pills(events, 'ивент')}</div>
+          <h4>Event skills <span class="sk-count">${events.length}</span></h4>
+          <div class="chips">${pills(events, 'event')}</div>
         </div>` : ''}
         ${goldHints.length ? `<div class="card__section">
-          <h4>Золотые хинты <span class="sk-count">${goldHints.length}</span></h4>
-          <div class="chips">${pills(goldHints, 'хинт')}</div>
+          <h4>Gold hints <span class="sk-count">${goldHints.length}</span></h4>
+          <div class="chips">${pills(goldHints, 'hint')}</div>
         </div>` : ''}
         ${normalHints.length ? `<div class="card__section">
-          <h4>Хинты <span class="sk-count">${normalHints.length}</span></h4>
-          <div class="chips">${pills(normalHints, 'хинт')}</div>
+          <h4>Hints <span class="sk-count">${normalHints.length}</span></h4>
+          <div class="chips">${pills(normalHints, 'hint')}</div>
         </div>` : ''}
-        ${!events.length && !hints.length ? '<p class="tiny muted">Эта карта не даёт скиллов.</p>' : ''}
+        ${!events.length && !hints.length ? '<p class="tiny muted">This card teaches no skills.</p>' : ''}
       </div>
     </article>`;
   }

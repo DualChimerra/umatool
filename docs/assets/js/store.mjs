@@ -16,7 +16,7 @@ export const db = {
 export async function loadData() {
   const loaded = await Promise.all(files.map(async (name) => {
     const res = await fetch(`./data/${name}.json`, { cache: 'no-cache' });
-    if (!res.ok) throw new Error(`Не удалось загрузить data/${name}.json (${res.status})`);
+    if (!res.ok) throw new Error(`Could not load data/${name}.json (${res.status})`);
     return [name, await res.json()];
   }));
   for (const [name, value] of loaded) db[name] = value;
