@@ -5,7 +5,9 @@
 // Persisted to localStorage, so nothing is lost by switching tabs or reloading.
 
 import { db, groupLadder, isPenaltySkill } from './store.mjs';
-import { CM_FIELD_SIZE } from './model.mjs';
+import { CM_FIELD_SIZE, STRATEGY } from './model.mjs';
+
+const STRATEGY_KEY = Object.fromEntries(Object.entries(STRATEGY).map(([v, s]) => [v, s.key]));
 
 const KEY = 'paddock:cm';
 
@@ -117,6 +119,24 @@ export function onContextChange(fn) {
 
 export const currentCourse = () => db.courseById.get(cm.courseId);
 
+/**
+ * The aptitude grades that matter for one course and running style, as the
+ * numeric 1 = G … 8 = S the data stores. An empty slot has no uma, so it falls
+ * back to A, which is what a planned Champions Meeting runner is assumed to be
+ * brought up to.
+ */
+export function aptitudesFor(outfit, course, strategy) {
+  if (!outfit) return null;
+  const distanceKey = ['', 'sprint', 'mile', 'medium', 'long'][course.distanceType];
+  const surfaceKey = course.surface === 1 ? 'turf' : 'dirt';
+  const styleKey = STRATEGY_KEY[strategy];
+  return {
+    distance: outfit.aptitudes[distanceKey] ?? 7,
+    surface: outfit.aptitudes[surfaceKey] ?? 7,
+    style: outfit.aptitudes[styleKey] ?? 7,
+  };
+}
+
 /** Scoring context for the model, optionally for one roster slot. */
 export function scoringContext(slot = null, sim = null) {
   const course = currentCourse();
@@ -129,6 +149,7 @@ export function scoringContext(slot = null, sim = null) {
     ground: cm.ground,
     fieldSize: cm.fieldSize,
     recoveryPct: cm.recovery,
+    aptitudes: aptitudesFor(outfit, course, strategy),
     stats,
     sim,
   };

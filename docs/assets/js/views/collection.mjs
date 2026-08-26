@@ -1,5 +1,5 @@
-// Что у тебя реально есть. Отмеченное здесь — это то, что сборщик деки вправе
-// предлагать; сверх того на каждую деку берётся одна карта друга.
+// What you actually own. Everything ticked here is what the deck builder is
+// allowed to offer — apart from the one card per deck you borrow from a friend.
 
 import { db } from '../store.mjs';
 import { el, esc, on, skillPill, debounce, readState, writeState } from '../ui.mjs';
@@ -24,15 +24,15 @@ export function renderCollection(root) {
     <section class="stack">
       <div class="page-head">
         <div>
-          <h1>Коллекция</h1>
-          <p>Отметь, что у тебя есть. Тогда сборщик деки предлагает только это — плюс одну карту друга на каждую деку.</p>
+          <h1>Collection</h1>
+          <p>Tick what you own. The deck builder then offers only these, plus one borrowed card per deck.</p>
         </div>
         <div class="page-head__right" data-role="tools"></div>
       </div>
       <details class="explain">
-        <summary>Как считается карта друга</summary>
-        <p>В деке шесть слотов. При включённом ограничении пять карт берутся из отмеченных здесь, а шестой картой можно поставить любую чужую — ту, что берётся у друга.</p>
-        <p>Слот друга не фиксирован: чужая карта может стоять на любом месте, ограничение только одно — такая карта в деке одна. В выборе карт на странице «Команда» чужие карты видны всегда и помечены значком «друг»; когда место друга занято, они остаются в списке, но недоступны.</p>
+        <summary>How the friend's card counts</summary>
+        <p>A deck has six slots. With the restriction on, five of them come from what is ticked here and the sixth may be any card you do not own — the one borrowed from a friend.</p>
+        <p>That slot is not a fixed position: the borrowed card can sit anywhere in the deck, the only limit is that there is one of them. In the card picker on the Team page, cards outside your collection are always listed and badged <i>friend</i>; once the borrow is spent they stay in the list but are disabled.</p>
       </details>
       <div data-role="bar"></div>
       <div data-role="body"></div>
@@ -45,7 +45,7 @@ export function renderCollection(root) {
 
   const useOwned = el(`<label class="check" style="align-items:center">
     <input type="checkbox" ${cm.useOwned ? 'checked' : ''}>
-    <span>Ограничить сборщик деки моей коллекцией</span>
+    <span>Restrict the deck builder to my collection</span>
   </label>`);
   useOwned.querySelector('input').addEventListener('change', (e) => {
     cm.useOwned = e.target.checked;
@@ -63,20 +63,20 @@ export function renderCollection(root) {
       <div class="panel__body" style="gap:10px">
         <div class="row" style="justify-content:space-between">
           <div class="seg" data-role="tab" style="max-width:320px">
-            <button type="button" data-t="cards" aria-pressed="${state.tab === 'cards'}">Карты · ${ownedCards}</button>
-            <button type="button" data-t="umas" aria-pressed="${state.tab === 'umas'}">Умы · ${ownedUmas}</button>
+            <button type="button" data-t="cards" aria-pressed="${state.tab === 'cards'}">Support cards · ${ownedCards}</button>
+            <button type="button" data-t="umas" aria-pressed="${state.tab === 'umas'}">Umas · ${ownedUmas}</button>
           </div>
           <div class="row">
-            <button class="btn btn--sm" data-act="all" type="button">Отметить всё видимое</button>
-            <button class="btn btn--sm" data-act="none" type="button">Снять со всего видимого</button>
+            <button class="btn btn--sm" data-act="all" type="button">Tick everything shown</button>
+            <button class="btn btn--sm" data-act="none" type="button">Untick everything shown</button>
           </div>
         </div>
         <div class="row" style="gap:8px">
-          <input class="input" data-role="q" type="search" placeholder="Поиск…" value="${esc(state.q)}" style="max-width:280px">
+          <input class="input" data-role="q" type="search" placeholder="Search…" value="${esc(state.q)}" style="max-width:280px">
           <div class="toggle-grid" data-role="filters"></div>
           <label class="check" style="align-items:center;margin-left:auto">
             <input type="checkbox" data-role="showowned" ${state.showOwned ? 'checked' : ''}>
-            <span>Только моё</span>
+            <span>Only what I own</span>
           </label>
         </div>
       </div>
@@ -93,8 +93,8 @@ export function renderCollection(root) {
 
     const rows = visible();
     body.replaceChildren(el(`<div class="stack">
-      <p class="small muted">показано: ${rows.length} · отмечено всего: ${cm.owned[state.tab].length}</p>
-      <div class="own-grid">${rows.map(tile).join('') || '<div class="empty">Ничего не найдено.</div>'}</div>
+      <p class="small muted">${rows.length} shown · ${cm.owned[state.tab].length} owned in total</p>
+      <div class="own-grid">${rows.map(tile).join('') || '<div class="empty">Nothing matches.</div>'}</div>
     </div>`));
 
   }
@@ -122,7 +122,7 @@ export function renderCollection(root) {
     toggleOwned(state.tab, t.dataset.own);
     t.setAttribute('aria-pressed', String(cm.owned[state.tab].includes(t.dataset.own)));
     const tab = bar.querySelector(`[data-t="${state.tab}"]`);
-    if (tab) tab.textContent = state.tab === 'cards' ? `Карты · ${cm.owned.cards.length}` : `Умы · ${cm.owned.umas.length}`;
+    if (tab) tab.textContent = state.tab === 'cards' ? `Support cards · ${cm.owned.cards.length}` : `Umas · ${cm.owned.umas.length}`;
   });
 
   function visible() {

@@ -4,18 +4,20 @@ import { createSkillFilter, toggleGroup, searchField, selectField } from '../fil
 import { STRATEGY } from '../model.mjs';
 
 const APT = [
-  ['sprint', 'Spr'], ['mile', 'Mil'], ['medium', 'Med'], ['long', 'Lng'],
-  ['front', 'Frt'], ['pace', 'Pce'], ['late', 'Lte'], ['end', 'End'],
-  ['turf', 'Trf'], ['dirt', 'Drt'],
+  ['sprint', 'Spr', 'Sprint'], ['mile', 'Mil', 'Mile'], ['medium', 'Med', 'Medium'], ['long', 'Lng', 'Long'],
+  ['front', 'Frt', 'Front Runner'], ['pace', 'Pce', 'Pace Chaser'], ['late', 'Lte', 'Late Surger'], ['end', 'End', 'End Closer'],
+  ['turf', 'Trf', 'Turf'], ['dirt', 'Drt', 'Dirt'],
 ];
 const GRADES = ['-', 'G', 'F', 'E', 'D', 'C', 'B', 'A', 'S'];
 
 const SORTS = [
-  { value: 'name', label: 'Имя' },
-  { value: 'stars', label: 'Редкость ★' },
-  { value: 'gold', label: 'Золото в списке' },
-  { value: 'score', label: 'Сумма очков скиллов' },
-  ...APT.map(([k, l]) => ({ value: `apt:${k}`, label: `Аптитюд · ${l}` })),
+  { value: 'name', label: 'Name' },
+  { value: 'stars', label: 'Rarity ★' },
+  { value: 'gold', label: 'Gold skills in list' },
+  { value: 'score', label: 'Total skill score' },
+  // The aptitude grid cells are too narrow for anything but an abbreviation;
+  // the sort dropdown has room for the real name.
+  ...APT.map(([k, , full]) => ({ value: `apt:${k}`, label: `Aptitude · ${full}` })),
 ];
 
 export function renderUmas(root) {
@@ -30,8 +32,8 @@ export function renderUmas(root) {
   };
 
   const skillFilter = createSkillFilter({
-    label: 'Фильтр по скиллам',
-    hint: 'Выбери скиллы, которые должны быть в собственном списке умы (уники тоже считаются).',
+    label: 'Filter by skills',
+    hint: 'Pick one or more skills an uma must have in its own skill list (unique skills included).',
     onChange: () => paint(),
   });
 
@@ -40,8 +42,8 @@ export function renderUmas(root) {
     <section>
       <div class="page-head">
         <div>
-          <h1>Умы</h1>
-          <p>Все умы на Global с полным списком скиллов, аптитюдами и стилем бега.</p>
+          <h1>Umas</h1>
+          <p>Every Global uma with their complete skill list, aptitudes and running style.</p>
         </div>
         <div class="page-head__right" data-role="sortbar"></div>
       </div>
@@ -58,15 +60,15 @@ export function renderUmas(root) {
   const basics = el(`<section class="panel"><div class="panel__body"></div></section>`);
   const basicsBody = basics.querySelector('.panel__body');
   basicsBody.append(
-    searchField({ placeholder: 'Поиск по уме или наряду…', value: state.q, onChange: (v) => { state.q = v; paint(); } }).element,
+    searchField({ placeholder: 'Search uma or outfit…', value: state.q, onChange: (v) => { state.q = v; paint(); } }).element,
     toggleGroup({
-      title: 'Стиль бега',
+      title: 'Running style',
       options: Object.entries(STRATEGY).map(([v, s]) => ({ value: v, label: s.name })),
       value: state.strategies.map(String),
       onChange: (v) => { state.strategies = v.map(Number); paint(); },
     }).element,
     toggleGroup({
-      title: 'Редкость',
+      title: 'Rarity',
       options: [1, 2, 3].map((n) => ({ value: String(n), label: '★'.repeat(n) })),
       value: state.stars.map(String),
       onChange: (v) => { state.stars = v.map(Number); paint(); },
@@ -74,7 +76,7 @@ export function renderUmas(root) {
   );
 
   const aptPanel = el(`<section class="panel">
-    <div class="panel__head"><h3>Минимальный аптитюд</h3><button class="btn btn--ghost btn--sm" data-act="apt-clear" type="button">Сброс</button></div>
+    <div class="panel__head"><h3>Minimum aptitude</h3><button class="btn btn--ghost btn--sm" data-act="apt-clear" type="button">Reset</button></div>
     <div class="panel__body" style="display:grid;grid-template-columns:1fr 1fr;gap:7px"></div>
   </section>`);
   const aptBody = aptPanel.querySelector('.panel__body');
@@ -98,10 +100,10 @@ export function renderUmas(root) {
   rail.append(basics, skillFilter.element, aptPanel);
 
   const sortSel = selectField({
-    title: 'Сортировка', options: SORTS, value: state.sort,
+    title: 'Sort by', options: SORTS, value: state.sort,
     onChange: (v) => { state.sort = v; paint(); },
   });
-  const dirBtn = el(`<button class="btn btn--sm" type="button" title="Обратный порядок">↕</button>`);
+  const dirBtn = el(`<button class="btn btn--sm" type="button" title="Reverse order">↕</button>`);
   dirBtn.addEventListener('click', () => { state.dir = state.dir === 'desc' ? 'asc' : 'desc'; paint(); });
   sortbar.append(sortSel.element, dirBtn);
 
@@ -161,9 +163,9 @@ export function renderUmas(root) {
       return 0;
     });
 
-    count.textContent = `нарядов: ${rows.length} · ум: ${new Set(rows.map((r) => r.chara.id)).size}`;
+    count.textContent = `${rows.length} outfit${rows.length === 1 ? '' : 's'} · ${new Set(rows.map((r) => r.chara.id)).size} umas`;
     grid.innerHTML = rows.length ? rows.map(cardHtml).join('') : '';
-    if (!rows.length) grid.innerHTML = '<div class="empty">Под эти фильтры ничего не подходит.</div>';
+    if (!rows.length) grid.innerHTML = '<div class="empty">Nothing matches these filters.</div>';
   }
 
   function cardHtml({ chara, outfit, skills, hits }) {
@@ -199,12 +201,12 @@ export function renderUmas(root) {
       <div class="card__body">
         <div class="apt">${aptCells}</div>
         ${unique ? `<div class="card__section">
-          <h4>Уник</h4>
+          <h4>Unique</h4>
           <div class="chips">${skillPill(unique, { match: hits.has(unique.id) })}</div>
           <p class="tiny muted" style="margin-top:5px">${esc(effectSummary(unique))}</p>
         </div>` : ''}
-        ${section('Золотые скиллы', gold)}
-        ${section('Список скиллов', normal)}
+        ${section('Gold skills', gold)}
+        ${section('Skill list', normal)}
       </div>
     </article>`;
   }

@@ -1,18 +1,30 @@
 import { db } from '../store.mjs';
 import { el, esc, fmt } from '../ui.mjs';
 
+// The counters from the last GameTora pass arrive as an object; printing it
+// with JSON.stringify dropped a brace-and-quote blob into the middle of a
+// sentence.
+const COUNT_LABEL = {
+  supports: 'cards total', supportsGlobal: 'cards on Global',
+  outfits: 'outfits total', outfitsGlobal: 'outfits on Global',
+  characters: 'umas', skills: 'skills',
+};
+const formatCounts = (counts) => Object.entries(counts)
+  .map(([k, v]) => `${COUNT_LABEL[k] ?? k} ${v}`)
+  .join(', ');
+
 export function renderData(root) {
   const m = db.meta;
   const when = m.generatedAt ? new Date(m.generatedAt) : null;
   const gt = m.gametora ?? {};
 
   const counts = [
-    ['Скиллов на Global', m.counts?.learnableSkills],
-    ['Ум', m.counts?.characters],
-    ['Нарядов', m.counts?.outfits],
-    ['Карт поддержки на Global', m.counts?.supports],
-    ['Карт поддержки известно всего', m.counts?.supportsAll],
-    ['Курсов', m.counts?.courses],
+    ['Skills live on Global', m.counts?.learnableSkills],
+    ['Umas', m.counts?.characters],
+    ['Outfits', m.counts?.outfits],
+    ['Support cards on Global', m.counts?.supports],
+    ['Support cards known in total', m.counts?.supportsAll],
+    ['Courses', m.counts?.courses],
   ];
 
   const jpOnly = db.supports.filter((s) => !s.global).length;
@@ -23,8 +35,8 @@ export function renderData(root) {
     <section class="stack" style="max-width:820px">
       <div class="page-head">
         <div>
-          <h1>Откуда берутся данные</h1>
-          <p>Последняя пересборка: ${when ? esc(when.toLocaleString('ru-RU')) : 'неизвестно'}.</p>
+          <h1>Where the data comes from</h1>
+          <p>Last rebuilt ${when ? esc(when.toUTCString()) : 'unknown'}.</p>
         </div>
       </div>
 
@@ -37,71 +49,70 @@ export function renderData(root) {
       </div>
 
       <section class="panel">
-        <div class="panel__head"><h3>Источники</h3></div>
+        <div class="panel__head"><h3>Sources</h3></div>
         <div class="panel__body">
-          <p><b>Мастер-база клиента Global.</b> Идентификаторы, названия, аптитюды, условия и эффекты скиллов, геометрия
-          курсов читаются из дампа мастер-базы <i>глобального</i> клиента, который публикует
-          <a href="https://github.com/alpha123/uma-tools" style="color:var(--accent)">alpha123/uma-tools</a>. Дамп снят
-          именно с Global, а не с японского клиента, поэтому всё, что в нём есть, по определению уже вышло на Global —
-          на этом и построен фильтр релизов.</p>
-          <p style="margin-top:8px"><b>GameTora.</b> Задача обновления также сверяется с
-          <a href="https://gametora.com/umamusume" style="color:var(--accent)">gametora.com</a> — за датами релизов и
-          каноническим написанием названий на Global. Статус последней попытки:
-          <b>${gt.ok ? 'успех' : 'не применено'}</b>${gt.counts ? ` (${esc(JSON.stringify(gt.counts))})` : ''}.
-          Когда сверка не применяется, работает только фильтр по мастер-базе, а названия остаются такими, как в клиенте
-          Global — то есть в той же формулировке, что показывает GameTora.</p>
+          <p><b>Global client master database.</b> Ids, names, aptitudes, skill conditions, skill effects and course
+          geometry are read out of a dump of the <i>Global</i> client's master database, published by
+          <a href="https://github.com/alpha123/uma-tools" style="color:var(--accent)">alpha123/uma-tools</a>. Because that
+          dump is generated from the Global client rather than the Japanese one, anything present in it is by definition
+          already live on Global — that is what the release filter is built on.</p>
+          <p style="margin-top:8px"><b>GameTora.</b> The refresh job also checks
+          <a href="https://gametora.com/umamusume" style="color:var(--accent)">gametora.com</a> for release dates and the
+          canonical Global spelling of every name. Status of the last attempt:
+          <b>${gt.ok ? 'succeeded' : 'not applied'}</b>${gt.counts ? ` (${esc(formatCounts(gt.counts))})` : ''}.
+          When it does not apply, the master-database filter below is used on its own and names stay as they are in the
+          Global client, which is the same wording GameTora shows.</p>
         </div>
       </section>
 
       <section class="panel">
-        <div class="panel__head"><h3>Как решается, что карта «есть на Global»</h3></div>
+        <div class="panel__head"><h3>How "on Global" is decided</h3></div>
         <div class="panel__body">
-          <p>Умы, скиллы и курсы приходят прямо из дампа Global, поэтому их фильтровать не нужно.</p>
-          <p style="margin-top:8px">Карты поддержки публикуются одним общим списком, поэтому каждая проверяется по набору
-          скиллов Global: карта считается вышедшей, если каждый скилл, которому она учит — ивент-скилл и все хинты, —
-          есть в клиенте Global. ${fmt.int(jpOnly)} карт эту проверку не проходят и спрятаны за переключателем
-          <i>Только релизы Global</i> на странице «Карты поддержки».</p>
-          <p style="margin-top:8px">Карты, которые проверку проходят, но находятся за текущей границей релизов Global,
-          помечаются как <b>не проверено</b>, а не принимаются молча — сейчас таких ${fmt.int(unverified)}. Страница
-          «Карты поддержки» умеет скрывать их одним переключателем.</p>
-          <p style="margin-top:8px">Умы приходят прямо из дампа Global, но клиент завозит данные карт чуть раньше баннера,
-          поэтому наряд может появиться до того, как в него можно играть.
-          ${hiddenOutfits ? `Сейчас ${fmt.int(hiddenOutfits)} нарядов вручную помечены как ещё не вышедшие.` : 'Сейчас ничего не помечено как невышедшее.'}</p>
-          <p style="margin-top:8px" class="note">Оба списка правятся руками:
-          <code>data-overrides/supports.json</code> и <code>data-overrides/characters.json</code> закрепляют любую карту
-          или наряд в любую сторону, а когда сверка с GameTora удалась, её даты релизов важнее вывода по скиллам. Если
-          заметишь на сайте то, чего на Global ещё нет, — это тот самый файл.</p>
+          <p>Umas, skills and courses come from the Global dump directly, so they need no filtering.</p>
+          <p style="margin-top:8px">Support cards are published as one combined list, so each card is checked against the
+          Global skill set: a card counts as released on Global when every skill it teaches — its event skill and all of
+          its hints — exists in the Global client. ${fmt.int(jpOnly)} cards fail that test and are hidden behind the
+          <i>Global releases only</i> switch on the Support cards page.</p>
+          <p style="margin-top:8px">Cards that pass the check but sit past the current Global release frontier are
+          flagged <b>unverified</b> rather than trusted silently — ${fmt.int(unverified)} of them right now. The Support
+          cards page can hide them with one switch.</p>
+          <p style="margin-top:8px">Umas come straight from the Global dump, but the client ships card data a little
+          ahead of the banner, so an outfit can appear before it is playable.
+          ${hiddenOutfits ? `${fmt.int(hiddenOutfits)} outfits are currently pinned as not-yet-released.` : 'Nothing is pinned as unreleased at the moment.'}</p>
+          <p style="margin-top:8px" class="note">Both lists are correctable by hand:
+          <code>data-overrides/supports.json</code> and <code>data-overrides/characters.json</code> pin any card or outfit
+          either way, and when the GameTora check succeeds its release dates take priority over the inference. If you spot
+          something on the site that is not on Global yet, that is the file to add it to.</p>
         </div>
       </section>
 
       <section class="panel">
-        <div class="panel__head"><h3>Что означают числа</h3></div>
+        <div class="panel__head"><h3>What the numbers mean</h3></div>
         <div class="panel__body">
-          <p><b>Условия срабатывания</b> собраны из сырых выражений в игровых данных, а не из описаний, поэтому они говорят
-          ровно то, что проверяет движок.</p>
-          <p style="margin-top:8px"><b>Нужно Stamina</b> в планировщике решается из стандартной модели HP: базовая скорость
-          от дистанции, целевые скорости по фазам от стиля бега, скорость последнего спурта от Speed и Guts и расход HP
-          <code>20·(v − base + 12)² / 144</code> в секунду с множителем Guts на финальном отрезке.
-          Соперницы, позиционирование и ускорения темпа не учитываются, так что читай это как нижнюю границу
-          выносливости, чтобы просто добежать свой забег.</p>
-          <p style="margin-top:8px"><b>Очки скиллов</b> — это ожидаемые <b>корпуса</b>, выигранные на выбранном курсе. Окно
-          срабатывания пересекается с реальной геометрией трассы, длительность эффекта обрезается расстоянием до линии,
-          а результат умножается на шанс выполнения условия по позиции в поле из 9 участниц Champions Meeting, на бросок
-          срабатывания Wit (<code>100 − 9000 / Wit</code>) и на штраф за условия вроде «зажали в коробке». Открой любой
-          скилл, чтобы увидеть все эти числа именно для него.</p>
-          <p style="margin-top:8px"><b>Чувствительность к статам</b> в планировщике — это конечная разность: забег
-          прогоняется заново со 100 очками стата сверху, а сэкономленное время переводится в корпуса на финише. У Power
-          там пусто намеренно: он отвечает за ускорение и смену дорожек, которые эта сборка не симулирует, и сделать вид,
-          что мы его измерили, было бы хуже, чем честно сказать об этом.</p>
+          <p><b>Activation conditions</b> are rendered from the raw condition expressions in the game data, not from
+          flavour text, so they say exactly what the engine checks.</p>
+          <p style="margin-top:8px"><b>Stamina needed</b> on the planner is solved from the standard HP model: base speed
+          from the distance, per-phase target speeds from the running style, last-spurt speed from Speed and Guts, and HP
+          drain of <code>20·(v − base + 12)² / 144</code> per second with the Guts multiplier applied in the final leg.
+          It ignores rivals, positioning and pace-ups, so read it as the stamina floor for running your own race.</p>
+          <p style="margin-top:8px"><b>Skill scores</b> are expected <b>lengths</b> gained on the selected course. The
+          trigger window is intersected with the real track geometry, the effect duration is capped by the distance left
+          to the line, and the result is multiplied by the chance the position condition holds in a 9-runner Champions
+          Meeting field, the Wit activation roll (<code>100 − 9000 / Wit</code>) and a penalty for conditions like being
+          boxed in. Open any skill to see every one of those numbers for that skill.</p>
+          <p style="margin-top:8px"><b>Stat sensitivity</b> on the planner is a finite difference: the race is re-run with
+          100 more of a stat and the time saved is converted into lengths at the finish. Power is deliberately blank —
+          it drives acceleration and lane changes, which this build does not simulate, so pretending to measure it would
+          be worse than saying so.</p>
         </div>
       </section>
 
       <section class="panel">
-        <div class="panel__head"><h3>Чего здесь нет</h3></div>
+        <div class="panel__head"><h3>Not included</h3></div>
         <div class="panel__body">
-          <p>Тренировочных эффектов карт поддержки (бонус дружбы, шанс специализации, прирост статов), бонусов роста
-          персонажей и вариантов в тренировочных ивентах в дампе мастер-базы, который читает эта сборка, нет — поэтому
-          они не показаны. За ними по-прежнему на страницы самой GameTora.</p>
+          <p>Support card training effects (friendship bonus, specialty rate, stat gains), character growth bonuses and
+          training event choices are not in the master-database dump this build reads, so they are not shown. For those,
+          GameTora's own pages remain the reference.</p>
         </div>
       </section>
     </section>
