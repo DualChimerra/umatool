@@ -644,7 +644,7 @@ export function renderTeam(root) {
    */
   function coverRow({ skill, hit, via, from, scored }) {
     const detail = hit
-      ? [via ? `as ${via.name}` : null, from.length ? `from ${from.slice(0, 2).join(', ')}` : null].filter(Boolean).join(' · ')
+      ? [via ? `as ${via.name}` : null, from.length ? `from ${from.slice(0, 2).join(', ')}` : null].filter(Boolean).join(', ')
       : '';
     return `<div class="cover-row">
       <span style="min-width:0">
