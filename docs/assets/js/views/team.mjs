@@ -111,7 +111,7 @@ export function renderTeam(root) {
   on(priorityPanel, 'click', '[data-act="clear"]', () => { cm.priority = []; cm.priorityOpts = {}; commitContext(); paint(); });
   on(priorityPanel, 'click', '[data-act="auto"]', () => {
     const ctx = scoringContext();
-    const sim = simulateRace({ course: currentCourse(), strategy: ctx.strategy, stats: ctx.stats, ground: ctx.ground, recoveryPct: cm.recovery });
+    const sim = simulateRace({ course: currentCourse(), strategy: ctx.strategy, stats: ctx.stats, ground: ctx.ground, aptitudes: ctx.aptitudes, recoveryPct: cm.recovery });
     // Ask for more than needed: group duplicates are dropped from the result
     // and the list still has to end up 12 long.
     const top = rankSkills(db.learnable.filter(isObtainable), { ...ctx, sim }, { tiers: ['gold', 'normal'], limit: 60 });

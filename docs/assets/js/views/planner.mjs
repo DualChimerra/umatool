@@ -3,9 +3,10 @@ import { el, esc, on, skillPill, effectSummary, fmt, turnLabel } from '../ui.mjs
 import { cm, commitContext, currentCourse, scoringContext, DEFAULT_STATS } from '../context.mjs';
 import {
   simulateRace, rankSkills, statGuide, statSensitivity, STRATEGY,
-  orderDistribution, orderRate, activationRate, BASHIN, CM_FIELD_SIZE,
+  orderDistribution, orderRate, activationRate, effectiveStats, courseSpeedModifier,
+  staminaMatrix, raceProfile, BASHIN, CM_FIELD_SIZE,
 } from '../model.mjs';
-import { cardSkills } from '../analysis.mjs';
+import { cardSkills, rankUniques } from '../analysis.mjs';
 
 const GROUND = [[1, 'Firm'], [2, 'Good'], [3, 'Soft'], [4, 'Heavy']];
 const STATS = [['speed', 'Speed'], ['stamina', 'Stamina'], ['power', 'Power'], ['guts', 'Guts'], ['wit', 'Wit']];
@@ -165,11 +166,11 @@ export function renderPlanner(root) {
   function paint() {
     const course = currentCourse();
     const ctx = scoringContext();
-    const sim = simulateRace({ course, strategy: ctx.strategy, stats: ctx.stats, ground: ctx.ground, recoveryPct: cm.recovery });
+    const sim = simulateRace({ course, strategy: ctx.strategy, stats: ctx.stats, ground: ctx.ground, aptitudes: ctx.aptitudes, recoveryPct: cm.recovery });
     const full = { ...ctx, sim };
 
     const ranked = rankSkills(db.learnable, full);
-    const uniques = ranked.filter((r) => r.skill.tier === 'unique' || r.skill.tier === 'evolved');
+    const uniques = rankUniques();
     const allLearnable = ranked.filter((r) => r.skill.tier === 'gold' || r.skill.tier === 'normal');
     const learnable = cm.obtainableOnly === false ? allLearnable : allLearnable.filter((r) => isObtainable(r.skill));
     const hiddenCount = allLearnable.length - learnable.length;
@@ -177,7 +178,7 @@ export function renderPlanner(root) {
     const sensitivity = statSensitivity({ ...full, recoveryPct: cm.recovery }, db.learnable);
 
     layout.querySelector('[data-role="jump"]').innerHTML = [
-      ['course', 'Course'], ['stats', 'Stat targets'],
+      ['course', 'Course'], ['stats', 'Stat targets'], ['matrix', 'Going & style'],
       ['skills', 'Best skills'], ['uniques', 'Uniques'], ['cards', 'Cards'],
     ].map(([id, label]) => `<a href="#/planner" data-jump="${id}">${label}</a>`).join('');
 
@@ -185,9 +186,10 @@ export function renderPlanner(root) {
       courseCard(course, sim),
       statCards(course, sim),
       guideCard(course, sim, sensitivity),
+      matrixCard(course),
       rankCard('Best skills for this course', learnable.slice(0, 30), learnable.length, hiddenCount),
       recovery.length ? rankCard('Best recovery skills', recovery.slice(0, 12), recovery.length) : el('<span hidden></span>'),
-      uniqueCard(uniques.slice(0, 24), uniques.length),
+      uniqueCard(uniques.slice(0, 20), uniques.length),
       cardSourcesCard(learnable.slice(0, 24)),
       fieldCard(ctx),
     );
@@ -207,39 +209,62 @@ export function renderPlanner(root) {
         </div>
       </div>
       <div class="panel__body">
-        ${trackSvg(course, sim)}
+        ${trackSvg(course)}
         <div class="factlist">
           <span><b class="num">${d.cornerCount}</b> corners (${fmt.int(d.cornerLength)}m)</span>
           <span>final corner at <b class="num">${d.finalCornerStart != null ? fmt.int(d.finalCornerStart) : '—'}</b>m</span>
           <span>home straight <b class="num">${fmt.int(d.lastStraightLength)}</b>m</span>
           <span>uphill <b class="num">${fmt.int(d.uphillLength)}</b>m</span>
           <span>downhill <b class="num">${fmt.int(d.downhillLength)}</b>m</span>
-          <span>last spurt from <b class="num">${fmt.int(course.distance - sim.spurtDistance)}</b>m</span>
         </div>
       </div>
     </section>`);
   }
 
-  function trackSvg(course, sim) {
-    const W = 1000; const H = 74;
+  /**
+   * The course, and the race run over it. The coloured bands are the track —
+   * straights, corners, slopes — and the two curves are this build's speed and
+   * remaining stamina at every point, from the same model as the numbers below.
+   */
+  function trackSvg(course) {
+    const W = 1000; const H = 132;
+    const profile = raceProfile({
+      course, strategy: cm.strategy, stats: cm.stats, ground: cm.ground, recoveryPct: cm.recovery,
+    });
     const x = (m) => (m / course.distance) * W;
     const seg = (a, b, fill, y, h) => `<rect x="${x(a).toFixed(1)}" y="${y}" width="${Math.max(1, x(b) - x(a)).toFixed(1)}" height="${h}" fill="${fill}"/>`;
 
-    const straights = course.straights.map((s) => seg(s.start, s.end, 'color-mix(in srgb, var(--accent) 28%, transparent)', 26, 16)).join('');
-    const corners = course.corners.map((c) => seg(c.start, c.start + c.length, 'var(--line)', 26, 16)).join('');
-    const up = course.derived.uphill.map((s) => seg(s.start, s.start + s.length, 'color-mix(in srgb, var(--danger) 55%, transparent)', 46, 7)).join('');
-    const down = course.derived.downhill.map((s) => seg(s.start, s.start + s.length, 'color-mix(in srgb, var(--turf) 60%, transparent)', 46, 7)).join('');
-    const spurt = seg(course.distance - sim.spurtDistance, course.distance, 'color-mix(in srgb, var(--gold) 45%, transparent)', 20, 4);
+    const straights = course.straights.map((v) => seg(v.start, v.end, 'color-mix(in srgb, var(--accent) 26%, transparent)', 8, 12)).join('');
+    const corners = course.corners.map((c) => seg(c.start, c.start + c.length, 'var(--line)', 8, 12)).join('');
+    const up = course.derived.uphill.map((v) => seg(v.start, v.start + v.length, 'color-mix(in srgb, var(--danger) 55%, transparent)', 22, 5)).join('');
+    const down = course.derived.downhill.map((v) => seg(v.start, v.start + v.length, 'color-mix(in srgb, var(--turf) 60%, transparent)', 22, 5)).join('');
 
-    const marks = [[course.distance / 6, 'middle leg'], [(course.distance * 2) / 3, 'final leg']].map(([m, label]) => `
-      <line x1="${x(m).toFixed(1)}" y1="18" x2="${x(m).toFixed(1)}" y2="60" stroke="var(--ink-3)" stroke-width="1" stroke-dasharray="3 3"/>
-      <text x="${(x(m) + 4).toFixed(1)}" y="14" font-size="11" fill="var(--ink-3)">${label}</text>`).join('');
+    const top = 34; const bottom = H - 18;
+    const vLo = profile.vMin - 0.6; const vHi = profile.vMax + 0.4;
+    const ySpeed = (v) => bottom - ((v - vLo) / Math.max(0.01, vHi - vLo)) * (bottom - top);
+    const yHp = (r) => bottom - r * (bottom - top);
+    const path = (fn, key) => profile.points
+      .map((pt, i) => `${i ? 'L' : 'M'}${x(pt.x).toFixed(1)},${fn(pt[key]).toFixed(1)}`).join('');
 
-    return `<svg class="track-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Course profile">
-      ${straights}${corners}${up}${down}${spurt}${marks}
-      <text x="2" y="70" font-size="11" fill="var(--ink-3)">start</text>
-      <text x="${W - 4}" y="70" font-size="11" fill="var(--ink-3)" text-anchor="end">finish</text>
-    </svg>`;
+    const spurtBand = seg(profile.spurtStart, course.distance, 'color-mix(in srgb, var(--gold) 16%, transparent)', top, bottom - top);
+    const marks = [[profile.marks.openingEnd, 'middle'], [profile.marks.middleEnd, 'final leg'], [profile.spurtStart, 'spurt']]
+      .map(([m, label]) => `
+        <line x1="${x(m).toFixed(1)}" y1="${top}" x2="${x(m).toFixed(1)}" y2="${bottom}" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3"/>
+        <text x="${(x(m) + 4).toFixed(1)}" y="${top + 9}" font-size="10" fill="var(--ink-3)">${label}</text>`).join('');
+
+    return `<svg class="track-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img"
+      aria-label="Course profile with this build's speed and stamina">
+      ${straights}${corners}${up}${down}${spurtBand}${marks}
+      <path d="${path(yHp, 'hpRatio')}" fill="none" stroke="var(--danger)" stroke-width="1.6" opacity=".8"/>
+      <path d="${path(ySpeed, 'v')}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+      <text x="2" y="${H - 5}" font-size="10" fill="var(--ink-3)">start</text>
+      <text x="${W - 4}" y="${H - 5}" font-size="10" fill="var(--ink-3)" text-anchor="end">finish</text>
+    </svg>
+    <div class="chart-key">
+      <span><i class="chart-key__line" style="background:var(--accent)"></i>speed, ${profile.vMin.toFixed(1)}\u2013${profile.vMax.toFixed(1)} m/s</span>
+      <span><i class="chart-key__line" style="background:var(--danger)"></i>stamina left, ${fmt.int(profile.maxHp)} at the gate</span>
+      <span><i class="chart-key__band"></i>last spurt, from ${fmt.int(profile.spurtStart)}m</span>
+    </div>`;
   }
 
   function statCards(course, sim) {
@@ -304,6 +329,73 @@ export function renderPlanner(root) {
           <summary>How this was worked out</summary>
           <p>Stamina is solved from the HP model for a full-length last spurt. The “+100 is worth” column is a finite difference on the model — it re-runs the race with 100 more of that stat and converts the time saved into lengths at the finish, so it tells you which stat is actually starved right now.</p>
           <p>Target ranges scale with the stat ceiling you set.</p>
+        </details>
+      </div>
+    </section>`);
+  }
+
+  /**
+   * What the race actually runs on. The going shifts Speed and Power by a flat
+   * amount before anything else, and some courses hand out a Speed bonus for
+   * clearing stat thresholds. Both change every number on this page and neither
+   * was visible anywhere.
+   */
+  function effectiveCard(course) {
+    const eff = effectiveStats(cm.stats, course, cm.ground);
+    const bonus = courseSpeedModifier(course, cm.stats);
+    const rows = [['speed', 'Speed'], ['power', 'Power']]
+      .map(([k, label]) => [label, Math.round(cm.stats[k]), Math.round(eff[k])])
+      .filter(([, a, b]) => a !== b);
+    if (!rows.length && bonus === 1) return '';
+    return `<details class="explain">
+      <summary>What the race actually sees</summary>
+      ${bonus === 1 ? '' : `<p>This course awards a set-status bonus, so your Speed is multiplied by <b>×${bonus.toFixed(2)}</b> before the going is applied.</p>`}
+      ${rows.length ? `<table class="calc">
+        <tbody>${rows.map(([label, a, b]) => `<tr>
+          <td>${label}</td><td class="num">${fmt.int(a)}</td>
+          <td class="num" style="color:${b < a ? 'var(--danger)' : 'var(--accent)'}">→ ${fmt.int(b)}</td>
+          <td class="small muted">${esc(GROUND.find(([v]) => v === cm.ground)?.[1] ?? '')} going${bonus === 1 ? '' : ' + course bonus'}</td>
+        </tr>`).join('')}</tbody>
+      </table>` : ''}
+      <p>Stamina and Guts are never modified. Everything above and below is computed from these adjusted values.</p>
+    </details>`;
+  }
+
+  /**
+   * The going is announced late, so the build that clears the spurt on Firm is
+   * worth checking against Heavy before the day.
+   */
+  function matrixCard(course) {
+    const rows = staminaMatrix({ course, stats: cm.stats, recoveryPct: cm.recovery });
+    const have = cm.stats.stamina;
+    const cell = (c) => {
+      const ok = c.short === 0;
+      const cls = ok ? 'mx--ok' : c.short > 150 ? 'mx--bad' : 'mx--warn';
+      return `<td class="num mx ${cls}" title="needs ${fmt.int(c.required)} Stamina, spurt ${Math.round(c.coverage * 100)}%">
+        <b>${fmt.int(c.required)}</b>
+        <span>${ok ? `+${fmt.int(have - c.required)}` : `−${fmt.int(c.short)}`}</span>
+      </td>`;
+    };
+    return el(`<section class="panel" data-section="matrix">
+      <div class="panel__head">
+        <h3>Going and style, against your Stamina</h3>
+        <span class="sk-count">you have ${fmt.int(have)}</span>
+      </div>
+      <div class="panel__body" style="gap:8px">
+        <table class="matrix">
+          <thead><tr><th>Style</th>${GROUND.map(([v, l]) => `<th class="num${v === cm.ground ? ' is-current' : ''}">${l}</th>`).join('')}</tr></thead>
+          <tbody>
+            ${rows.map((r) => `<tr>
+              <td${r.strategy === cm.strategy ? ' class="is-current"' : ''}>${esc(STRATEGY[r.strategy].name)}</td>
+              ${r.cells.map(cell).join('')}
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        ${effectiveCard(course)}
+        <details class="explain">
+          <summary>Reading this table</summary>
+          <p>Each cell is the Stamina that going and style need for an unbroken last spurt, with the shortfall or surplus against your current ${fmt.int(have)} underneath. Green clears it; red is more than 150 short.</p>
+          <p>Heavy going costs 50 Speed and up to 100 Power outright and raises HP drain, so it moves the requirement the most. Your current selection is the highlighted row and column.</p>
         </details>
       </div>
     </section>`);
@@ -403,30 +495,29 @@ export function renderPlanner(root) {
   function uniqueCard(rows, total) {
     if (!rows.length) return el('<span hidden></span>');
     const course = currentCourse();
-    const aptKey = ['', 'sprint', 'mile', 'medium', 'long'][course.distanceType];
-    const surfKey = course.surface === 1 ? 'turf' : 'dirt';
 
     return el(`<section class="panel" data-section="uniques">
-      <div class="panel__head"><h3>Uniques that land on this course</h3><span class="sk-count">${rows.length} of ${total}</span></div>
+      <div class="panel__head">
+        <h3>Uniques that land on this course</h3>
+        <span class="sk-count">${rows.length} of ${total}</span>
+      </div>
       <div class="panel__body" style="padding:0">
         <div class="rank-list">
           ${rows.map((r, i) => {
-    const owners = r.skill.sources.unique.map((id) => db.outfitById.get(id)).filter(Boolean);
-    const owner = owners[0];
-    const apt = owner ? owner.aptitudeGrades[aptKey] : null;
-    const surf = owner ? owner.aptitudeGrades[surfKey] : null;
-    const styleOk = owner ? (owner.strategy === r.skill.facets.strategies?.[0] || !r.skill.facets.strategies || r.skill.facets.strategies.length === 4) : true;
-    return `<div class="rank-row" style="grid-template-columns:26px 38px minmax(0,1fr) 104px 64px">
+    const o = r.owner;
+    const offStyle = r.strategy !== cm.strategy;
+    const grade = (v) => (v >= 7 ? '' : ' chip--warn');
+    return `<div class="rank-row rank-row--unique">
               <span class="rank-row__i">${i + 1}</span>
-              ${owner ? `<img src="./img/chara/${esc(owner.id)}.webp" alt="" width="34" height="34" loading="lazy" style="border-radius:7px;background:var(--sunken)">` : '<span></span>'}
+              <img src="./img/chara/${esc(o.id)}.webp" alt="" width="34" height="34" loading="lazy" class="rank-row__face">
               <span style="min-width:0">
                 ${skillPill(r.skill)}
-                <span class="rank-row__why">${esc(owner ? `${owner.charaName} (${owner.epithet}) · ${owner.strategyName}` : 'no Global uma carries this')}${esc(r.reasons.length ? ` · ${r.reasons[0]}` : '')}</span>
+                <span class="rank-row__why">${esc(`${o.charaName} · ${o.epithet}`)}</span>
               </span>
-              <span class="rank-row__mid row" style="gap:4px">
-                ${apt ? `<span class="chip">${esc(course.distanceTypeName)} ${esc(apt)}</span>` : ''}
-                ${surf ? `<span class="chip chip--${surfKey}">${esc(surf)}</span>` : ''}
-                ${styleOk ? '' : '<span class="chip chip--warn">style</span>'}
+              <span class="rank-row__mid chips">
+                <span class="chip${offStyle ? ' chip--accent' : ''}">${esc(STRATEGY[r.strategy].short)}</span>
+                <span class="chip${grade(r.aptitudes.distance)}">${esc(course.distanceTypeName)} ${esc(o.aptitudeGrades[['', 'sprint', 'mile', 'medium', 'long'][course.distanceType]])}</span>
+                <span class="chip${grade(r.aptitudes.surface)}">${esc(course.surfaceName)} ${esc(o.aptitudeGrades[course.surface === 1 ? 'turf' : 'dirt'])}</span>
               </span>
               <span class="rank-row__score">${r.bashin.toFixed(2)}</span>
             </div>`;
@@ -434,7 +525,9 @@ export function renderPlanner(root) {
         </div>
       </div>
       <div class="panel__foot">
-        <p class="tiny muted">Only uniques that can fire with ${esc(STRATEGY[cm.strategy].name)} on this course are listed, scored the same way as everything else. The chips show that uma's aptitude for this distance and surface, so you can see straight away whether running them here needs a shoe.</p>
+        <p class="tiny muted">A unique comes with its uma, so each one is scored the way she would actually run it — her own
+        running style and her own aptitudes for this course, not the style set above. Uniques nobody on Global carries are
+        left out. The style chip is highlighted when she runs something other than your current ${esc(STRATEGY[cm.strategy].short)} setting.</p>
       </div>
     </section>`);
   }

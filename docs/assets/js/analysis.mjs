@@ -2,7 +2,7 @@
 // or an uma would add to it, and the advice that falls out of both.
 
 import { db, isObtainable } from './store.mjs';
-import { cm, scoringContext, prioritySatisfiers, ownsCard, canPlace } from './context.mjs';
+import { cm, scoringContext, prioritySatisfiers, ownsCard, canPlace, aptitudesFor } from './context.mjs';
 import { simulateRace, scoreSkill, STRATEGY, statSensitivity } from './model.mjs';
 
 // A hint has to be rolled and paid for, so it is not worth an event skill the
@@ -56,7 +56,7 @@ export function analyseSlot(slot) {
   const course = db.courseById.get(cm.courseId);
   const outfit = slot.outfitId ? db.outfitById.get(slot.outfitId) : null;
   const ctx = scoringContext(slot);
-  const sim = simulateRace({ course, strategy: ctx.strategy, stats: ctx.stats, ground: ctx.ground, recoveryPct: cm.recovery });
+  const sim = simulateRace({ course, strategy: ctx.strategy, stats: ctx.stats, ground: ctx.ground, aptitudes: ctx.aptitudes, recoveryPct: cm.recovery });
   const full = { ...ctx, sim };
   const valueOf = valuer(full);
 
@@ -192,7 +192,10 @@ export function rankUmas({ own = 'all', query = '', strategy = null } = {}) {
   const aptDistance = ['', 'sprint', 'mile', 'medium', 'long'][course.distanceType];
   const aptSurface = course.surface === 1 ? 'turf' : 'dirt';
 
-  const byStrategy = new Map();
+  // Two umas of the same running style no longer score the same: aptitude feeds
+  // into target speed, acceleration and the Wit roll, so the cache has to key on
+  // the aptitudes as well as the style.
+  const byContext = new Map();
   const out = [];
   for (const outfit of db.globalOutfits) {
     if (needle && !outfit.displayName.toLowerCase().includes(needle)) continue;
@@ -201,12 +204,14 @@ export function rankUmas({ own = 'all', query = '', strategy = null } = {}) {
     const owned = !cm.useOwned || cm.owned.umas.includes(outfit.id);
     if (own === 'mine' && !owned) continue;
 
-    if (!byStrategy.has(style)) {
+    const aptitudes = aptitudesFor(outfit, course, style);
+    const key = `${style}:${aptitudes.distance}:${aptitudes.surface}:${aptitudes.style}`;
+    if (!byContext.has(key)) {
       const ctx = scoringContext({ outfitId: outfit.id, strategy: style, stats: cm.stats, deck: [] });
-      const sim = simulateRace({ course, strategy: style, stats: cm.stats, ground: cm.ground, recoveryPct: cm.recovery });
-      byStrategy.set(style, valuer({ ...ctx, sim }));
+      const sim = simulateRace({ course, strategy: style, stats: cm.stats, ground: cm.ground, aptitudes, recoveryPct: cm.recovery });
+      byContext.set(key, { valueOf: valuer({ ...ctx, aptitudes, sim }), sim });
     }
-    const valueOf = byStrategy.get(style);
+    const { valueOf, sim } = byContext.get(key);
 
     const ids = [...(outfit.uniqueId ? [outfit.uniqueId] : []), ...outfit.skillIds];
     let value = 0;
@@ -222,14 +227,13 @@ export function rankUmas({ own = 'all', query = '', strategy = null } = {}) {
     }
     skills.sort((a, b) => b.value - a.value);
 
-    const aptOk = (outfit.aptitudes[aptDistance] >= 7 ? 1 : 0.75)
-      * (outfit.aptitudes[aptSurface] >= 7 ? 1 : 0.7)
-      * (outfit.aptitudes[STRATEGY[style].key] >= 7 ? 1 : 0.8);
-
     out.push({
-      outfit, value, unique, skills, aptOk, owned,
+      outfit, value, unique, skills, owned, sim,
       gold: skills.filter((s) => s.skill?.tier === 'gold').length,
-      rank: value * aptOk,
+      // The aptitude penalty used to be a hand-picked multiplier bolted on here.
+      // The model applies the game's own aptitude tables now, so applying a
+      // second discount on top would count the same shortfall twice.
+      rank: value,
       aptitudes: {
         distance: outfit.aptitudeGrades[aptDistance], distanceVal: outfit.aptitudes[aptDistance],
         surface: outfit.aptitudeGrades[aptSurface], surfaceVal: outfit.aptitudes[aptSurface],
@@ -238,6 +242,50 @@ export function rankUmas({ own = 'all', query = '', strategy = null } = {}) {
     });
   }
   out.sort((a, b) => b.rank - a.rank);
+  return out;
+}
+
+/**
+ * Rank unique skills the only way they can actually be had: by running the uma
+ * they belong to.
+ *
+ * They used to be scored under whatever running style the Planner was set to,
+ * with A aptitudes assumed. Both are wrong for a unique — you cannot take one
+ * without taking its owner, so the style is hers and so are the aptitudes. With
+ * aptitude now feeding target speed, acceleration and the Wit roll, that moved
+ * two of the top eight on Tokyo 2400m and reshuffled the rest.
+ *
+ * Uniques with no Global owner are dropped rather than listed as unobtainable:
+ * 20 of the 117 in the data have nobody to carry them.
+ */
+export function rankUniques() {
+  const course = db.courseById.get(cm.courseId);
+  const byContext = new Map();
+  const out = [];
+
+  for (const skill of db.skills) {
+    if (skill.tier !== 'unique' && skill.tier !== 'evolved') continue;
+    const owner = skill.sources.unique
+      .map((id) => db.outfitById.get(id))
+      .find((o) => o && o.global !== false);
+    if (!owner) continue;
+
+    const strategy = owner.strategy;
+    const aptitudes = aptitudesFor(owner, course, strategy);
+    const key = `${strategy}:${aptitudes.distance}:${aptitudes.surface}:${aptitudes.style}`;
+    if (!byContext.has(key)) {
+      const sim = simulateRace({ course, strategy, stats: cm.stats, ground: cm.ground, aptitudes, recoveryPct: cm.recovery });
+      byContext.set(key, valuer({
+        course, strategy, ground: cm.ground, fieldSize: cm.fieldSize,
+        recoveryPct: cm.recovery, stats: cm.stats, aptitudes, sim,
+      }));
+    }
+    const scored = byContext.get(key)(skill);
+    if (!scored) continue;
+    out.push({ skill, owner, strategy, aptitudes, scored, bashin: scored.bashin, reasons: scored.reasons });
+  }
+
+  out.sort((a, b) => b.bashin - a.bashin);
   return out;
 }
 

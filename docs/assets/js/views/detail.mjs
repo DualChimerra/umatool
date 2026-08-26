@@ -56,7 +56,7 @@ export function initSkillDrawer(scope = document.body) {
 function body(skill) {
   const course = currentCourse();
   const ctx = scoringContext();
-  const sim = simulateRace({ course, strategy: ctx.strategy, stats: ctx.stats, ground: ctx.ground, recoveryPct: cm.recovery });
+  const sim = simulateRace({ course, strategy: ctx.strategy, stats: ctx.stats, ground: ctx.ground, aptitudes: ctx.aptitudes, recoveryPct: cm.recovery });
   const evaluated = scoreSkill(skill, { ...ctx, sim });
   const inPriority = cm.priority.includes(skill.id);
 
