@@ -1,5 +1,5 @@
 import { db } from '../store.mjs';
-import { el, esc, on, skillPill, effectSummary, readState, writeState } from '../ui.mjs';
+import { el, esc, on, skillPill, effectSummary, effectTags, icon, readState, writeState } from '../ui.mjs';
 import { createSkillFilter, toggleGroup, searchField, selectField } from '../filters.mjs';
 import { STRATEGY } from '../model.mjs';
 
@@ -17,7 +17,7 @@ const SORTS = [
   { value: 'score', label: 'Total skill score' },
   // The aptitude grid cells are too narrow for anything but an abbreviation;
   // the sort dropdown has room for the real name.
-  ...APT.map(([k, , full]) => ({ value: `apt:${k}`, label: `Aptitude · ${full}` })),
+  ...APT.map(([k, , full]) => ({ value: `apt:${k}`, label: `Aptitude: ${full}` })),
 ];
 
 export function renderUmas(root) {
@@ -103,7 +103,7 @@ export function renderUmas(root) {
     title: 'Sort by', options: SORTS, value: state.sort,
     onChange: (v) => { state.sort = v; paint(); },
   });
-  const dirBtn = el(`<button class="btn btn--sm" type="button" title="Reverse order">↕</button>`);
+  const dirBtn = el(`<button class="btn btn--sm" type="button" title="Reverse order" aria-label="Reverse order">${icon('sort')}</button>`);
   dirBtn.addEventListener('click', () => { state.dir = state.dir === 'desc' ? 'asc' : 'desc'; paint(); });
   sortbar.append(sortSel.element, dirBtn);
 
@@ -163,7 +163,7 @@ export function renderUmas(root) {
       return 0;
     });
 
-    count.textContent = `${rows.length} outfit${rows.length === 1 ? '' : 's'} · ${new Set(rows.map((r) => r.chara.id)).size} umas`;
+    count.textContent = `${rows.length} outfit${rows.length === 1 ? '' : 's'} from ${new Set(rows.map((r) => r.chara.id)).size} umas`;
     grid.innerHTML = rows.length ? rows.map(cardHtml).join('') : '';
     if (!rows.length) grid.innerHTML = '<div class="empty">Nothing matches these filters.</div>';
   }
@@ -203,7 +203,7 @@ export function renderUmas(root) {
         ${unique ? `<div class="card__section">
           <h4>Unique</h4>
           <div class="chips">${skillPill(unique, { match: hits.has(unique.id) })}</div>
-          <p class="tiny muted" style="margin-top:5px">${esc(effectSummary(unique))}</p>
+          <div class="facts" style="margin-top:6px">${effectTags(unique)}</div>
         </div>` : ''}
         ${section('Gold skills', gold)}
         ${section('Skill list', normal)}

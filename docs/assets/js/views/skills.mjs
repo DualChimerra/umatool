@@ -144,10 +144,10 @@ export function renderSkills(root) {
   function rowHtml(s) {
     const src = s.sources;
     const parts = [
-      src.unique.length ? [`${src.unique.length} uma unique`, `${src.unique.length}·uniq`] : null,
-      src.characters.length ? [`${src.characters.length} uma skill lists`, `${src.characters.length}·uma`] : null,
-      src.event.length ? [`${src.event.length} card events`, `${src.event.length}·evt`] : null,
-      src.hint.length ? [`${src.hint.length} card hints`, `${src.hint.length}·hint`] : null,
+      src.unique.length ? [`${src.unique.length} uma unique`, `${src.unique.length} uniq`] : null,
+      src.characters.length ? [`${src.characters.length} uma skill lists`, `${src.characters.length} uma`] : null,
+      src.event.length ? [`${src.event.length} card events`, `${src.event.length} event`] : null,
+      src.hint.length ? [`${src.hint.length} card hints`, `${src.hint.length} hint`] : null,
     ].filter(Boolean);
 
     return `<tr>

@@ -3,9 +3,11 @@
 // race I am preparing for, and where do I get it.
 
 import { db, skillIconUrl, groupSiblings } from '../store.mjs';
-import { el, esc, on, effectSummary, TIER_LABEL, fmt } from '../ui.mjs';
+import {
+  el, esc, on, icon, effectTags, valueBar, skillTrack, PART_NAME, TIER_LABEL, fmt,
+} from '../ui.mjs';
 import { cm, scoringContext, togglePriority, currentCourse } from '../context.mjs';
-import { simulateRace, scoreSkill, BASHIN, STRATEGY } from '../model.mjs';
+import { simulateRace, scoreSkill, skillFiring, BASHIN, STRATEGY } from '../model.mjs';
 
 let drawer = null;
 let openId = null;
@@ -73,15 +75,18 @@ function body(skill) {
           ${skill.wisdomCheck ? '<span class="chip">Wit check</span>' : ''}
         </div>
       </div>
-      <button class="icon-btn" data-act="close" type="button" aria-label="Close">✕</button>
+      <button class="icon-btn" data-act="close" type="button" aria-label="Close">${icon('close', { size: 18 })}</button>
     </header>
 
     <div class="drawer__body">
       <section>
-        <h3 class="drawer__h3">Effect</h3>
-        <p>${esc(effectSummary(skill))}</p>
+        <h3 class="drawer__h3">${icon('spark', { size: 13 })}Effect</h3>
+        <div class="facts">${effectTags(skill)}</div>
         <ul class="cond-list">
-          ${skill.variants.map((v) => `<li>${esc(v.text)}<code class="tiny muted">${esc(v.raw.precondition ? `${v.raw.precondition} ⇒ ` : '')}${esc(v.raw.condition)}</code></li>`).join('')}
+          ${skill.variants.map((v) => `<li>
+            <span>${esc(v.text)}</span>
+            <code class="tiny muted">${esc(v.raw.precondition ? `${v.raw.precondition} then ` : '')}${esc(v.raw.condition)}</code>
+          </li>`).join('')}
         </ul>
       </section>
 
@@ -99,34 +104,71 @@ function body(skill) {
 }
 
 function evaluationSection(skill, r, course, ctx, sim) {
-  const head = `<h3 class="drawer__h3">On ${esc(course.trackName)} ${course.distance}m ${esc(course.surfaceName)}, as ${esc(STRATEGY[ctx.strategy].name)}</h3>`;
+  const head = `<h3 class="drawer__h3">${icon('gauge', { size: 13 })}On ${esc(course.trackName)} ${course.distance}m ${esc(course.surfaceName)}, as ${esc(STRATEGY[ctx.strategy].name)}</h3>`;
   if (!r) {
     return `<section>${head}<p class="note">Cannot fire here — the course, surface, distance band or running style rules it out.</p></section>`;
   }
 
-  const rows = [
-    ['Raw effect', `${r.metres.toFixed(2)} m (${(r.metres / BASHIN).toFixed(2)} lengths)`, Object.entries(r.parts).map(([k, v]) => `${k} ${v.toFixed(2)}m`).join(', ')],
-    ['Effect window', `${r.durSec.toFixed(1)} s`, `starts around ${Math.round(r.at)}m of ${course.distance}m`],
-    ['Position condition', fmt.pct(r.pPosition), `${ctx.fieldSize}-runner field, ${STRATEGY[ctx.strategy].name}`],
-    ['Wit activation', fmt.pct(r.pWit), skill.wisdomCheck ? `at ${ctx.stats.wit} Wit` : 'not Wit-checked'],
-    ['Other requirements', fmt.pct(r.pOther), [...skill.facets.needs].join(', ') || 'none'],
-    ['Race-position weight', `×${r.weight.toFixed(2)}`, `fires at ${Math.round(r.fraction * 100)}% into the race`],
+  const firing = skillFiring(skill, r, course, sim);
+  const nominal = skill.duration * (course.distance / 1000);
+
+  // Every multiplier between the raw effect and the number on the card, shown
+  // as the chain it actually is rather than a single opaque total.
+  const chain = [
+    ['Raw effect', `${(r.metres / BASHIN).toFixed(2)} len`, `${r.metres.toFixed(2)} m of ground`],
+    ['Race-position weight', `×${r.weight.toFixed(2)}`, `fires ${Math.round(r.fraction * 100)}% into the race`],
+    ['Position condition', `×${r.pPosition.toFixed(2)}`, `${ctx.fieldSize} runners, ${STRATEGY[ctx.strategy].name}`],
+    ['Wit activation', `×${r.pWit.toFixed(2)}`, skill.wisdomCheck ? `at ${ctx.stats.wit} Wit` : 'not Wit-checked'],
+    ['Other requirements', `×${r.pOther.toFixed(2)}`, skill.facets.needs.length ? skill.facets.needs.join(', ') : 'none'],
   ];
+
+  const partRows = Object.entries(r.parts)
+    .filter(([, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => `<tr><td>${esc(PART_NAME[k] ?? k)}</td><td class="num">${(v / BASHIN).toFixed(2)} len</td>
+      <td class="num small muted">${Math.round((v / r.metres) * 100)}%</td></tr>`).join('');
 
   return `<section>
     ${head}
-    <div class="stat-tile" style="margin-bottom:10px">
-      <h4>Expected gain</h4>
-      <div class="big">${r.bashin.toFixed(2)} <span style="font-size:15px;font-weight:500">lengths</span></div>
-      <div class="sub">${(r.score).toFixed(2)} m after weighting · fires ${fmt.pct(r.probability)} of the time</div>
+    <div class="headline">
+      <div class="headline__num">${r.bashin.toFixed(2)}<span>lengths</span></div>
+      <div class="headline__side">
+        ${valueBar(r.parts)}
+        <div class="facts" style="margin-top:8px">
+          <span class="fact">fires <b>${fmt.pct(r.probability)}</b> of the time</span>
+          <span class="fact">runs <b>${r.durSec.toFixed(1)}s</b>${firing ? ` over <b>${Math.round(firing.length)}m</b>` : ''}</span>
+        </div>
+      </div>
     </div>
+
+    ${firing ? `<div class="timeline">
+      <div class="timeline__head">
+        <span>${icon('route', { size: 13 })}Where it happens</span>
+        <span class="sk-count">${Math.round(firing.start)}m to ${Math.round(firing.end)}m of ${course.distance}m</span>
+      </div>
+      ${skillTrack(firing, course, { height: 26 })}
+      <div class="legend">
+        <span><i style="background:var(--accent)"></i>effect is live</span>
+        <span><i style="background:var(--line-strong)"></i>eligible stretch</span>
+        <span><i style="background:var(--line-soft)"></i>leg boundaries</span>
+      </div>
+      <div class="facts" style="margin-top:8px">
+        <span class="fact">starts in the <b>${esc(firing.phase === 'spurt' ? 'last spurt' : `${firing.phase} leg`)}</b></span>
+        ${firing.random ? '<span class="fact">lands <b>somewhere</b> in the eligible stretch</span>' : '<span class="fact">start point is <b>fixed</b></span>'}
+        ${firing.inSpurt ? '<span class="fact">overlaps the <b>last spurt</b></span>' : ''}
+        ${firing.secondsClipped > 0.05 ? `<span class="fact">line cuts it <b>${firing.secondsClipped.toFixed(1)}s</b> short of ${nominal.toFixed(1)}s</span>` : ''}
+      </div>
+    </div>` : ''}
+
+    <h4 class="drawer__h4">What the ground is made of</h4>
+    <table class="calc"><tbody>${partRows}</tbody></table>
+
+    <h4 class="drawer__h4">How the number is reached</h4>
     <table class="calc">
-      <tbody>
-        ${rows.map(([a, b, c]) => `<tr><td>${esc(a)}</td><td class="num">${esc(b)}</td><td class="small muted">${esc(c)}</td></tr>`).join('')}
-      </tbody>
+      <tbody>${chain.map(([a, b, c]) => `<tr><td>${esc(a)}</td><td class="num">${esc(b)}</td><td class="small muted">${esc(c)}</td></tr>`).join('')}</tbody>
     </table>
-    <p class="tiny muted" style="margin-top:6px">
-      Expected gain = raw effect × position weight × P(position) × P(Wit) × P(other requirements), converted to lengths at ${BASHIN} m each.
+    <p class="tiny muted" style="margin-top:8px">
+      Multiply the chain together and divide by ${BASHIN} m to get the ${r.bashin.toFixed(2)} lengths above.
     </p>
   </section>`;
 }
@@ -135,7 +177,7 @@ function siblingsSection(skill) {
   const sibs = groupSiblings(skill.id).filter((s) => s.id !== skill.id && !s.inherited);
   if (!sibs.length) return '';
   return `<section>
-    <h3 class="drawer__h3">Same skill group</h3>
+    <h3 class="drawer__h3">${icon('layers', { size: 13 })}Same skill group</h3>
     <div class="chips">${sibs.map((s) => `
       <button type="button" class="skill skill--${s.tier === 'normal' ? '' : s.tier}" data-open-skill="${esc(s.id)}">
         <img src="${skillIconUrl(s)}" alt="" width="22" height="22">
@@ -156,7 +198,7 @@ function sourcesSection(skill) {
       <img src="./img/chara/${esc(o.id)}.webp" alt="" width="34" height="34" loading="lazy">
       <span style="min-width:0">
         <b>${esc(o.charaName)}</b>
-        <span class="src-row__sub">${esc(o.epithet)} · ${esc(o.strategyName)}</span>
+        <span class="src-row__sub">${esc(o.epithet)}, ${esc(o.strategyName)}</span>
       </span>
       <span class="chip">${esc(tag)}</span>
     </a>`;
@@ -169,7 +211,7 @@ function sourcesSection(skill) {
       <img src="./img/support/${esc(c.id)}.webp" alt="" width="34" height="34" loading="lazy">
       <span style="min-width:0">
         <b>${esc(c.name)}</b>
-        <span class="src-row__sub">${esc(c.rarityName)} ${esc(c.typeName)} · #${esc(c.id)}</span>
+        <span class="src-row__sub">${esc(c.rarityName)} ${esc(c.typeName)}, #${esc(c.id)}</span>
       </span>
       <span class="chip ${tag === 'event' ? 'chip--accent' : ''}">${esc(tag)}</span>
     </a>`;
@@ -191,7 +233,7 @@ function sourcesSection(skill) {
   }
 
   return `<section>
-    <h3 class="drawer__h3">Where to get it</h3>
+    <h3 class="drawer__h3">${icon('flag', { size: 13 })}Where to get it</h3>
     ${blocks.map(([title, rows]) => `
       <h4 class="drawer__h4">${esc(title)}</h4>
       <div class="src-list">${rows}</div>`).join('')}

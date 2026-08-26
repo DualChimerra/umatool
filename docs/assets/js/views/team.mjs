@@ -5,7 +5,7 @@
 // the team as a whole — so the totals are traceable rather than a verdict.
 
 import { db, skillIconUrl, isObtainable } from '../store.mjs';
-import { el, esc, on, skillPill, fmt, debounce, turnLabel } from '../ui.mjs';
+import { el, esc, on, skillPill, fmt, debounce, turnLabel, icon } from '../ui.mjs';
 import {
   cm, commitContext, currentCourse, scoringContext, togglePriority, togglePriorityRank,
   priorityAnyRank, priorityLadder, priorityGroupMate, prioritySatisfiers, DEFAULT_STATS, canPlace,
@@ -46,7 +46,7 @@ export function renderTeam(root) {
 
   const priorityPanel = el(`<section class="panel">
     <div class="panel__head">
-      <h3>Priority skills</h3>
+      <h3>${icon('spark', { size: 14 })}Priority skills</h3>
       <button class="btn btn--ghost btn--sm" data-act="clear" type="button">Clear</button>
     </div>
     <div class="panel__body">
@@ -139,7 +139,7 @@ export function renderTeam(root) {
       return `<div class="pri-row">
         <div class="row" style="justify-content:space-between;gap:6px;flex-wrap:nowrap">
           ${skillPill(skill)}
-          <button class="btn btn--ghost btn--sm" data-drop="${esc(id)}" type="button" aria-label="Remove">✕</button>
+          <button class="icon-btn icon-btn--sm" data-drop="${esc(id)}" type="button" aria-label="Remove">${icon('close', { size: 14 })}</button>
         </div>
         ${better.length ? `<p class="tiny muted" style="margin-top:4px">Also counts: ${esc(better.map((x) => x.name).join(', '))}</p>` : ''}
         ${worse.length ? `<label class="check tiny" style="margin-top:4px">
@@ -154,7 +154,7 @@ export function renderTeam(root) {
   /* ------------------------------------------------------ collection rail */
 
   const collectionPanel = el(`<section class="panel">
-    <div class="panel__head"><h3>Collection</h3><a class="btn btn--ghost btn--sm" href="#/collection">Edit</a></div>
+    <div class="panel__head"><h3>${icon('layers', { size: 14 })}Collection</h3><a class="btn btn--ghost btn--sm" href="#/collection">Edit</a></div>
     <div class="panel__body">
       <label class="check">
         <input type="checkbox" data-role="useowned" ${cm.useOwned ? 'checked' : ''}>
@@ -185,7 +185,7 @@ export function renderTeam(root) {
   /* ------------------------------------------------------------ saved builds */
 
   const buildsPanel = el(`<section class="panel">
-    <div class="panel__head"><h3>Saved builds</h3></div>
+    <div class="panel__head"><h3>${icon('flag', { size: 14 })}Saved builds</h3></div>
     <div class="panel__body">
       <div class="row" style="gap:6px;flex-wrap:nowrap">
         <input class="input" data-role="bname" type="text" placeholder="Name this build…">
@@ -221,10 +221,10 @@ export function renderTeam(root) {
       return `<div class="src-row" style="grid-template-columns:minmax(0,1fr) auto auto;cursor:pointer" data-load="${esc(b.id)}">
         <span style="min-width:0">
           <b>${esc(b.name)}</b>
-          <span class="src-row__sub">${esc(names.join(' · ') || 'empty')} · ${esc(new Date(b.savedAt).toLocaleDateString())}</span>
+          <span class="src-row__sub">${esc(names.join(', ') || 'empty')} — ${esc(new Date(b.savedAt).toLocaleDateString())}</span>
         </span>
         <span class="chip">${b.priority?.length ?? 0} pri</span>
-        <button class="btn btn--ghost btn--sm" data-del="${esc(b.id)}" type="button" aria-label="Delete">✕</button>
+        <button class="icon-btn icon-btn--sm" data-del="${esc(b.id)}" type="button" aria-label="Delete">${icon('close', { size: 14 })}</button>
       </div>`;
     }).join('');
   }
@@ -245,7 +245,7 @@ export function renderTeam(root) {
           <h2 data-role="title">Pick</h2>
           <p class="tiny muted" data-role="subtitle"></p>
         </div>
-        <button class="icon-btn" data-act="close-picker" type="button" aria-label="Close">✕</button>
+        <button class="icon-btn" data-act="close-picker" type="button" aria-label="Close">${icon('close', { size: 18 })}</button>
       </header>
       <div class="drawer__body" style="gap:10px">
         <input class="input" type="search" data-role="pq" placeholder="Search…" autocomplete="off">
@@ -302,7 +302,7 @@ export function renderTeam(root) {
     if (pickerState.kind === 'card') {
       const analysis = analyseSlot(slot);
       const spent = borrowedIn(slot, pickerState.deckIndex).length >= BORROWED_ALLOWANCE;
-      title.textContent = `Support card · uma ${pickerState.slotIndex + 1}, slot ${pickerState.deckIndex + 1}`;
+      title.textContent = `Support card for uma ${pickerState.slotIndex + 1}, slot ${pickerState.deckIndex + 1}`;
       subtitle.textContent = 'Sorted by what it would actually add to this deck — priority skills first, then expected lengths.';
 
       ownEl.innerHTML = cm.useOwned
@@ -319,7 +319,7 @@ export function renderTeam(root) {
       }).slice(0, 60);
       grid.innerHTML = rows.map(cardRow).join('') || '<p class="muted small">Nothing matches.</p>';
     } else {
-      title.textContent = `Umamusume · slot ${pickerState.slotIndex + 1}`;
+      title.textContent = `Umamusume for slot ${pickerState.slotIndex + 1}`;
       subtitle.textContent = 'Sorted by what their own unique and skill list is worth on this course, discounted for missing aptitude.';
       ownEl.innerHTML = cm.useOwned ? ownSegment([['all', 'All'], ['mine', 'Mine']]) : '';
       noteEl.innerHTML = '';
@@ -430,7 +430,13 @@ export function renderTeam(root) {
   function paint() {
     satisfierCache.clear();
     const course = currentCourse();
-    raceEl.innerHTML = `<a class="chip chip--accent" href="#/planner">${esc(course.trackName)} ${course.distance}m ${esc(course.surfaceName)} · ${esc(turnLabel(course.turnName))} · ${cm.fieldSize} runners</a>`;
+    raceEl.innerHTML = `<a class="racechip" href="#/planner">
+      ${icon('route', { size: 14 })}
+      <b>${esc(course.trackName)} ${course.distance}m</b>
+      <span>${esc(course.surfaceName)}</span>
+      <span>${esc(turnLabel(course.turnName))}</span>
+      <span>${cm.fieldSize} runners</span>
+    </a>`;
     paintPriority();
     paintCollection();
     paintBuilds();
@@ -481,7 +487,7 @@ export function renderTeam(root) {
       return el('<section class="panel"><div class="panel__body"><p class="small muted">Nothing to flag — the entry looks coherent for this course.</p></div></section>');
     }
     return el(`<section class="panel">
-      <div class="panel__head"><h3>What to fix next</h3><span class="sk-count">${items.length}</span></div>
+      <div class="panel__head"><h3>${icon('warn', { size: 14 })}What to fix next</h3><span class="sk-count">${items.length}</span></div>
       <div class="panel__body" style="padding:0">
         <div class="rank-list">
           ${items.map((r) => `<div class="advice advice--${r.severity}">
@@ -503,13 +509,13 @@ export function renderTeam(root) {
     const cells = slot.deck.map((id, i) => {
       const card = id ? db.supportById.get(id) : null;
       if (!card) {
-        return `<button class="deck__slot" type="button" data-deck="${index}:${i}" aria-label="Add a support card">+</button>`;
+        return `<button class="deck__slot" type="button" data-deck="${index}:${i}" aria-label="Add a support card">${icon('plus', { size: 18 })}</button>`;
       }
       return `<button class="deck__slot deck__slot--filled${i === friendAt ? ' deck__slot--friend' : ''}" type="button" data-deck="${index}:${i}" title="${esc(card.name)}">
         <img src="./img/support/${esc(card.id)}.webp" alt="${esc(card.name)}" loading="lazy">
         <span class="deck__type">${esc(card.typeName)}</span>
         ${i === friendAt ? '<span class="deck__borrow">friend</span>' : ''}
-        <span class="deck__x" data-clear="${index}:${i}" role="button" aria-label="Remove">✕</span>
+        <span class="deck__x" data-clear="${index}:${i}" role="button" aria-label="Remove">${icon('close', { size: 11 })}</span>
       </button>`;
     }).join('');
 
@@ -521,7 +527,7 @@ export function renderTeam(root) {
       <h4 class="drawer__h3">Deck</h4>
       <div class="deck">${cells}</div>
       <p class="tiny muted" style="margin-top:6px">
-        ${filled}/6 cards${Object.keys(typeCount).length ? ` · ${esc(Object.entries(typeCount).map(([t, n]) => `${n} ${t}`).join(', '))}` : ''}
+        ${filled}/6 cards${Object.keys(typeCount).length ? ` — ${esc(Object.entries(typeCount).map(([t, n]) => `${n} ${t}`).join(', '))}` : ''}
       </p>
       ${cm.useOwned ? `<p class="deck__rule">
         Friend's card: ${friendAt >= 0
@@ -604,7 +610,7 @@ export function renderTeam(root) {
         <details class="reach">
           <summary>
             <span>Reachable skills</span>
-            <span class="sk-count">${a.usable.length} usable · ${a.total.toFixed(2)} len</span>
+            <span class="sk-count">${a.usable.length} usable, ${a.total.toFixed(2)} len</span>
           </summary>
           <table class="calc" style="margin-top:8px">
             <tbody>
@@ -638,7 +644,7 @@ export function renderTeam(root) {
    */
   function coverRow({ skill, hit, via, from, scored }) {
     const detail = hit
-      ? [via ? `as ${via.name}` : null, from.length ? `from ${from.slice(0, 2).join(', ')}` : null].filter(Boolean).join(' · ')
+      ? [via ? `as ${via.name}` : null, from.length ? `from ${from.slice(0, 2).join(', ')}` : null].filter(Boolean).join(', ')
       : '';
     return `<div class="cover-row">
       <span style="min-width:0">
