@@ -1,20 +1,25 @@
 import { db, isObtainable } from '../store.mjs';
-import { el, esc, on, skillPill, effectSummary, fmt, collapsible } from '../ui.mjs';
+import {
+  el, esc, on, skillPill, effectSummary, fmt, collapsible,
+  icon, turnLabel, effectTags, valueBar, skillTrack,
+} from '../ui.mjs';
 import {
   cm, commitContext, currentCourse, scoringContext, DEFAULT_STATS,
-  normaliseField, fieldStyles, fieldSummary, yourSkills, outfitAptitudes,
+  normaliseField, fieldStyles, fieldSummary, yourSkills, aptitudesFor,
 } from '../context.mjs';
 import {
   simulateRace, rankSkills, statGuide, statSensitivity, STRATEGY,
   orderDistribution, orderRate, activationRate, CM_FIELD_SIZE,
   GROUND_NAME, WEATHER_NAME, SEASON_NAME, APT_GRADE, isPassive,
-  uniqueScale, atUniqueLevel, scoreSkill,
+  uniqueScale, atUniqueLevel, scoreSkill, skillFiring, skillOverlaps, raceProfile, staminaMatrix,
+  effectiveStats, courseSpeedModifier,
 } from '../model.mjs';
 import { clearFieldCache, FIELD_PRESETS } from '../race/field.mjs';
 import { openFieldEditor } from './fieldeditor.mjs';
 import { pickUma, pickSkill } from './picker.mjs';
 
 const STATS = [['speed', 'Speed'], ['stamina', 'Stamina'], ['power', 'Power'], ['guts', 'Guts'], ['wit', 'Wit']];
+const GROUND = Object.entries(GROUND_NAME).map(([v, l]) => [Number(v), l]);
 
 /**
  * Skill families. The ranking used to be one flat list, which buried anything
@@ -32,6 +37,7 @@ const FAMILIES = [
 
 let family = 'all';
 let sortBy = 'value';
+let lastSim = null;
 
 export function renderPlanner(root) {
   const layout = el(`<div class="layout">
@@ -220,10 +226,10 @@ export function renderPlanner(root) {
     const course = currentCourse();
     const outfit = cm.you.outfitId ? db.outfitById.get(cm.you.outfitId) : null;
     const unique = outfit?.uniqueId ? db.skillById.get(outfit.uniqueId) : null;
-    const apt = outfit ? outfitAptitudes(outfit, course, cm.strategy) : null;
+    const apt = outfit ? aptitudesFor(outfit, course, cm.strategy) : null;
     const body = youPanel.querySelector('[data-role="you-body"]');
     youPanel.querySelector('[data-role="you-chip"]').textContent = outfit
-      ? `${APT_GRADE[apt.distance]}/${APT_GRADE[apt.surface]}/${APT_GRADE[apt.strategy]}`
+      ? `${APT_GRADE[apt.distance]}/${APT_GRADE[apt.surface]}/${APT_GRADE[apt.style]}`
       : 'generic runner';
 
     body.innerHTML = `
@@ -423,7 +429,7 @@ export function renderPlanner(root) {
     statsPanel.querySelector('[data-role="apt"]').innerHTML = [
       ['distance', currentCourse().distanceTypeName],
       ['surface', currentCourse().surfaceName],
-      ['strategy', STRATEGY[cm.strategy].short],
+      ['style', STRATEGY[cm.strategy].short],
     ].map(([k, label]) => `
       <label class="apt-cell">
         <span>${esc(label)}</span>
@@ -479,6 +485,7 @@ export function renderPlanner(root) {
     const course = currentCourse();
     const ctx = scoringContext();
     const sim = simulateRace({ ...ctx, recoveryPct: cm.recovery });
+    lastSim = sim;
     const full = { ...ctx, sim, recoveryPct: cm.recovery };
 
     controls.querySelector('[data-role="course-chip"]').textContent = `${course.distance}m ${course.surfaceName}`;
@@ -498,16 +505,19 @@ export function renderPlanner(root) {
 
     layout.querySelector('[data-role="jump"]').innerHTML = [
       ['course', 'Course'], ['stats', 'Stat targets'], ['field', 'Field model'],
-      ['you', 'Your run'], ['skills', 'Best skills'], ['uniques', 'Uniques'], ['cards', 'Cards'],
+      ['matrix', 'Going matrix'], ['you', 'Your run'], ['skills', 'Best skills'],
+      ['uniques', 'Uniques'], ['cards', 'Cards'],
     ].map(([id, label]) => `<a href="#/planner" data-jump="${id}">${label}</a>`).join('');
 
     out.replaceChildren(
       courseCard(course, sim),
       statCards(course, sim),
       guideCard(course, sim, sensitivity),
+      matrixCard(course),
       fieldCard(ctx, sim),
       yourRunCard(full),
       rankCard(learnable, hiddenCount),
+      overlapCard(learnable, course, sim),
       uniqueCard(uniques.slice(0, 24), uniques.length),
       cardSourcesCard(learnable.slice(0, 24)),
       scoringExplainer(),
@@ -558,25 +568,17 @@ export function renderPlanner(root) {
     const d = course.derived;
     return el(`<section class="panel" data-section="course">
       <div class="panel__head">
-        <h3>${esc(course.trackName)} · ${course.distance}m ${esc(course.surfaceName)}</h3>
+        <h3>${icon('route', { size: 14 })}${esc(course.trackName)} <span class="hdr-sep">${course.distance}m ${esc(course.surfaceName)}</span></h3>
         <div class="row">
           <span class="chip chip--${course.surface === 1 ? 'turf' : 'dirt'}">${esc(course.surfaceName)}</span>
           <span class="chip">${esc(course.distanceTypeName)}</span>
-          <span class="chip">${esc(course.turnName)}-handed</span>
-          <a class="btn btn--sm btn--primary" href="#/race">Run the race →</a>
+          <span class="chip">${esc(turnLabel(course.turnName))}</span>
+          <a class="btn btn--sm btn--primary" href="#/race">Run the race \u2192</a>
         </div>
       </div>
       <div class="panel__body">
         ${trackSvg(course, sim)}
-        <div class="legend">
-          <span><i class="sw sw--straight"></i>straight</span>
-          <span><i class="sw sw--corner"></i>corner</span>
-          <span><i class="sw sw--up"></i>uphill</span>
-          <span><i class="sw sw--down"></i>downhill</span>
-          <span><i class="sw sw--spurt"></i>last spurt</span>
-          <span><i class="sw sw--ramp"></i>where acceleration pays</span>
-        </div>
-        <div class="row small muted" style="gap:14px;flex-wrap:wrap">
+        <div class="factlist">
           <span><b class="num">${d.cornerCount}</b> corners (${fmt.int(d.cornerLength)}m)</span>
           <span>final corner at <b class="num">${d.finalCornerStart != null ? fmt.int(d.finalCornerStart) : '—'}</b>m</span>
           <span>home straight <b class="num">${fmt.int(d.lastStraightLength)}</b>m</span>
@@ -589,26 +591,62 @@ export function renderPlanner(root) {
   }
 
   function trackSvg(course, sim) {
-    const W = 1000; const H = 92;
+    const W = 1000; const H = 132;
+    const profile = raceProfile({
+      course,
+      strategy: cm.strategy,
+      stats: cm.stats,
+      ground: cm.ground,
+      aptitudes: cm.you.lockAptitudes ? undefined : cm.aptitudes,
+      recoveryPct: cm.recovery,
+    });
     const x = (m) => (m / course.distance) * W;
-    const seg = (a, b, fill, y, h) => `<rect x="${x(a).toFixed(1)}" y="${y}" width="${Math.max(1, x(b) - x(a)).toFixed(1)}" height="${h}" fill="${fill}" rx="1"/>`;
+    const seg = (a, b, fill, y, h) => `<rect x="${x(a).toFixed(1)}" y="${y}" width="${Math.max(1, x(b) - x(a)).toFixed(1)}" height="${h}" fill="${fill}"/>`;
 
-    const straights = course.straights.map((s) => seg(s.start, s.end, 'var(--sw-straight)', 30, 16)).join('');
-    const corners = course.corners.map((c) => seg(c.start, c.start + c.length, 'var(--sw-corner)', 30, 16)).join('');
-    const up = course.derived.uphill.map((s) => seg(s.start, s.start + s.length, 'var(--sw-up)', 50, 7)).join('');
-    const down = course.derived.downhill.map((s) => seg(s.start, s.start + s.length, 'var(--sw-down)', 50, 7)).join('');
-    const spurt = seg(sim.spurtStart, course.distance, 'var(--sw-spurt)', 22, 5);
-    const ramps = sim.ramps.map((r) => seg(r.at, r.at + Math.max(6, r.length), 'var(--sw-ramp)', 62, 7)).join('');
+    const straights = course.straights.map((v) => seg(v.start, v.end, 'color-mix(in srgb, var(--accent) 26%, transparent)', 8, 12)).join('');
+    const corners = course.corners.map((c) => seg(c.start, c.start + c.length, 'var(--line)', 8, 12)).join('');
+    const up = course.derived.uphill.map((v) => seg(v.start, v.start + v.length, 'color-mix(in srgb, var(--danger) 55%, transparent)', 22, 5)).join('');
+    const down = course.derived.downhill.map((v) => seg(v.start, v.start + v.length, 'color-mix(in srgb, var(--turf) 60%, transparent)', 22, 5)).join('');
 
-    const marks = [[course.distance / 6, 'middle'], [(course.distance * 2) / 3, 'final'], [(course.distance * 5) / 6, 'last spurt phase']].map(([m, label]) => `
-      <line x1="${x(m).toFixed(1)}" y1="18" x2="${x(m).toFixed(1)}" y2="74" stroke="var(--ink-3)" stroke-width="1" stroke-dasharray="3 3"/>
-      <text x="${(x(m) + 4).toFixed(1)}" y="14" font-size="11" fill="var(--ink-3)">${label}</text>`).join('');
+    // Where acceleration actually pays: the stretches this build spends below
+    // its target speed, which is the only place an accel skill turns into ground.
+    const ramps = sim.ramps
+      .map((r) => seg(r.at, r.at + Math.max(6, r.length), 'color-mix(in srgb, var(--unique) 55%, transparent)', 29, 4))
+      .join('');
 
-    return `<svg class="track-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Course profile">
-      ${straights}${corners}${up}${down}${spurt}${ramps}${marks}
-      <text x="2" y="88" font-size="11" fill="var(--ink-3)">start</text>
-      <text x="${W - 4}" y="88" font-size="11" fill="var(--ink-3)" text-anchor="end">finish</text>
-    </svg>`;
+    const top = 38; const bottom = H - 18;
+    const vLo = profile.vMin - 0.6; const vHi = profile.vMax + 0.4;
+    const ySpeed = (v) => bottom - ((v - vLo) / Math.max(0.01, vHi - vLo)) * (bottom - top);
+    const yHp = (r) => bottom - r * (bottom - top);
+    const path = (fn, key) => profile.points
+      .map((pt, i) => `${i ? 'L' : 'M'}${x(pt.x).toFixed(1)},${fn(pt[key]).toFixed(1)}`).join('');
+
+    const spurtBand = seg(profile.spurtStart, course.distance, 'color-mix(in srgb, var(--gold) 16%, transparent)', top, bottom - top);
+    // Drop a label when it would sit on top of the previous one rather than
+    // letting the two overprint.
+    let lastLabelX = -Infinity;
+    const marks = [[profile.marks.openingEnd, 'middle'], [profile.marks.middleEnd, 'final leg'], [profile.spurtStart, 'spurt']]
+      .map(([m, label]) => {
+        const px = x(m);
+        const show = px - lastLabelX > 58;
+        if (show) lastLabelX = px;
+        return `<line x1="${px.toFixed(1)}" y1="${top}" x2="${px.toFixed(1)}" y2="${bottom}" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3"/>
+        ${show ? `<text x="${(px + 5).toFixed(1)}" y="${top + 10}" font-size="10" fill="var(--ink-3)">${label}</text>` : ''}`;
+      }).join('');
+
+    return `<svg class="track-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img"
+      aria-label="Course profile with this build's speed and stamina">
+      ${straights}${corners}${up}${down}${spurtBand}${ramps}${marks}
+      <path d="${path(yHp, 'hpRatio')}" fill="none" stroke="var(--danger)" stroke-width="1.6" opacity=".8"/>
+      <path d="${path(ySpeed, 'v')}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+      <text x="2" y="${H - 5}" font-size="10" fill="var(--ink-3)">start</text>
+      <text x="${W - 4}" y="${H - 5}" font-size="10" fill="var(--ink-3)" text-anchor="end">finish</text>
+    </svg>
+    <div class="chart-key">
+      <span><i class="chart-key__line" style="background:var(--accent)"></i>speed, ${profile.vMin.toFixed(1)}\u2013${profile.vMax.toFixed(1)} m/s</span>
+      <span><i class="chart-key__line" style="background:var(--danger)"></i>stamina left, ${fmt.int(profile.maxHp)} at the gate</span>
+      <span><i class="chart-key__band"></i>last spurt, from ${fmt.int(profile.spurtStart)}m</span>
+    </div>`;
   }
 
   function statCards(course, sim) {
@@ -671,6 +709,121 @@ export function renderPlanner(root) {
         <p class="note">The “+100 is worth” column is a finite difference on the model — it re-runs the race with 100 more of that
         stat and converts the time saved into lengths at the finish. It is also what prices every green skill: <b>+40 Stamina</b> is
         worth 0.4 × the Stamina row, which is why a racecourse ○ is two lengths when the spurt is short and nothing when it is not.</p>
+      </div>
+    </section>`);
+  }
+
+  function effectiveCard(course) {
+    const eff = effectiveStats(cm.stats, course, cm.ground);
+    const bonus = courseSpeedModifier(course, cm.stats);
+    const rows = [['speed', 'Speed'], ['power', 'Power']]
+      .map(([k, label]) => [label, Math.round(cm.stats[k]), Math.round(eff[k])])
+      .filter(([, a, b]) => a !== b);
+    if (!rows.length && bonus === 1) return '';
+    return `<details class="explain">
+      <summary>What the race actually sees</summary>
+      ${bonus === 1 ? '' : `<p>This course awards a set-status bonus, so your Speed is multiplied by <b>×${bonus.toFixed(2)}</b> before the going is applied.</p>`}
+      ${rows.length ? `<table class="calc">
+        <tbody>${rows.map(([label, a, b]) => `<tr>
+          <td>${label}</td><td class="num">${fmt.int(a)}</td>
+          <td class="num" style="color:${b < a ? 'var(--danger)' : 'var(--accent)'}">→ ${fmt.int(b)}</td>
+          <td class="small muted">${esc(GROUND.find(([v]) => v === cm.ground)?.[1] ?? '')} going${bonus === 1 ? '' : ' + course bonus'}</td>
+        </tr>`).join('')}</tbody>
+      </table>` : ''}
+      <p>Stamina and Guts are never modified. Everything above and below is computed from these adjusted values.</p>
+    </details>`;
+  }
+
+  function matrixCard(course) {
+    const rows = staminaMatrix({ course, stats: cm.stats, recoveryPct: cm.recovery });
+    const have = cm.stats.stamina;
+    const cell = (c) => {
+      const ok = c.short === 0;
+      const cls = ok ? 'mx--ok' : c.short > 150 ? 'mx--bad' : 'mx--warn';
+      return `<td class="num mx ${cls}" title="needs ${fmt.int(c.required)} Stamina, spurt ${Math.round(c.coverage * 100)}%">
+        <b>${fmt.int(c.required)}</b>
+        <span>${ok ? `+${fmt.int(have - c.required)}` : `−${fmt.int(c.short)}`}</span>
+      </td>`;
+    };
+    return el(`<section class="panel" data-section="matrix">
+      <div class="panel__head">
+        <h3>${icon('layers', { size: 14 })}Going and style, against your Stamina</h3>
+        <span class="sk-count">you have ${fmt.int(have)}</span>
+      </div>
+      <div class="panel__body" style="gap:8px">
+        <table class="matrix">
+          <thead><tr><th>Style</th>${GROUND.map(([v, l]) => `<th class="num${v === cm.ground ? ' is-current' : ''}">${l}</th>`).join('')}</tr></thead>
+          <tbody>
+            ${rows.map((r) => `<tr>
+              <td${r.strategy === cm.strategy ? ' class="is-current"' : ''}>${esc(STRATEGY[r.strategy].name)}</td>
+              ${r.cells.map(cell).join('')}
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        ${effectiveCard(course)}
+        <details class="explain">
+          <summary>Reading this table</summary>
+          <p>Each cell is the Stamina that going and style need for an unbroken last spurt, with the shortfall or surplus against your current ${fmt.int(have)} underneath. Green clears it; red is more than 150 short.</p>
+          <p>Heavy going costs 50 Speed and up to 100 Power outright and raises HP drain, so it moves the requirement the most. Your current selection is the highlighted row and column.</p>
+        </details>
+      </div>
+    </section>`);
+  }
+
+  function overlapCard(rows, course, sim) {
+    const entries = rows.slice(0, 12)
+      .map((r) => ({ skill: r.skill, scored: r, firing: skillFiring(r.skill, r, course, sim) }))
+      .filter((e) => e.firing);
+    if (entries.length < 2) return el('<span hidden></span>');
+    const overlaps = skillOverlaps(entries).slice(0, 6);
+
+    const W = 640; const rowH = 22;
+    const x = (m) => (m / course.distance) * W;
+    const spurtStart = course.distance - sim.spurtDistance;
+    const lanes = entries.map((e, i) => `
+      <rect x="${x(e.firing.start).toFixed(1)}" y="${i * rowH + 4}" rx="4"
+        width="${Math.max(3, x(e.firing.end) - x(e.firing.start)).toFixed(1)}" height="${rowH - 8}"
+        fill="${e.firing.random ? 'color-mix(in srgb, var(--accent) 45%, transparent)' : 'var(--accent)'}"/>`).join('');
+    const H = entries.length * rowH + 6;
+
+    return el(`<section class="panel" data-section="overlap">
+      <div class="panel__head">
+        <h3>${icon('layers', { size: 14 })}When the top skills actually fire</h3>
+        <span class="sk-count">${entries.length} skills</span>
+      </div>
+      <div class="panel__body">
+        <div class="gantt">
+          <ul class="gantt__names">
+            ${entries.map((e) => `<li title="${esc(e.skill.name)}">${esc(e.skill.name)}</li>`).join('')}
+          </ul>
+          <svg class="gantt__chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"
+            style="height:${H}px" role="img"
+            aria-label="When each of the top skills fires along the course">
+            <rect x="${x(spurtStart).toFixed(1)}" y="0" width="${(W - x(spurtStart)).toFixed(1)}" height="${H}"
+              fill="color-mix(in srgb, var(--gold) 13%, transparent)"/>
+            ${[course.distance / 6, (course.distance * 2) / 3].map((m) => `<line x1="${x(m).toFixed(1)}" y1="0" x2="${x(m).toFixed(1)}" y2="${H}" stroke="var(--line)" stroke-width="1"/>`).join('')}
+            ${lanes}
+          </svg>
+        </div>
+        <div class="legend">
+          <span><i style="background:var(--accent)"></i>fixed start</span>
+          <span><i style="background:color-mix(in srgb, var(--accent) 45%, transparent)"></i>random start, drawn at its expected point</span>
+          <span><i style="background:color-mix(in srgb, var(--gold) 30%, transparent)"></i>last spurt</span>
+        </div>
+        ${overlaps.length ? `<div>
+          <h4 class="drawer__h4">Pairs that run together</h4>
+          <div class="stack" style="gap:5px">
+            ${overlaps.map((o) => `<div class="pair">
+              <span class="pair__names">${esc(o.a.skill.name)} + ${esc(o.b.skill.name)}</span>
+              <span class="pair__span">${Math.round(o.metres)}m together${o.certain ? '' : ', if the random one lands here'}</span>
+            </div>`).join('')}
+          </div>
+        </div>` : '<p class="small muted">None of the top skills overlap — they are spread across the race rather than stacked.</p>'}
+        <details class="explain">
+          <summary>Why overlap matters</summary>
+          <p>Speed effects add together while both are live, so two overlapping speed skills give one larger push rather than two separate ones. An acceleration skill overlapping a speed skill is worth more than either alone, because it reaches the higher target speed sooner.</p>
+          <p>The reverse is also true: skills crowded into the same stretch compete for ground that is only there once, and the per-skill numbers in the ranking above are each measured as if that skill ran alone.</p>
+        </details>
       </div>
     </section>`);
   }
@@ -741,7 +894,7 @@ export function renderPlanner(root) {
   }).join('')}
       </div>
       <div class="panel__body" style="padding:0">
-        <div class="rank-list">${shown.map((r, i) => rankRow(r, i, max)).join('') || '<div class="empty empty--sm">Nothing in this family can fire on this race.</div>'}</div>
+        <div class="rank-list">${shown.map((r, i) => rankRow(r, i, max, currentCourse(), lastSim)).join('') || '<div class="empty empty--sm">Nothing in this family can fire on this race.</div>'}</div>
       </div>
       <div class="panel__foot">
         <p class="tiny muted">${shown.length} of ${list.length} shown.${hidden ? ` ${hidden} more score here but no Global uma or card teaches them — switch to <b>All</b>.` : ''}
@@ -755,24 +908,34 @@ export function renderPlanner(root) {
     return node;
   }
 
-  function rankRow(r, i, max) {
-    const why = [effectSummary(r.skill), ...r.reasons].filter(Boolean).join(' · ');
+  function rankRow(r, i, max, course, sim) {
     const tags = [];
-    if (r.debuff) tags.push(`<span class="tag tag--debuff">debuff · ${esc(r.victims.label)}</span>`);
-    if (isPassive(r.skill) || (r.skill.duration === 0 && r.skill.effects.some((e) => e.kind === 'stat'))) tags.push('<span class="tag tag--green">passive</span>');
-    if (r.skill.wisdomCheck) tags.push('<span class="tag">Wit check</span>');
-    const neg = r.bashin < 0;
-    return `<div class="rank-row">
+    if (r.debuff) tags.push(`<span class="etag etag--note">debuff \u00b7 ${esc(r.victims.label)}</span>`);
+    if (isPassive(r.skill) || (r.skill.duration === 0 && r.skill.effects.some((e) => e.kind === 'stat'))) {
+      tags.push('<span class="etag etag--note">passive</span>');
+    }
+    const firing = skillFiring(r.skill, r, course, sim);
+    const notes = r.reasons.slice(0, 2);
+    return `<div class="rank-row rank-row--skill">
       <span class="rank-row__i">${i + 1}</span>
       <span style="min-width:0">
-        <span class="row" style="gap:5px;flex-wrap:wrap">${skillPill(r.skill)}${tags.join('')}</span>
-        <span class="rank-row__why">${esc(why)}</span>
+        ${skillPill(r.skill)}
+        <span class="rank-row__why">
+          ${effectTags(r.skill)}${tags.join('')}
+          ${notes.map((n) => `<span class="etag etag--note">${esc(n)}</span>`).join('')}
+        </span>
       </span>
       <span class="rank-row__mid">
-        <div class="bar${neg ? ' bar--neg' : ''}"><i style="width:${Math.max(3, (Math.abs(r.bashin) / max) * 100).toFixed(0)}%"></i></div>
-        <span class="tiny muted num">${fmt.pct(r.probability)} of the time${r.skill.cost ? ` · ${(r.perSp ?? 0).toFixed(2)}/100 SP` : ''}</span>
+        ${skillTrack(firing, course, { height: 16 })}
+        <span class="tiny muted num">${firing ? (firing.length < 5
+    ? `at ${Math.round(firing.start)}m, instant`
+    : `${Math.round(firing.start)}\u2013${Math.round(firing.end)}m`) : ''}</span>
       </span>
-      <span class="rank-row__score${neg ? ' is-neg' : ''}">${r.bashin.toFixed(2)}</span>
+      <span class="rank-row__mid">
+        ${valueBar(r.parts)}
+        <span class="tiny muted num">${fmt.pct(r.probability)} of the time${r.skill.cost ? ` \u00b7 ${(r.perSp ?? 0).toFixed(2)}/100 SP` : ''}</span>
+      </span>
+      <span class="rank-row__score${r.bashin < 0 ? ' is-neg' : ''}">${r.bashin.toFixed(2)}</span>
     </div>`;
   }
 

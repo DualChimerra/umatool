@@ -5,17 +5,19 @@
 // the team as a whole — so the totals are traceable rather than a verdict.
 
 import { db, skillIconUrl, isObtainable } from '../store.mjs';
-import { el, esc, on, skillPill, fmt, debounce, collapsible } from '../ui.mjs';
+import { el, esc, on, skillPill, fmt, debounce, turnLabel, icon, collapsible } from '../ui.mjs';
 import {
   cm, commitContext, currentCourse, scoringContext, togglePriority, togglePriorityRank,
-  priorityAnyRank, DEFAULT_STATS, ownsCard, canPlace, borrowedIn,
-  saveBuild, loadBuild, deleteBuild, clearRoster, BORROWED_ALLOWANCE,
+  priorityAnyRank, priorityLadder, priorityGroupMate, prioritySatisfiers, DEFAULT_STATS, canPlace,
+  borrowedIn, borrowedIndex, saveBuild, loadBuild, deleteBuild, clearRoster, BORROWED_ALLOWANCE,
 } from '../context.mjs';
 import { simulateRace, rankSkills, STRATEGY } from '../model.mjs';
-import { analyseSlot, rankCards, rankUmas, recommendations, HINT_CONFIDENCE } from '../analysis.mjs';
+import { analyseSlot, rankCards, rankUmas, recommendations, sourceNames, HINT_CONFIDENCE } from '../analysis.mjs';
 
 const STATS = [['speed', 'Spd'], ['stamina', 'Sta'], ['power', 'Pwr'], ['guts', 'Gut'], ['wit', 'Wit']];
 const SEV_LABEL = { blocker: 'Fix', warn: 'Check', tip: 'Tip' };
+const KIND_LABEL = { unique: 'unique', own: 'own', event: 'event', hint: 'hint' };
+const CARD_TYPES = [['speed', 'Speed'], ['stamina', 'Stamina'], ['power', 'Power'], ['guts', 'Guts'], ['wit', 'Wit'], ['friend', 'Friend'], ['group', 'Group']];
 
 export function renderTeam(root) {
   const layout = el(`<div class="layout">
@@ -44,17 +46,21 @@ export function renderTeam(root) {
 
   const priorityPanel = el(`<section class="panel">
     <div class="panel__head">
-      <h3>Priority skills</h3>
+      <h3>${icon('spark', { size: 14 })}Priority skills</h3>
       <button class="btn btn--ghost btn--sm" data-act="clear" type="button">Clear</button>
     </div>
     <div class="panel__body">
-      <p class="tiny muted">The skills you have decided this team has to end up with. Coverage, gaps, deck value and the card ranking are all measured against this list.</p>
       <div class="field" style="position:relative">
         <input class="input" type="search" data-role="q" placeholder="Add a skill…" autocomplete="off">
         <div class="panel" data-role="results" style="position:fixed;z-index:60;max-height:280px;overflow:auto;box-shadow:var(--shadow-md)" hidden></div>
       </div>
       <button class="btn btn--sm" data-act="auto" type="button">Fill from top 12 for this course</button>
       <div data-role="list" class="stack" style="gap:6px"></div>
+      <details class="explain">
+        <summary>How this is counted</summary>
+        <p>The skills you have decided this team has to end up with. Coverage, gaps, deck value and the card ranking are all measured against this list.</p>
+        <p>One entry per skill group. A better rank always counts: asking for ○ and finishing with ◎ is not a miss. A weaker rank counts only if you tick it. The × rank never counts — same group, opposite effect.</p>
+      </details>
     </div>
   </section>`);
 
@@ -77,12 +83,16 @@ export function renderTeam(root) {
       .filter((s) => s.name.toLowerCase().includes(needle) && !cm.priority.includes(s.id))
       .slice(0, 20);
     if (!list.length) { results.hidden = true; return; }
-    results.innerHTML = list.map((s) => `
-      <button type="button" class="src-row" data-add="${esc(s.id)}" style="width:100%;border:0;background:transparent;cursor:pointer">
+    results.innerHTML = list.map((s) => {
+      // One entry per group, so picking another rank replaces the existing row
+      // rather than adding a second one — better said before the click.
+      const mate = db.skillById.get(priorityGroupMate(s.id));
+      return `<button type="button" class="src-row" data-add="${esc(s.id)}" style="width:100%;border:0;background:transparent;cursor:pointer">
         <img src="${skillIconUrl(s)}" alt="" width="26" height="26">
-        <span style="min-width:0"><b>${esc(s.name)}</b><span class="src-row__sub">${esc(s.variants[0]?.text ?? '')}</span></span>
+        <span style="min-width:0"><b>${esc(s.name)}</b><span class="src-row__sub">${mate ? `replaces ${esc(mate.name)}` : esc(s.variants[0]?.text ?? '')}</span></span>
         <span class="chip chip--${s.tier === 'normal' ? '' : s.tier}">${esc(s.tierName)}</span>
-      </button>`).join('');
+      </button>`;
+    }).join('');
     results.hidden = false;
     placeResults();
   }
@@ -102,8 +112,19 @@ export function renderTeam(root) {
   on(priorityPanel, 'click', '[data-act="auto"]', () => {
     const ctx = scoringContext();
     const sim = simulateRace({ ...ctx, recoveryPct: cm.recovery });
-    const top = rankSkills(db.learnable.filter(isObtainable), { ...ctx, sim, recoveryPct: cm.recovery }, { tiers: ['gold', 'normal'], limit: 12 });
-    for (const r of top) if (!cm.priority.includes(r.skill.id)) togglePriority(r.skill.id);
+    // Ask for more than needed: group duplicates are dropped from the result
+    // and the list still has to end up 12 long.
+    const top = rankSkills(db.learnable.filter(isObtainable), { ...ctx, sim, recoveryPct: cm.recovery }, { tiers: ['gold', 'normal'], limit: 60 });
+    const groups = new Set(cm.priority.map((id) => db.skillById.get(id)?.groupId).filter(Boolean));
+    let added = 0;
+    for (const r of top) {
+      if (added >= 12) break;
+      const g = r.skill.groupId;
+      if (cm.priority.includes(r.skill.id) || (g && groups.has(g))) continue;
+      if (g) groups.add(g);
+      togglePriority(r.skill.id);
+      added += 1;
+    }
     paint();
   });
 
@@ -114,25 +135,57 @@ export function renderTeam(root) {
       return;
     }
     list.innerHTML = cm.priority.map((id) => {
-      const s = db.skillById.get(id);
-      const sibs = (db.skillsByGroup.get(s?.groupId) ?? []).filter((x) => x.id !== id && !x.inherited);
+      const { skill, better, worse, penalties } = priorityLadder(id);
       return `<div class="pri-row">
         <div class="row" style="justify-content:space-between;gap:6px;flex-wrap:nowrap">
-          ${skillPill(s)}
-          <button class="btn btn--ghost btn--sm" data-drop="${esc(id)}" type="button" aria-label="Remove">✕</button>
+          ${skillPill(skill)}
+          <button class="icon-btn icon-btn--sm" data-drop="${esc(id)}" type="button" aria-label="Remove">${icon('close', { size: 14 })}</button>
         </div>
-        ${sibs.length ? `<label class="check tiny" style="margin-top:4px">
+        ${better.length ? `<p class="tiny muted" style="margin-top:4px">Also counts: ${esc(better.map((x) => x.name).join(', '))}</p>` : ''}
+        ${worse.length ? `<label class="check tiny" style="margin-top:4px">
           <input type="checkbox" data-rank="${esc(id)}" ${priorityAnyRank(id) ? 'checked' : ''}>
-          <span>${esc(sibs.map((x) => x.name).join(', '))} counts too</span>
+          <span>A weaker rank counts too: ${esc(worse.map((x) => x.name).join(', '))}</span>
         </label>` : ''}
+        ${penalties.length ? `<p class="tiny muted pri-row__never">Never counts: ${esc(penalties.map((x) => x.name).join(', '))}</p>` : ''}
       </div>`;
     }).join('');
+  }
+
+  /* ------------------------------------------------------ collection rail */
+
+  const collectionPanel = el(`<section class="panel">
+    <div class="panel__head"><h3>${icon('layers', { size: 14 })}Collection</h3><a class="btn btn--ghost btn--sm" href="#/collection">Edit</a></div>
+    <div class="panel__body">
+      <label class="check">
+        <input type="checkbox" data-role="useowned" ${cm.useOwned ? 'checked' : ''}>
+        <span>Restrict to my collection
+          <small data-role="ownsum"></small>
+        </span>
+      </label>
+      <details class="explain">
+        <summary>How the friend's card works</summary>
+        <p>Champions Meeting lets a deck carry one card you do not own — a friend's support card. So with the restriction on, a deck is five of your own cards plus one borrowed.</p>
+        <p>The borrowed card is not pinned to the sixth slot: it can sit anywhere in the deck, the only limit is that there is one of them. Cards outside the collection stay visible in the picker, badged <i>friend</i>; once the borrow is spent the rest stay listed but become unavailable, so it is clear what taking it cost.</p>
+      </details>
+    </div>
+  </section>`);
+
+  collectionPanel.querySelector('[data-role="useowned"]').addEventListener('change', (e) => {
+    cm.useOwned = e.target.checked;
+    commitContext();
+    paint();
+  });
+
+  function paintCollection() {
+    collectionPanel.querySelector('[data-role="ownsum"]').textContent = cm.useOwned
+      ? `${cm.owned.cards.length} cards and ${cm.owned.umas.length} umas ticked, plus one friend's card per deck.`
+      : 'Unrestricted right now — every Global card and uma is offered.';
   }
 
   /* ------------------------------------------------------------ saved builds */
 
   const buildsPanel = el(`<section class="panel">
-    <div class="panel__head"><h3>Saved builds</h3></div>
+    <div class="panel__head"><h3>${icon('flag', { size: 14 })}Saved builds</h3></div>
     <div class="panel__body">
       <div class="row" style="gap:6px;flex-wrap:nowrap">
         <input class="input" data-role="bname" type="text" placeholder="Name this build…">
@@ -168,19 +221,27 @@ export function renderTeam(root) {
       return `<div class="src-row" style="grid-template-columns:minmax(0,1fr) auto auto;cursor:pointer" data-load="${esc(b.id)}">
         <span style="min-width:0">
           <b>${esc(b.name)}</b>
-          <span class="src-row__sub">${esc(names.join(' · ') || 'empty')} · ${esc(new Date(b.savedAt).toLocaleDateString())}</span>
+          <span class="src-row__sub">${esc(names.join(', ') || 'empty')} — ${esc(new Date(b.savedAt).toLocaleDateString())}</span>
         </span>
         <span class="chip">${b.priority?.length ?? 0} pri</span>
-        <button class="btn btn--ghost btn--sm" data-del="${esc(b.id)}" type="button" aria-label="Delete">✕</button>
+        <button class="icon-btn icon-btn--sm" data-del="${esc(b.id)}" type="button" aria-label="Delete">${icon('close', { size: 14 })}</button>
       </div>`;
     }).join('');
   }
 
-  rail.append(collapsible(priorityPanel, 'team.priority'), collapsible(buildsPanel, 'team.builds'));
+  rail.append(
+    collapsible(priorityPanel, 'team.priority'),
+    collapsible(collectionPanel, 'team.collection'),
+    collapsible(buildsPanel, 'team.builds'),
+  );
 
   /* --------------------------------------------------------------- pickers */
 
-  const picker = el(`<div class="drawer" hidden>
+  // The page can be rendered again when the tab is revisited, and this panel
+  // lives in body: the old one has to go, or invisible copies pile up, each
+  // with its own handlers still attached.
+  document.getElementById('team-picker')?.remove();
+  const picker = el(`<div class="drawer" id="team-picker" hidden>
     <div class="drawer__scrim" data-act="close-picker"></div>
     <aside class="drawer__panel drawer__panel--wide" role="dialog" aria-modal="true">
       <header class="drawer__head">
@@ -188,11 +249,13 @@ export function renderTeam(root) {
           <h2 data-role="title">Pick</h2>
           <p class="tiny muted" data-role="subtitle"></p>
         </div>
-        <button class="icon-btn" data-act="close-picker" type="button" aria-label="Close">✕</button>
+        <button class="icon-btn" data-act="close-picker" type="button" aria-label="Close">${icon('close', { size: 18 })}</button>
       </header>
       <div class="drawer__body" style="gap:10px">
         <input class="input" type="search" data-role="pq" placeholder="Search…" autocomplete="off">
+        <div data-role="pown"></div>
         <div class="toggle-grid" data-role="pfilter"></div>
+        <div data-role="pnote"></div>
         <div data-role="pgrid" class="stack" style="gap:6px"></div>
       </div>
     </aside>
@@ -204,9 +267,12 @@ export function renderTeam(root) {
   let pickerState = null;
 
   function openCardPicker(slotIndex, deckIndex) {
-    pickerState = { kind: 'card', slotIndex, deckIndex, query: '', type: null };
-    picker.querySelector('[data-role="pfilter"]').innerHTML = ['speed', 'stamina', 'power', 'guts', 'wit', 'friend', 'group']
-      .map((t) => `<button type="button" data-ptype="${t}" aria-pressed="false">${t[0].toUpperCase() + t.slice(1)}</button>`).join('');
+    pickerState = {
+      kind: 'card', slotIndex, deckIndex, query: '', type: null,
+      own: 'all',
+    };
+    picker.querySelector('[data-role="pfilter"]').innerHTML = CARD_TYPES
+      .map(([v, l]) => `<button type="button" data-ptype="${v}" aria-pressed="false">${esc(l)}</button>`).join('');
     picker.querySelector('[data-role="pq"]').value = '';
     paintPicker();
     picker.hidden = false;
@@ -214,7 +280,7 @@ export function renderTeam(root) {
   }
 
   function openUmaPicker(slotIndex) {
-    pickerState = { kind: 'uma', slotIndex, query: '', type: null };
+    pickerState = { kind: 'uma', slotIndex, query: '', type: null, own: 'all' };
     picker.querySelector('[data-role="pfilter"]').innerHTML = Object.entries(STRATEGY)
       .map(([v, s]) => `<button type="button" data-ptype="${v}" aria-pressed="false">${esc(s.name)}</button>`).join('');
     picker.querySelector('[data-role="pq"]').value = '';
@@ -223,38 +289,66 @@ export function renderTeam(root) {
     picker.querySelector('[data-role="pq"]').focus();
   }
 
+  function ownSegment(options) {
+    return `<div class="seg" data-role="pown-seg">${options
+      .map(([v, l]) => `<button type="button" data-pown="${v}" aria-pressed="${pickerState.own === v}">${esc(l)}</button>`)
+      .join('')}</div>`;
+  }
+
   function paintPicker() {
     const grid = picker.querySelector('[data-role="pgrid"]');
     const title = picker.querySelector('[data-role="title"]');
     const subtitle = picker.querySelector('[data-role="subtitle"]');
+    const ownEl = picker.querySelector('[data-role="pown"]');
+    const noteEl = picker.querySelector('[data-role="pnote"]');
     const slot = cm.roster[pickerState.slotIndex];
 
     if (pickerState.kind === 'card') {
       const analysis = analyseSlot(slot);
-      const borrowed = borrowedIn(slot, pickerState.deckIndex).length;
-      title.textContent = `Support card · uma ${pickerState.slotIndex + 1}, slot ${pickerState.deckIndex + 1}`;
-      subtitle.textContent = cm.useOwned
-        ? `Sorted by what it would add to this deck. ${borrowed >= BORROWED_ALLOWANCE ? 'The borrowed slot is already taken, so only cards you own are offered.' : 'One card you do not own may be borrowed from a friend.'}`
-        : 'Sorted by what it would actually add to this deck — priority skills first, then expected lengths.';
-      const rows = rankCards(analysis, pickerState.deckIndex, { query: pickerState.query, type: pickerState.type }).slice(0, 60);
+      const spent = borrowedIn(slot, pickerState.deckIndex).length >= BORROWED_ALLOWANCE;
+      title.textContent = `Support card for uma ${pickerState.slotIndex + 1}, slot ${pickerState.deckIndex + 1}`;
+      subtitle.textContent = 'Sorted by what it would actually add to this deck — priority skills first, then expected lengths.';
+
+      ownEl.innerHTML = cm.useOwned
+        ? ownSegment([['all', 'All'], ['mine', 'Mine'], ['friend', "Friend's"]])
+        : '';
+      noteEl.innerHTML = cm.useOwned
+        ? `<p class="note">${spent
+          ? "The borrowed slot in this deck is already taken. Cards you do not own stay in the list but cannot be placed — remove the one you took from a friend first."
+          : "The borrowed slot is free: one card outside your collection can go here. Those cards are badged <i>friend</i>."}</p>`
+        : '<p class="note">The collection restriction is off — every Global card is offered. Turn it on in the Collection panel to plan five of your own cards plus one from a friend.</p>';
+
+      const rows = rankCards(analysis, pickerState.deckIndex, {
+        query: pickerState.query, type: pickerState.type, own: pickerState.own,
+      }).slice(0, 60);
       grid.innerHTML = rows.map(cardRow).join('') || '<p class="muted small">Nothing matches.</p>';
     } else {
-      title.textContent = `Umamusume · slot ${pickerState.slotIndex + 1}`;
+      title.textContent = `Umamusume for slot ${pickerState.slotIndex + 1}`;
       subtitle.textContent = 'Sorted by what their own unique and skill list is worth on this course, discounted for missing aptitude.';
-      const rows = rankUmas({ query: pickerState.query, strategy: pickerState.type ? Number(pickerState.type) : null }).slice(0, 60);
+      ownEl.innerHTML = cm.useOwned ? ownSegment([['all', 'All'], ['mine', 'Mine']]) : '';
+      noteEl.innerHTML = '';
+      const rows = rankUmas({
+        query: pickerState.query,
+        strategy: pickerState.type ? Number(pickerState.type) : null,
+        own: pickerState.own,
+      }).slice(0, 60);
       grid.innerHTML = rows.map(umaRow).join('')
         || '<p class="muted small">Nothing matches. Tick some umas on the Collection page, or turn the restriction off there.</p>';
     }
   }
 
-  /** Does this skill satisfy one of the priority entries, allowing rank swaps? */
+  /** Does this skill satisfy one of the priority entries? */
   function priorityHit(skillId) {
-    return cm.priority.some((pid) => {
-      if (pid === skillId) return true;
-      const s = db.skillById.get(pid);
-      if (!priorityAnyRank(pid) || !s?.groupId) return false;
-      return (db.skillsByGroup.get(s.groupId) ?? []).some((x) => x.id === skillId);
-    });
+    if (!skillId) return false;
+    return cm.priority.some((pid) => prioritySatisfiersCache(pid).has(skillId));
+  }
+
+  // prioritySatisfiers walks the group on every call, and it is called once per
+  // pill across a list of 60 cards.
+  const satisfierCache = new Map();
+  function prioritySatisfiersCache(pid) {
+    if (!satisfierCache.has(pid)) satisfierCache.set(pid, prioritySatisfiers(pid));
+    return satisfierCache.get(pid);
   }
 
   function cardRow(r) {
@@ -266,12 +360,12 @@ export function renderTeam(root) {
           <b>${esc(r.card.name)}</b>
           <span class="chip chip--accent">${esc(r.card.rarityName)}</span>
           <span class="chip">${esc(r.card.typeName)}</span>
-          ${r.owned || !cm.useOwned ? '' : '<span class="chip chip--warn">borrowed</span>'}
+          ${r.owned || !cm.useOwned ? '' : '<span class="chip chip--friend">friend</span>'}
           ${r.inDeck ? '<span class="chip chip--accent">already in this deck</span>' : ''}
         </div>
         <div class="chips" style="margin-top:5px">
           ${skills.map((s) => skillPill(s.skill, {
-    tag: s.kind, match: priorityHit(s.skill.id), dim: s.held || !s.scored,
+    tag: KIND_LABEL[s.kind], match: priorityHit(s.skill.id), dim: s.held || !s.scored,
   })).join('')}
           ${r.skills.length > skills.length ? `<span class="chip">+${r.skills.length - skills.length}</span>` : ''}
         </div>
@@ -297,6 +391,7 @@ export function renderTeam(root) {
           <span class="chip chip--accent">${esc(o.strategyName)}</span>
           <span class="chip ${r.aptitudes.distanceVal >= 7 ? '' : 'chip--warn'}">${esc(r.aptitudes.distance)}</span>
           <span class="chip ${r.aptitudes.surfaceVal >= 7 ? '' : 'chip--warn'}">${esc(r.aptitudes.surface)}</span>
+          ${r.owned ? '' : '<span class="chip chip--friend">not in collection</span>'}
         </div>
         <div class="tiny muted">${esc(o.epithet)}</div>
         <div class="chips" style="margin-top:5px">
@@ -320,6 +415,7 @@ export function renderTeam(root) {
     picker.querySelectorAll('[data-ptype]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.ptype === pickerState.type)));
     paintPicker();
   });
+  on(picker, 'click', '[data-pown]', (e, t) => { pickerState.own = t.dataset.pown; paintPicker(); });
   on(picker, 'click', '[data-pick]', (e, t) => {
     const slot = cm.roster[pickerState.slotIndex];
     if (pickerState.kind === 'card') {
@@ -336,9 +432,17 @@ export function renderTeam(root) {
   /* ------------------------------------------------------------------ paint */
 
   function paint() {
+    satisfierCache.clear();
     const course = currentCourse();
-    raceEl.innerHTML = `<a class="chip chip--accent" href="#/planner">${esc(course.trackName)} ${course.distance}m ${esc(course.surfaceName)} · ${esc(course.turnName)} · ${cm.fieldSize} runners</a>`;
+    raceEl.innerHTML = `<a class="racechip" href="#/planner">
+      ${icon('route', { size: 14 })}
+      <b>${esc(course.trackName)} ${course.distance}m</b>
+      <span>${esc(course.surfaceName)}</span>
+      <span>${esc(turnLabel(course.turnName))}</span>
+      <span>${cm.fieldSize} runners</span>
+    </a>`;
     paintPriority();
+    paintCollection();
     paintBuilds();
 
     const analyses = cm.roster.map(analyseSlot);
@@ -377,7 +481,7 @@ export function renderTeam(root) {
       <div class="stat-tile">
         <h4>Cards in more than one deck</h4>
         <div class="big">${shared.length}</div>
-        <div class="sub">${shared.length ? shared.slice(0, 3).map(([id, n]) => `${db.supportById.get(id)?.name ?? id} ×${n}`).join(', ') : 'no overlap between the three decks'}</div>
+        <div class="sub">${shared.length ? esc(shared.slice(0, 3).map(([id, n]) => `${db.supportById.get(id)?.name ?? id} ×${n}`).join(', ')) : 'no overlap between the three decks'}</div>
       </div>
     </div>`);
   }
@@ -387,7 +491,7 @@ export function renderTeam(root) {
       return el('<section class="panel"><div class="panel__body"><p class="small muted">Nothing to flag — the entry looks coherent for this course.</p></div></section>');
     }
     return el(`<section class="panel">
-      <div class="panel__head"><h3>What to fix next</h3><span class="sk-count">${items.length}</span></div>
+      <div class="panel__head"><h3>${icon('warn', { size: 14 })}What to fix next</h3><span class="sk-count">${items.length}</span></div>
       <div class="panel__body" style="padding:0">
         <div class="rank-list">
           ${items.map((r) => `<div class="advice advice--${r.severity}">
@@ -402,30 +506,48 @@ export function renderTeam(root) {
     </section>`);
   }
 
-  function slotCard(a, index) {
+  function deckBlock(a, index) {
     const slot = cm.roster[index];
-    const o = a.outfit;
-    const course = currentCourse();
+    const friendAt = cm.useOwned ? borrowedIndex(slot) : -1;
 
-    const deckHtml = slot.deck.map((id, i) => {
+    const cells = slot.deck.map((id, i) => {
       const card = id ? db.supportById.get(id) : null;
-      const borrowed = card && cm.useOwned && !ownsCard(card.id);
-      return card
-        ? `<button class="deck__slot deck__slot--filled" type="button" data-deck="${index}:${i}" title="${esc(card.name)}">
-             <img src="./img/support/${esc(card.id)}.webp" alt="${esc(card.name)}" loading="lazy">
-             <span class="deck__type">${esc(card.typeName)}</span>
-             ${borrowed ? '<span class="deck__borrow">friend</span>' : ''}
-             <span class="deck__x" data-clear="${index}:${i}" role="button" aria-label="Remove">✕</span>
-           </button>`
-        : `<button class="deck__slot" type="button" data-deck="${index}:${i}" aria-label="Add a support card">+</button>`;
+      if (!card) {
+        return `<button class="deck__slot" type="button" data-deck="${index}:${i}" aria-label="Add a support card">${icon('plus', { size: 18 })}</button>`;
+      }
+      return `<button class="deck__slot deck__slot--filled${i === friendAt ? ' deck__slot--friend' : ''}" type="button" data-deck="${index}:${i}" title="${esc(card.name)}">
+        <img src="./img/support/${esc(card.id)}.webp" alt="${esc(card.name)}" loading="lazy">
+        <span class="deck__type">${esc(card.typeName)}</span>
+        ${i === friendAt ? '<span class="deck__borrow">friend</span>' : ''}
+        <span class="deck__x" data-clear="${index}:${i}" role="button" aria-label="Remove">${icon('close', { size: 11 })}</span>
+      </button>`;
     }).join('');
 
     const typeCount = {};
     for (const c of a.cards) if (c) typeCount[c.typeName] = (typeCount[c.typeName] ?? 0) + 1;
+    const filled = a.cards.filter(Boolean).length;
+
+    return `<div>
+      <h4 class="drawer__h3">Deck</h4>
+      <div class="deck">${cells}</div>
+      <p class="tiny muted" style="margin-top:6px">
+        ${filled}/6 cards${Object.keys(typeCount).length ? ` — ${esc(Object.entries(typeCount).map(([t, n]) => `${n} ${t}`).join(', '))}` : ''}
+      </p>
+      ${cm.useOwned ? `<p class="deck__rule">
+        Friend's card: ${friendAt >= 0
+    ? `<b>${esc(db.supportById.get(slot.deck[friendAt])?.name ?? '')}</b> in slot ${friendAt + 1}`
+    : '<b>free</b> — one card outside your collection can go here'}
+      </p>` : ''}
+    </div>`;
+  }
+
+  function slotCard(a, index) {
+    const o = a.outfit;
+    const course = currentCourse();
+    const staminaOk = !o || a.ctx.stats.stamina >= a.sim.requiredStamina;
     const eventCount = a.pool.filter((p) => p.kind === 'event').length;
     const hintCount = a.pool.filter((p) => p.kind === 'hint').length;
     const goldCount = a.pool.filter((p) => p.skill.tier === 'gold').length;
-    const staminaOk = !o || a.ctx.stats.stamina >= a.sim.requiredStamina;
 
     return el(`<article class="panel">
       <div class="panel__head">
@@ -457,14 +579,7 @@ export function renderTeam(root) {
           </div>`
     : `<button class="btn btn--primary" data-uma="${index}" type="button" style="justify-content:center">Choose an umamusume</button>`}
 
-        <div>
-          <h4 class="drawer__h3">Deck</h4>
-          <div class="deck">${deckHtml}</div>
-          <p class="tiny muted" style="margin-top:6px">
-            ${a.cards.filter(Boolean).length}/6 cards${Object.keys(typeCount).length ? ` · ${Object.entries(typeCount).map(([t, n]) => `${n} ${t}`).join(', ')}` : ''}
-            ${cm.useOwned ? ` · ${borrowedIn(slot).length}/${BORROWED_ALLOWANCE} borrowed` : ''}
-          </p>
-        </div>
+        ${deckBlock(a, index)}
 
         ${o ? `
           <div>
@@ -493,23 +608,13 @@ export function renderTeam(root) {
         ${cm.priority.length ? `
           <div>
             <h4 class="drawer__h3">Priority coverage <span class="sk-count">${a.covered}/${cm.priority.length}</span></h4>
-            ${a.coverage.map(({ skill, hit, via, scored }) => `
-              <div class="cover-row">
-                <span style="min-width:0">
-                  ${skillPill(skill, { dim: !hit })}
-                  ${via ? `<span class="tiny muted" style="display:block;margin-top:2px">via ${esc(via.name)}</span>` : ''}
-                </span>
-                <span class="row" style="gap:5px;flex-wrap:nowrap">
-                  ${scored ? `<span class="tiny muted num">${scored.bashin.toFixed(2)}</span>` : '<span class="tiny muted">n/a</span>'}
-                  <span class="cover-tag cover-tag--${hit ? (hit.info.kind === 'own' || hit.info.kind === 'unique' ? 'own' : hit.info.kind) : 'miss'}">${hit ? hit.info.kind : 'missing'}</span>
-                </span>
-              </div>`).join('')}
+            ${a.coverage.map(coverRow).join('')}
           </div>` : ''}
 
         <details class="reach">
           <summary>
             <span>Reachable skills</span>
-            <span class="sk-count">${a.usable.length} usable · ${a.total.toFixed(2)} len</span>
+            <span class="sk-count">${a.usable.length} usable, ${a.total.toFixed(2)} len</span>
           </summary>
           <table class="calc" style="margin-top:8px">
             <tbody>
@@ -521,16 +626,40 @@ export function renderTeam(root) {
           <div class="stack" style="gap:3px;margin-top:8px">
             ${a.usable.slice(0, 40).map((p) => `
               <div class="cover-row">
-                <span style="min-width:0">${skillPill(p.skill, { match: priorityHit(p.skill.id) })}</span>
+                <span style="min-width:0">
+                  ${skillPill(p.skill, { match: priorityHit(p.skill.id) })}
+                  <span class="cover-row__src">${esc(sourceNames(p).slice(0, 2).join(', '))}</span>
+                </span>
                 <span class="row" style="gap:5px;flex-wrap:nowrap">
                   <span class="tiny muted num">${p.value.toFixed(2)}</span>
-                  <span class="cover-tag cover-tag--${p.kind === 'own' || p.kind === 'unique' ? 'own' : p.kind}">${p.kind}</span>
+                  <span class="cover-tag cover-tag--${p.kind === 'own' || p.kind === 'unique' ? 'own' : p.kind}">${KIND_LABEL[p.kind]}</span>
                 </span>
               </div>`).join('') || '<p class="tiny muted">Pick an uma and some cards to see what this run can end up with.</p>'}
           </div>
         </details>
       </div>
     </article>`);
+  }
+
+  /**
+   * One coverage row. It shows not just hit or miss but what closed it — which
+   * rank, and off which card. Without that, a "hint" tag against a skill that is
+   * literally not in the deck reads as a bug.
+   */
+  function coverRow({ skill, hit, via, from, scored }) {
+    const detail = hit
+      ? [via ? `as ${via.name}` : null, from.length ? `from ${from.slice(0, 2).join(', ')}` : null].filter(Boolean).join(', ')
+      : '';
+    return `<div class="cover-row">
+      <span style="min-width:0">
+        ${skillPill(skill, { dim: !hit })}
+        ${detail ? `<span class="cover-row__src">${esc(detail)}</span>` : ''}
+      </span>
+      <span class="row" style="gap:5px;flex-wrap:nowrap">
+        ${scored ? `<span class="tiny muted num">${scored.bashin.toFixed(2)}</span>` : '<span class="tiny muted">n/a</span>'}
+        <span class="cover-tag cover-tag--${hit ? (hit.info.kind === 'own' || hit.info.kind === 'unique' ? 'own' : hit.info.kind) : 'miss'}">${hit ? KIND_LABEL[hit.info.kind] : 'missing'}</span>
+      </span>
+    </div>`;
   }
 
   /* --------------------------------------------------------------- events */

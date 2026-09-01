@@ -4,14 +4,23 @@
 //
 // Persisted to localStorage, so nothing is lost by switching tabs or reloading.
 
-import { db } from './store.mjs';
+import { db, groupLadder, isPenaltySkill } from './store.mjs';
 import { CM_FIELD_SIZE, STRATEGY } from './model.mjs';
 
+const STRATEGY_KEY = Object.fromEntries(Object.entries(STRATEGY).map(([v, s]) => [v, s.key]));
+
 const KEY = 'paddock:cm';
+
+// Bumped when the meaning of something already in localStorage changes. v2
+// redefined `priorityOpts.anyRank`: it used to mean "any other rank of this
+// group counts" and was switched on for every entry, which quietly counted the
+// × rank as a match. It now means "a weaker rank also counts" and defaults off,
+// so the old values have to be dropped rather than reinterpreted.
+const STATE_VERSION = 2;
 const listeners = new Set();
 
 export const DEFAULT_STATS = { speed: 1200, stamina: 900, power: 1000, guts: 500, wit: 900 };
-export const DEFAULT_APT = { distance: 7, surface: 7, strategy: 7 };
+export const DEFAULT_APT = { distance: 7, surface: 7, style: 7 };
 
 /** A rival slot in the advanced field editor. */
 export function emptyRival(strategy = 2) {
@@ -32,6 +41,7 @@ export function emptySlot() {
 
 function defaults() {
   return {
+    version: STATE_VERSION,
     courseId: null,
     strategy: 2,
     ground: 1,
@@ -74,11 +84,16 @@ export function initContext() {
   try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { saved = null; }
   if (saved) merge(cm, saved);
 
+  if (cm.version !== STATE_VERSION) {
+    cm.priorityOpts = {};
+    cm.version = STATE_VERSION;
+  }
+
   if (!db.courseById.has(cm.courseId)) {
     cm.courseId = db.courses.find((c) => c.trackName === 'Tokyo' && c.distance === 2400 && c.surface === 1)?.id
       ?? db.courses[0].id;
   }
-  cm.priority = cm.priority.filter((id) => db.skillById.has(id));
+  cm.priority = dedupeByGroup(cm.priority.filter((id) => db.skillById.has(id)));
   cm.raceSkills = (cm.raceSkills ?? []).filter((id) => db.skillById.has(id));
   cm.you = { outfitId: null, uniqueLevel: 1, unique: true, lockAptitudes: true, ...(cm.you ?? {}) };
   if (cm.you.outfitId && !db.outfitById.has(cm.you.outfitId)) cm.you.outfitId = null;
@@ -184,6 +199,24 @@ export function onContextChange(fn) {
 
 export const currentCourse = () => db.courseById.get(cm.courseId);
 
+/**
+ * The aptitude grades that matter for one course and running style, as the
+ * numeric 1 = G … 8 = S the data stores. An empty slot has no uma, so it falls
+ * back to A, which is what a planned Champions Meeting runner is assumed to be
+ * brought up to.
+ */
+export function aptitudesFor(outfit, course = currentCourse(), strategy = null) {
+  if (!outfit) return null;
+  const distanceKey = ['', 'sprint', 'mile', 'medium', 'long'][course.distanceType];
+  const surfaceKey = course.surface === 1 ? 'turf' : 'dirt';
+  const styleKey = STRATEGY_KEY[strategy ?? outfit.strategy];
+  return {
+    distance: outfit.aptitudes[distanceKey] ?? 7,
+    surface: outfit.aptitudes[surfaceKey] ?? 7,
+    style: outfit.aptitudes[styleKey] ?? 7,
+  };
+}
+
 /** Scoring context for the model, optionally for one roster slot. */
 export function scoringContext(slot = null, sim = null) {
   const course = currentCourse();
@@ -196,9 +229,8 @@ export function scoringContext(slot = null, sim = null) {
   // panel has been set to — its aptitudes are the ones the race is scored with
   // unless they have been unlocked and overridden by hand.
   const own = slot ? null : (cm.you.outfitId ? db.outfitById.get(cm.you.outfitId) : null);
-  const apt = outfit ? outfitAptitudes(outfit, course, strategy)
-    : own && cm.you.lockAptitudes ? outfitAptitudes(own, course, strategy)
-      : { ...cm.aptitudes };
+  const apt = aptitudesFor(outfit, course, strategy)
+    ?? (own && cm.you.lockAptitudes ? aptitudesFor(own, course, strategy) : { ...cm.aptitudes });
   return {
     course,
     strategy,
@@ -216,33 +248,59 @@ export function scoringContext(slot = null, sim = null) {
   };
 }
 
-/** An outfit's aptitude for this exact race, as grades 1 (G) … 8 (S). */
-export function outfitAptitudes(outfit, course = currentCourse(), strategy = null) {
-  const dist = ['', 'sprint', 'mile', 'medium', 'long'][course.distanceType];
-  const surf = course.surface === 1 ? 'turf' : 'dirt';
-  const style = STRATEGY[strategy ?? outfit.strategy]?.key ?? 'pace';
-  return {
-    distance: outfit.aptitudes[dist] ?? 7,
-    surface: outfit.aptitudes[surf] ?? 7,
-    strategy: outfit.aptitudes[style] ?? 7,
-  };
+/* ------------------------------------------------------------- priorities */
+
+/**
+ * One priority entry per skill group. Aiming at both Determined Descent and
+ * Straight Descent is not two goals, it is one goal written twice — and it used
+ * to be counted twice everywhere coverage was measured.
+ */
+function dedupeByGroup(ids) {
+  const seenGroups = new Set();
+  const out = [];
+  for (const id of ids) {
+    const skill = db.skillById.get(id);
+    const key = skill?.groupId;
+    if (key) {
+      if (seenGroups.has(key)) continue;
+      seenGroups.add(key);
+    }
+    if (!out.includes(id)) out.push(id);
+  }
+  return out;
 }
 
-/* ------------------------------------------------------------- priorities */
+/** The priority entry already covering this skill's group, if there is one. */
+export function priorityGroupMate(skillId) {
+  const skill = db.skillById.get(skillId);
+  if (!skill?.groupId) return null;
+  return cm.priority.find((id) => id !== skillId && db.skillById.get(id)?.groupId === skill.groupId) ?? null;
+}
 
 export function togglePriority(skillId) {
   const i = cm.priority.indexOf(skillId);
   if (i >= 0) {
     cm.priority.splice(i, 1);
     delete cm.priorityOpts[skillId];
+    commitContext();
+    return;
+  }
+  // Picking another rank of a group already on the list moves the target to that
+  // rank instead of adding a second entry for the same skill.
+  const mate = priorityGroupMate(skillId);
+  if (mate) {
+    cm.priority.splice(cm.priority.indexOf(mate), 1, skillId);
+    cm.priorityOpts[skillId] = { ...(cm.priorityOpts[mate] ?? {}) };
+    delete cm.priorityOpts[mate];
   } else {
     cm.priority.push(skillId);
-    cm.priorityOpts[skillId] = { anyRank: true };
+    cm.priorityOpts[skillId] = { anyRank: false };
   }
   commitContext();
 }
 
-export const priorityAnyRank = (skillId) => cm.priorityOpts[skillId]?.anyRank !== false;
+/** Does this entry also accept a *weaker* rank of the same group? */
+export const priorityAnyRank = (skillId) => cm.priorityOpts[skillId]?.anyRank === true;
 
 export function togglePriorityRank(skillId) {
   cm.priorityOpts[skillId] = { ...(cm.priorityOpts[skillId] ?? {}), anyRank: !priorityAnyRank(skillId) };
@@ -261,15 +319,34 @@ export function yourSkills() {
   return out;
 }
 
+/** The ranks of this entry's group split into what counts and what does not. */
+export function priorityLadder(skillId) {
+  const skill = db.skillById.get(skillId);
+  const ladder = groupLadder(skill);
+  const at = ladder.findIndex((s) => s.id === skillId);
+  const better = at > 0 ? ladder.slice(0, at) : [];
+  const worse = at >= 0 ? ladder.slice(at + 1).filter((s) => !isPenaltySkill(s)) : [];
+  const penalties = at >= 0 ? ladder.slice(at + 1).filter(isPenaltySkill) : [];
+  return { skill, ladder, better, worse, penalties };
+}
+
 /**
- * Every skill id that satisfies a priority entry — the skill itself, plus the
- * other ranks of its group when the entry accepts them.
+ * Every skill id that satisfies a priority entry.
+ *
+ * A better rank always counts — ending a run with Right-Handed ◎ when you asked
+ * for Right-Handed ○ is not a miss. A weaker rank counts only when the entry
+ * says so. The × rank never counts for a positive pick, however the entry is
+ * configured: it is the same skill group but the opposite effect, and treating
+ * it as a match is what made green skills report themselves as already trained.
  */
 export function prioritySatisfiers(skillId) {
-  const skill = db.skillById.get(skillId);
+  const { skill, better, worse } = priorityLadder(skillId);
   if (!skill) return new Set();
-  if (!priorityAnyRank(skillId) || !skill.groupId) return new Set([skillId]);
-  return new Set((db.skillsByGroup.get(skill.groupId) ?? [skill]).filter((s) => !s.inherited).map((s) => s.id));
+  const out = new Set([skillId]);
+  const wantPenalty = isPenaltySkill(skill);
+  for (const s of better) if (wantPenalty || !isPenaltySkill(s)) out.add(s.id);
+  if (priorityAnyRank(skillId)) for (const s of worse) out.add(s.id);
+  return out;
 }
 
 /* ---------------------------------------------------------------- ownership */
@@ -294,7 +371,16 @@ export function borrowedIn(slot, exceptIndex = -1) {
   return slot.deck.filter((id, i) => id && i !== exceptIndex && !ownsCard(id));
 }
 
-/** Can this card go in that slot without breaking the one-borrowed rule? */
+/** Which deck position currently holds the borrowed card, or -1. */
+export function borrowedIndex(slot) {
+  return slot.deck.findIndex((id) => id && !ownsCard(id));
+}
+
+/**
+ * Can this card go in that slot without breaking the one-borrowed rule?
+ * The borrowed card is not tied to a fixed position — any of the six may be the
+ * friend's, there just cannot be two of them.
+ */
 export function canPlace(slot, deckIndex, cardId) {
   if (!cm.useOwned || ownsCard(cardId)) return true;
   return borrowedIn(slot, deckIndex).length < BORROWED_ALLOWANCE;
@@ -336,7 +422,7 @@ export function loadBuild(id) {
   if (build.field) { cm.field = clone(build.field); normaliseField(); }
   cm.roster = clone(build.roster);
   normaliseRoster(cm.roster);
-  cm.priority = [...(build.priority ?? [])];
+  cm.priority = dedupeByGroup((build.priority ?? []).filter((id) => db.skillById.has(id)));
   cm.priorityOpts = clone(build.priorityOpts ?? {});
   commitContext();
   return true;

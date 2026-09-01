@@ -33,12 +33,17 @@ import {
   compile, phaseAt, phaseBounds, terrainRanges,
 } from './race/conditions.mjs';
 import {
-  STRATEGY_PHASE_COEF, STRATEGY_ACCEL_COEF, STRATEGY_HP_COEF,
-  GROUND_HP, GROUND_POWER, APT_DISTANCE, APT_SURFACE, APT_STRATEGY,
-  TARGET_KIND, isDebuff, isPassive, baseSpeed, BASHIN,
+  STRATEGY_HP_COEF, GROUND_HP, TARGET_KIND, DEFAULT_APTITUDES,
+  accelRate, aptWit, courseSpeedModifier, effectiveStats, raceSpeeds, SPURT_RUNOUT,
+  isDebuff, isPassive, baseSpeed, BASHIN,
 } from './race/sim.mjs';
 
-export { BASHIN, baseSpeed, isDebuff, isPassive, TARGET_KIND };
+// The physics lives in the simulator and is re-exported here, so the closed
+// form and the tick model cannot quietly disagree about what a race is.
+export {
+  BASHIN, baseSpeed, isDebuff, isPassive, TARGET_KIND,
+  accelRate, aptWit, courseSpeedModifier, effectiveStats, raceSpeeds,
+};
 export const CM_FIELD_SIZE = 9;
 
 export const STRATEGY = {
@@ -82,14 +87,6 @@ export function atUniqueLevel(skill, level) {
   };
 }
 
-/** Acceleration in m/s², the one place Power enters the speed model. */
-export function accelRate(power, strategy, phaseIdx, surface = 1, ground = 1, apt = {}) {
-  const effective = Math.max(1, power + (GROUND_POWER[surface]?.[ground] ?? 0));
-  return 0.0006 * Math.sqrt(500 * effective)
-    * (STRATEGY_ACCEL_COEF[strategy] ?? STRATEGY_ACCEL_COEF[2])[phaseIdx]
-    * (APT_SURFACE[apt.surface ?? 7] ?? 1) * (APT_STRATEGY[apt.strategy ?? 7] ?? 1);
-}
-
 /** Seconds lost ramping from `from` to `to` at rate `a`, versus an instant change. */
 const rampLoss = (from, to, a) => (to <= from || a <= 0 ? 0 : (to - from) ** 2 / (2 * a * to));
 
@@ -104,16 +101,16 @@ const rampLoss = (from, to, a) => (to <= from || a <= 0 ? 0 : (to - from) ** 2 /
 // keep holds the field in style order until two thirds of the race, and the
 // whole race happens in the last third.
 const STYLE_PACE = {
-  1: [0.180, 0.167, 0.217, 0.775],
-  2: [0.449, 0.445, 0.447, 0.595],
-  3: [0.761, 0.733, 0.724, 0.391],
-  4: [0.884, 0.932, 0.887, 0.439],
+  1: [0.179, 0.168, 0.205, 0.578],
+  2: [0.449, 0.445, 0.489, 0.574],
+  3: [0.762, 0.733, 0.692, 0.473],
+  4: [0.883, 0.932, 0.872, 0.587],
 };
 const PACE_SPREAD = {
-  1: [0.114, 0.060, 0.116, 0.273],
-  2: [0.121, 0.094, 0.158, 0.204],
-  3: [0.118, 0.079, 0.173, 0.247],
-  4: [0.114, 0.077, 0.140, 0.284],
+  1: [0.114, 0.060, 0.120, 0.271],
+  2: [0.121, 0.094, 0.186, 0.259],
+  3: [0.120, 0.079, 0.181, 0.303],
+  4: [0.113, 0.076, 0.154, 0.308],
 };
 
 const orderCache = new Map();
@@ -186,33 +183,24 @@ export function activationRate(wit) {
 
 /* ---------------------------------------------------------------- HP model */
 
-export function raceSpeeds({ distance, speed, guts, strategy, aptitudes = {} }) {
-  const base = baseSpeed(distance);
-  const coef = STRATEGY_PHASE_COEF[strategy] ?? STRATEGY_PHASE_COEF[2];
-  const speedTerm = Math.sqrt(500 * speed) * 0.002 * (APT_DISTANCE[aptitudes.distance ?? 7] ?? 1);
-  return {
-    base,
-    v0: base * coef[0],
-    v1: base * coef[1],
-    v2: base * coef[2] + speedTerm,
-    spurt: (base * (coef[2] + 0.01)) * 1.05 + speedTerm + (450 * Math.max(1, guts)) ** 0.597 * 0.0001,
-    min: base * 0.85 + Math.sqrt(200 * Math.max(1, guts)) * 0.001,
-  };
-}
-
 const drainPerSecond = (v, base) => (20 * (v - base + 12) ** 2) / 144;
 
 /**
  * Your own race: can you run it to the line, how much of the last spurt do you
  * pay for, and where does the model think you accelerate.
  */
-export function simulateRace({ course, strategy, stats, ground = 1, recoveryPct = 0, aptitudes = {} }) {
+export function simulateRace({
+  course, strategy, stats: rawStats, ground = 1, recoveryPct = 0, aptitudes = DEFAULT_APTITUDES,
+}) {
   const d = course.distance;
+  // The course's set-status bonus and the going move Speed and Power before
+  // anything else is computed; Stamina is untouched by either.
+  const stats = effectiveStats(rawStats, course, ground);
   const speeds = raceSpeeds({ distance: d, speed: stats.speed, guts: stats.guts, strategy, aptitudes });
   const { base, v0, v1, v2, spurt } = speeds;
 
   const hpCoef = STRATEGY_HP_COEF[strategy] ?? 1;
-  const maxHp = d + 0.8 * hpCoef * stats.stamina;
+  const maxHp = d + 0.8 * hpCoef * rawStats.stamina;
   const groundMul = GROUND_HP[course.surface]?.[ground] ?? 1;
   const gutsMul = 1 + 200 / Math.sqrt(600 * Math.max(1, stats.guts));
 
@@ -224,22 +212,26 @@ export function simulateRace({ course, strategy, stats, ground = 1, recoveryPct 
   const available = maxHp * (1 + recoveryPct / 100) - before;
   const rateSpurt = drainPerSecond(spurt, base) * groundMul * gutsMul;
   const rateCruise = drainPerSecond(v2, base) * groundMul * gutsMul;
-  const hpFullSpurt = (rateSpurt * seg[2]) / spurt;
+  // The spurt is solved over the final leg minus a 60 m run-out, which the
+  // runner covers at spurt speed whatever happens — charging stamina for the
+  // whole final third overstates what a full spurt costs.
+  const spurtSolved = Math.max(0, seg[2] - SPURT_RUNOUT);
+  const hpFullSpurt = (rateSpurt * spurtSolved) / spurt;
 
   const perMetreSpurt = rateSpurt / spurt;
   const perMetreCruise = rateCruise / v2;
   let spurtDistance = seg[2];
   if (available < hpFullSpurt) {
-    spurtDistance = (available - perMetreCruise * seg[2]) / (perMetreSpurt - perMetreCruise);
-    spurtDistance = Math.max(0, Math.min(seg[2], spurtDistance));
+    spurtDistance = (available - perMetreCruise * spurtSolved) / (perMetreSpurt - perMetreCruise);
+    spurtDistance = Math.max(0, Math.min(seg[2], spurtDistance + SPURT_RUNOUT));
   }
 
   const needHp = before + hpFullSpurt;
   const requiredStamina = Math.max(0, (needHp / (1 + recoveryPct / 100) - d) / (0.8 * hpCoef));
 
-  const aOpen = accelRate(stats.power, strategy, 0, course.surface, ground, aptitudes);
-  const aMid = accelRate(stats.power, strategy, 1, course.surface, ground, aptitudes);
-  const aFinal = accelRate(stats.power, strategy, 2, course.surface, ground, aptitudes);
+  const aOpen = accelRate(stats.power, strategy, 0, aptitudes);
+  const aMid = accelRate(stats.power, strategy, 1, aptitudes);
+  const aFinal = accelRate(stats.power, strategy, 2, aptitudes);
 
   const spurtStart = d - spurtDistance;
 
@@ -257,7 +249,7 @@ export function simulateRace({ course, strategy, stats, ground = 1, recoveryPct 
   if (spurtDistance > 0) addRamp(spurtStart, Math.max(v1, v2), spurt, aFinal, 'into the last spurt');
   // Leaving an uphill: the slope has been holding target speed down.
   for (const up of course.derived.uphill) {
-    const drop = ((up.slope / 10000) * 200) / Math.max(1, stats.power + (GROUND_POWER[course.surface]?.[ground] ?? 0));
+    const drop = ((up.slope / 10000) * 200) / Math.max(1, stats.power);
     const at = up.start + up.length;
     const cruise = at > (d * 2) / 3 ? v2 : at > d / 6 ? v1 : v0;
     addRamp(at, cruise - drop, cruise, at > (d * 2) / 3 ? aFinal : aMid, 'off the uphill');
@@ -519,29 +511,37 @@ const LIVE_LABEL = {
  * last-spurt one keeps all of it.
  */
 function positionWeight(fraction) {
-  if (fraction < 1 / 6) return 0.45;
-  if (fraction < 2 / 3) return 0.62;
+  if (fraction < 1 / 6) return 0.72;
+  if (fraction < 2 / 3) return 0.95;
   if (fraction < 5 / 6) return 0.96;
   return 1;
 }
 
-/** Marginal value of one stat point, in lengths, from the HP/speed model. */
+/**
+ * Marginal value of one stat point, in lengths, from the HP/speed model.
+ *
+ * Measured as a *central* difference over ±40 points — the size of a green
+ * skill — rather than a one-sided +100. A build sitting on the edge of paying
+ * for its last spurt crosses a regime boundary inside a 100-point step, and a
+ * one-sided difference there reports the sign of the boundary instead of the
+ * value of the stat.
+ */
 function statValue(ctx, key) {
   const cache = ctx._statCache ?? (ctx._statCache = new Map());
   if (cache.has(key)) return cache.get(key);
-  const step = 100;
+  const step = 40;
   const base = ctx.sim ?? simulateRace(ctx);
   let v;
   if (key === 'wit') {
     // Wit buys activation rate, not speed: 100 more Wit lifts every Wit-checked
     // skill you carry. Priced against a typical five-skill Wit-checked load.
-    const d = activationRate(ctx.stats.wit + step) - activationRate(ctx.stats.wit);
+    const k = aptWit(ctx.aptitudes);
+    const d = activationRate((ctx.stats.wit + step) * k) - activationRate(ctx.stats.wit * k);
     v = d * 5 * 0.35;
   } else {
-    const bumped = simulateRace({
-      ...ctx, stats: { ...ctx.stats, [key]: ctx.stats[key] + step },
-    });
-    v = ((base.time - bumped.time) * base.speeds.spurt) / BASHIN;
+    const up = simulateRace({ ...ctx, stats: { ...ctx.stats, [key]: ctx.stats[key] + step } });
+    const down = simulateRace({ ...ctx, stats: { ...ctx.stats, [key]: Math.max(1, ctx.stats[key] - step) } });
+    v = ((down.time - up.time) / 2) * base.speeds.spurt / BASHIN;
   }
   const per = v / step;
   cache.set(key, per);
@@ -556,6 +556,8 @@ function statValue(ctx, key) {
  * on the ramps — the gate, the phase steps, the top of a hill, and above all
  * the run-up into the last spurt — and pays nothing at all anywhere else.
  */
+const RAMP_YIELD = 0.6;
+
 function accelValue(sim, da, ranges, durSec, random, at, zone = 0) {
   let total = 0;
   let hit = null;
@@ -594,7 +596,11 @@ function accelValue(sim, da, ranges, durSec, random, at, zone = 0) {
     }
     if (p <= 0) continue;
 
-    const saved = ramp.loss - rampLoss(ramp.from, ramp.to, ramp.a + da);
+    // Not all of the theoretical time saving survives: reaching target speed
+    // sooner also starts spending stamina sooner, and the runner is capped at
+    // that target either way. Measured against the simulator, about six tenths
+    // of the closed-form saving turns into ground.
+    const saved = (ramp.loss - rampLoss(ramp.from, ramp.to, ramp.a + da)) * RAMP_YIELD;
     const gain = saved * speed * p;
     total += gain;
     if (gain > best) { best = gain; hit = ramp.why; }
@@ -757,7 +763,9 @@ export function scoreSkill(skill, ctx) {
   if (pPre < 0.999) {
     reasons.push(`needs ${[chosen.pre.terms.join(', ') || 'its precondition'].join('')} first`);
   }
-  const pWit = skill.wisdomCheck ? activationRate(stats.wit) : 1;
+  // Style aptitude scales the Wit the activation roll is made against, so a B
+  // in your own running style costs you skills as well as acceleration.
+  const pWit = skill.wisdomCheck ? activationRate(stats.wit * aptWit(ctx.aptitudes)) : 1;
   if (pWit < 1) reasons.push(`Wit activation ${Math.round(pWit * 100)}%`);
 
   // Every term the closed form cannot check exactly gets its published odds,
@@ -855,8 +863,10 @@ function blockingCost(sim, at, durSec) {
  */
 function effectiveSpeedSeconds(sim, delta, durSec, at) {
   const a = at >= (sim.spurtStart ?? Infinity) || at > 0 ? sim.accel.final : sim.accel.middle;
-  const ramp = Math.abs(delta) / Math.max(0.05, a);
-  return Math.max(durSec * 0.35, durSec - ramp);
+  // Only the ramp *up* is a loss. Ground banked while the bonus was live is not
+  // handed back when it lapses, so the tail costs nothing.
+  const ramp = Math.abs(delta) / Math.max(0.05, a) / 2;
+  return Math.max(durSec * 0.5, durSec - ramp);
 }
 
 export function defaultFieldStyles(fieldSize, yourStrategy) {
@@ -866,6 +876,39 @@ export function defaultFieldStyles(fieldSize, yourStrategy) {
   let i = 0;
   while (out.length < fieldSize) { out.push(cycle[i % 4]); i += 1; }
   return out;
+}
+
+function speedAt(course, sim, metres) {
+  if (metres < course.distance / 6) return sim.speeds.v0;
+  if (metres < (course.distance * 2) / 3) return sim.speeds.v1;
+  return metres >= course.distance - sim.spurtDistance ? sim.speeds.spurt : sim.speeds.v2;
+}
+
+export function skillFiring(skill, scored, course, sim) {
+  if (!scored) return null;
+  const d = course.distance;
+  const start = Math.min(d, Math.max(0, scored.at));
+  // Walk the distance covered while the effect runs, since speed changes under it.
+  let x = start;
+  let left = scored.durSec;
+  while (left > 0 && x < d) {
+    const v = speedAt(course, sim, x);
+    const stepSeconds = Math.min(left, 0.25);
+    x = Math.min(d, x + v * stepSeconds);
+    left -= stepSeconds;
+  }
+  const end = x;
+  const phaseOf = (m) => (m < d / 6 ? 'opening' : m < (d * 2) / 3 ? 'middle' : m >= d - sim.spurtDistance ? 'spurt' : 'final');
+  return {
+    start,
+    end,
+    length: end - start,
+    eligible: (scored.window?.ranges ?? []).map(([a, b]) => [a, b]),
+    random: !!skill.facets.random,
+    phase: phaseOf(start),
+    inSpurt: end >= d - sim.spurtDistance,
+    secondsClipped: Math.max(0, (skill.duration * (d / 1000)) - scored.durSec),
+  };
 }
 
 export function rankSkills(skills, ctx, { tiers = null, limit = 0, filter = null } = {}) {
@@ -891,9 +934,12 @@ export function statSensitivity(ctx, skills, step = 100) {
   const base = ctx.sim ?? simulateRace(ctx);
   const out = {};
   for (const key of ['speed', 'stamina', 'guts', 'power']) {
-    const bumped = simulateRace({ ...ctx, stats: { ...ctx.stats, [key]: ctx.stats[key] + step } });
-    const metres = (base.time - bumped.time) * base.speeds.spurt;
-    out[key] = { bashin: metres / BASHIN, seconds: base.time - bumped.time, modelled: true };
+    // Central difference, for the same reason statValue uses one.
+    const h = step / 2;
+    const up = simulateRace({ ...ctx, stats: { ...ctx.stats, [key]: ctx.stats[key] + h } });
+    const down = simulateRace({ ...ctx, stats: { ...ctx.stats, [key]: Math.max(1, ctx.stats[key] - h) } });
+    const seconds = down.time - up.time;
+    out[key] = { bashin: (seconds * base.speeds.spurt) / BASHIN, seconds, modelled: true };
   }
   // Wit buys activation, so it is measured against the skills that actually
   // roll for it — a top-12 list full of uniques (which never roll) would show
@@ -922,5 +968,86 @@ export function statGuide(course, strategy, cap = 1200) {
   if (course.surface === 2) out.power = [Math.round(out.power[0] + 100 * scale), Math.round(out.power[1] + 150 * scale)];
   if (strategy === 1) out.guts = [Math.round(out.guts[0] + 100 * scale), Math.round(out.guts[1] + 150 * scale)];
   if (strategy === 4) out.power = [Math.round(out.power[0] + 50 * scale), Math.round(out.power[1] + 100 * scale)];
+  return out;
+}
+
+export function raceProfile({ course, strategy, stats: rawStats, ground = 1, aptitudes, recoveryPct = 0, samples = 200 }) {
+  const d = course.distance;
+  const sim = simulateRace({ course, strategy, stats: rawStats, ground, aptitudes, recoveryPct });
+  const { base, v0, v1, v2, spurt } = sim.speeds;
+  const groundMul = GROUND_HP[course.surface]?.[ground] ?? 1;
+  const stats = effectiveStats(rawStats, course, ground);
+  const gutsMul = 1 + 200 / Math.sqrt(600 * stats.guts);
+
+  const openingEnd = d / 6;
+  const middleEnd = (d * 2) / 3;
+  const spurtStart = d - sim.spurtDistance;
+  // Recovery is spread across the race rather than pinned to a skill, which is
+  // all the planner knows about it.
+  const pool = sim.maxHp * (1 + recoveryPct / 100);
+
+  const speedAt = (x) => {
+    if (x < openingEnd) return v0;
+    if (x < middleEnd) return v1;
+    return x >= spurtStart ? spurt : v2;
+  };
+
+  const points = [];
+  let hp = pool;
+  let prev = 0;
+  for (let i = 0; i <= samples; i += 1) {
+    const x = (d * i) / samples;
+    const v = speedAt(x);
+    if (i > 0) {
+      const mid = speedAt((x + prev) / 2);
+      const phaseGuts = (x + prev) / 2 >= middleEnd ? gutsMul : 1;
+      const seconds = (x - prev) / mid;
+      hp -= drainPerSecond(mid, base) * groundMul * phaseGuts * seconds;
+    }
+    prev = x;
+    points.push({ x, v, hp: Math.max(0, hp), hpRatio: Math.max(0, hp) / pool });
+  }
+
+  const emptyAt = points.find((pt) => pt.hp <= 0)?.x ?? null;
+  return {
+    sim, points, spurtStart, emptyAt, maxHp: pool,
+    vMin: Math.min(v0, v1, v2), vMax: spurt,
+    marks: { openingEnd, middleEnd },
+  };
+}
+
+export function staminaMatrix({ course, stats, aptitudes, recoveryPct = 0, strategies = [1, 2, 3, 4], grounds = [1, 2, 3, 4] }) {
+  return strategies.map((strategy) => ({
+    strategy,
+    cells: grounds.map((ground) => {
+      const sim = simulateRace({ course, strategy, stats, ground, aptitudes, recoveryPct });
+      return {
+        ground,
+        required: sim.requiredStamina,
+        coverage: sim.spurtCoverage,
+        short: Math.max(0, sim.requiredStamina - stats.stamina),
+        time: sim.time,
+      };
+    }),
+  }));
+}
+
+export function skillOverlaps(entries) {
+  const out = [];
+  for (let i = 0; i < entries.length; i += 1) {
+    for (let j = i + 1; j < entries.length; j += 1) {
+      const a = entries[i];
+      const b = entries[j];
+      if (!a.firing || !b.firing) continue;
+      const from = Math.max(a.firing.start, b.firing.start);
+      const to = Math.min(a.firing.end, b.firing.end);
+      if (to - from <= 1) continue;
+      // A random-window skill only *might* land here, so say so rather than
+      // presenting a coincidence as a plan.
+      const certain = !a.firing.random && !b.firing.random;
+      out.push({ a, b, from, to, metres: to - from, certain });
+    }
+  }
+  out.sort((x, y) => y.metres - x.metres);
   return out;
 }

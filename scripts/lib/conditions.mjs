@@ -50,6 +50,11 @@ const listOf = (arr) => {
 
 const cmpWord = { '>=': 'at least', '<=': 'at most', '>': 'over', '<': 'under', '==': 'exactly', '!=': 'not' };
 
+// Names that only ever appear inside condition text.
+const GRADE_NAME = { 100: 'G1', 200: 'G2', 300: 'G3', 400: 'OP', 800: 'Pre-OP' };
+const MOOD_NAME = { 1: 'awful', 2: 'bad', 3: 'normal', 4: 'good', 5: 'great' };
+const TIME_NAME = { 1: 'morning', 2: 'midday', 3: 'evening', 4: 'night' };
+
 /**
  * Per-key handlers. `describe` returns a phrase, `apply` records facets.
  * Anything without a handler still shows up as a raw phrase so nothing is
@@ -265,7 +270,114 @@ const HANDLERS = {
   base_wiz: { describe: (op, v) => `with ${cmpWord[op]} ${v} base Wit`, apply: () => {} },
   always: { describe: () => 'always active', apply: (op, v, f) => f.passive = true },
   is_lastspurt_gap: { describe: (op, v) => `${cmpWord[op]} ${v} into the last spurt`, apply: () => {} },
+
+  // Keys that used to fall through to the raw-key fallback below, which printed
+  // the key itself with its underscores swapped for spaces. Every one of these
+  // appears in the Global data, so the Skills page was showing fragments like
+  // "running style count same rate at least 40" as if they were prose.
+  //
+  // `apply` is deliberately empty on all of them: giving these keys facets would
+  // change which skills score and how, which is a change to the model rather
+  // than to the wording. Their facets stay exactly as unset as they were.
+  random_lot: {
+    describe: (op, v) => (op === '==' ? `a ${v}% random roll` : `random roll ${cmpWord[op]} ${v}`),
+    apply: () => {},
+  },
+  blocked_front: {
+    describe: (op, v) => (v === 1 ? 'while boxed in from the front' : 'while not boxed in from the front'),
+    apply: () => {},
+  },
+  is_surrounded: {
+    describe: (op, v) => (v === 1 ? 'while surrounded by other runners' : 'while not surrounded'),
+    apply: () => {},
+  },
+  behind_near_lane_time: {
+    describe: (op, v) => `after ${v}s behind a runner in a nearby lane`,
+    apply: () => {},
+  },
+  behind_near_lane_time_set1: {
+    describe: (op, v) => `after ${v}s behind a runner in a nearby lane`,
+    apply: () => {},
+  },
+  compete_fight_count: {
+    describe: (op, v) => `${cmpWord[op]} ${v} neck-and-neck duels`,
+    apply: () => {},
+  },
+  lastspurt: {
+    describe: (op, v) => (v === 2 ? 'while in a full last spurt' : `last spurt, state ${v}`),
+    apply: () => {},
+  },
+  overtake_target_no_order_up_time: {
+    describe: (op, v) => `after ${v}s chasing a target without gaining a place`,
+    apply: () => {},
+  },
+  change_order_up_finalcorner_after: {
+    describe: (op, v) => `after gaining ${v} places past the final corner`,
+    apply: () => {},
+  },
+  activate_count_end_after: {
+    describe: (op, v) => `after ${cmpWord[op]} ${v} final-leg skills`,
+    apply: () => {},
+  },
+  running_style_count_same: {
+    describe: (op, v) => `with ${cmpWord[op]} ${v} runners of the same style`,
+    apply: () => {},
+  },
+  running_style_count_same_rate: {
+    describe: (op, v) => `with ${cmpWord[op]} ${v}% of the field running the same style`,
+    apply: () => {},
+  },
+  running_style_equal_popularity_one: {
+    describe: (op, v) => (v === 1 ? 'when the favourite runs the same style' : 'when the favourite runs a different style'),
+    apply: () => {},
+  },
+  temptation_opponent_count_infront: {
+    describe: (op, v) => `with ${cmpWord[op]} ${v} runners ahead able to pace up`,
+    apply: () => {},
+  },
+  temptation_opponent_count_behind: {
+    describe: (op, v) => `with ${cmpWord[op]} ${v} runners behind able to pace up`,
+    apply: () => {},
+  },
+  same_skill_horse_count: {
+    describe: (op, v) => `with ${cmpWord[op]} ${v} runners carrying the same skill`,
+    apply: () => {},
+  },
+  is_other_character_activate_advantage_skill: {
+    describe: (op, v) => (v === 1 ? 'after a rival fires an advantage skill' : 'before any rival fires an advantage skill'),
+    apply: () => {},
+  },
+  is_dirtgrade: {
+    describe: (op, v) => (v === 1 ? 'in a dirt graded race' : 'outside a dirt graded race'),
+    apply: () => {},
+  },
+  grade: {
+    describe: (op, v) => `race grade ${cmpWord[op]} ${GRADE_NAME[v] ?? v}`,
+    apply: () => {},
+  },
+  motivation: {
+    describe: (op, v) => `mood ${cmpWord[op]} ${MOOD_NAME[v] ?? v}`,
+    apply: () => {},
+  },
+  time: {
+    describe: (op, v) => `race time ${cmpWord[op]} ${TIME_NAME[v] ?? v}`,
+    apply: () => {},
+  },
 };
+
+// `order_rate_inN_continue` / `order_rate_outN_continue` — how long you have
+// been holding inside, or outside, the top N% of the field. The values of N in
+// the data change between updates, so the table is generated rather than typed.
+for (const n of [10, 20, 30, 40, 50, 60, 70, 80, 90]) {
+  HANDLERS[`order_rate_in${n}_continue`] = {
+    describe: (op, v) => `after ${v}s inside the top ${n}%`,
+    apply: () => {},
+  };
+  HANDLERS[`order_rate_out${n}_continue`] = {
+    describe: (op, v) => `after ${v}s outside the top ${n}%`,
+    apply: () => {},
+  };
+}
 
 for (const [style, key] of [[1, 'nige'], [2, 'senko'], [3, 'sashi'], [4, 'oikomi']]) {
   HANDLERS[`running_style_count_${key}`] = {
@@ -284,6 +396,15 @@ for (const [style, key] of [[1, 'nige'], [2, 'senko'], [3, 'sashi'], [4, 'oikomi
     describe: () => `when the favourite is a ${RUNNING_STYLE[style].name}`,
     apply: () => {},
   };
+}
+
+/**
+ * A condition with no handler yet. The key is an identifier out of the game
+ * data, so it is shown as-is rather than reworded into something that reads
+ * like a sentence but is really just the key with its underscores removed.
+ */
+function unknownTerm(term) {
+  return `condition \`${term.key}\` ${cmpWord[term.op] ?? term.op} ${term.value}`;
 }
 
 /** Terms that are always true and only add noise to the readable text. */
@@ -381,7 +502,7 @@ export function analyseCondition(condition, precondition, ctx = {}) {
       } else if (term.op === '?') {
         phrases.push(term.raw);
       } else {
-        phrases.push(`${term.key.replace(/_/g, ' ')} ${cmpWord[term.op] ?? term.op} ${term.value}`);
+        phrases.push(unknownTerm(term));
       }
     }
     altTexts.push(phrases.join(', '));
@@ -390,7 +511,7 @@ export function analyseCondition(condition, precondition, ctx = {}) {
 
   const preTexts = pre.map((alt) => alt.map((term) => {
     const h = HANDLERS[term.key];
-    return h ? h.describe(term.op, term.value, ctx) : `${term.key.replace(/_/g, ' ')} ${cmpWord[term.op] ?? term.op} ${term.value}`;
+    return h ? h.describe(term.op, term.value, ctx) : unknownTerm(term);
   }).filter(Boolean).join(', ')).filter(Boolean);
 
   const text = [

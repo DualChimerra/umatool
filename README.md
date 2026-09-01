@@ -48,9 +48,20 @@ all on one page and all planned against the course above. Per uma: aptitude chec
 course, running-style override, stats, its own stamina requirement, the complete pool of
 skills that run can end with (its unique, its own skill list, guaranteed card events and
 card hints), and what each of those is worth in lengths. Plus a **priority skill list you
-write yourself** — every deck is then scored on how much of it you cover, and what is
-missing. Team level: style spread, total expected lengths, and which cards you are running
-in more than one deck.
+write yourself** — every deck is then scored on how much of it you cover, what is missing,
+and for anything covered, which rank closed it and off which card. Team level: style
+spread, total expected lengths, and which cards you are running in more than one deck.
+
+The priority list holds **one entry per skill group**, so aiming at both ranks of the same
+skill cannot be counted as two goals; picking another rank moves the target rather than
+adding a second row. A **better** rank always satisfies an entry — finishing with
+*Right-Handed ◎* when you asked for *Right-Handed ○* is not a miss. A weaker rank counts
+only if you tick it. The **× rank never counts**: it lives in the same group but has the
+opposite effect, so a card handing out *Corner Recovery ×* does not cover
+*Corner Recovery ○*.
+
+Cards that list the same skill both as their event skill and as a hint — 72 of the Global
+ones do — are counted once, at the event's full weight, rather than twice.
 
 Both pickers are ranked, not alphabetical. Umas are sorted by what their own unique and
 skill list is worth on this course, discounted for missing aptitude. Support cards are
@@ -68,8 +79,12 @@ Builds are kept automatically between visits, and can be saved by name and switc
 between.
 
 **Collection** — tick the umas and support cards you actually own. With the restriction
-on, the deck builder offers only those, plus **one borrowed card per deck** — the slot you
-fill from a friend.
+on, a deck is five of your own cards plus **one borrowed from a friend**. That borrowed
+card is not pinned to a fixed position — any of the six may be it, there just cannot be
+two. Cards outside the collection therefore stay visible in the picker, badged *friend*,
+and are ranked by what they would add like everything else; once the borrow is spent they
+remain listed but disabled, so it is clear what taking the friend's card cost. An
+**All / Mine / Friend's** switch narrows the list either way.
 
 Click any skill anywhere in the app for the full breakdown: what it does, the exact
 condition from the game data, its complete valuation on the current course, and **every
@@ -89,7 +104,9 @@ match to event-only or hint-only.
 > **Also match the other rank** — on by default. Search for a gold skill and cards that
 > only carry its normal version are matched too: *Determined Descent* ⇄ *Straight Descent*.
 > This works off the skill group id in the game data, so it covers every rank pair,
-> including the ◎/○/× families.
+> including the ◎/○/× families. It is a *search* filter, deliberately symmetric and
+> deliberately including ×, which is not how the Team page's priority coverage treats
+> ranks — that one only ever counts equal-or-better, and never ×.
 
 **Skills** — all 591 Global skills as a sortable table: effect, the real activation
 condition rendered from the raw game expression, SP cost, score, score-per-SP, duration,
@@ -166,9 +183,16 @@ string, intersects it with the actual course geometry, and works out expected
 
 **The simulator** (`docs/assets/js/race/`) runs all nine runners forward at
 1/15 s with the real conditions checked per tick. It is the reference. Over a
-basket of thirty-odd skills on Kyoto 2200 m the two correlate at **r ≈ 0.95** with
-a scale factor of ≈ 1.0, and any row can be re-checked against the simulator from
-the Race page.
+basket of thirty-odd skills on Kyoto 2200 m the two correlate at **r ≈ 0.94**, with
+the closed form running about 15 % high in absolute terms. Any row can be
+re-checked against the simulator from the Race page, which prints both numbers
+side by side.
+
+Underneath both of them the physics is checked against a third thing: an
+independent transcription of `RaceSolver.ts` and `HpPolicy.ts` from
+alpha123/uma-skill-tools. `npm run verify:model` runs every course, running
+style, going and a spread of aptitudes through both and fails on any drift —
+5712 combinations, currently zero.
 
 Three things the ranking gets right that a plain “m/s × seconds” score does not,
 and which is why it used to disagree with every published Champions Meeting list:

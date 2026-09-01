@@ -39,25 +39,97 @@ export const STRATEGY_ACCEL_COEF = {
 };
 export const STRATEGY_HP_COEF = { 1: 0.95, 2: 0.89, 3: 1.0, 4: 0.995 };
 
-// Going: turf/dirt × firm/good/soft/heavy.
+// The going shifts the effective Speed and Power stats by a flat amount before
+// anything else is computed. Indexed [surface][going], going 1..4 = Firm /
+// Good / Soft / Heavy.
 export const GROUND_HP = {
   1: { 1: 1.0, 2: 1.0, 3: 1.02, 4: 1.02 },
   2: { 1: 1.0, 2: 1.0, 3: 1.01, 4: 1.02 },
 };
+export const GROUND_SPEED = {
+  1: { 1: 0, 2: 0, 3: 0, 4: -50 },
+  2: { 1: 0, 2: 0, 3: 0, 4: -50 },
+};
 export const GROUND_POWER = {
-  1: { 1: 0, 2: 0, 3: -50, 4: -50 },
-  2: { 1: -100, 2: -50, 3: -50, 4: -100 },
+  1: { 1: 0, 2: -50, 3: -50, 4: -50 },
+  2: { 1: -100, 2: -50, 3: -100, 4: -100 },
 };
 
-// Aptitude grades run 1 (G) … 8 (S).
-// Distance aptitude scales the Speed-stat term in the final leg; surface and
-// running-style aptitude scale acceleration.
-export const APT_DISTANCE = [0, 0.1, 0.2, 0.4, 0.6, 0.8, 0.9, 1.0, 1.05];
-export const APT_SURFACE = [0, 0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 1.0, 1.0];
-export const APT_STRATEGY = [0, 0.1, 0.2, 0.4, 0.6, 0.75, 0.85, 1.0, 1.1];
+/**
+ * Aptitude multipliers, indexed by the grade the data stores (1 = G … 8 = S).
+ *
+ * Distance aptitude scales the Speed stat's contribution to target speed, and
+ * separately scales acceleration. Surface aptitude scales acceleration. Style
+ * aptitude scales Wit, which is what the skill activation roll is made against
+ * — it is not an acceleration term, which is where this used to put it.
+ */
+export const APT_SPEED = { 8: 1.05, 7: 1.0, 6: 0.9, 5: 0.8, 4: 0.6, 3: 0.4, 2: 0.2, 1: 0.1 };
+export const APT_ACCEL_DISTANCE = { 8: 1.0, 7: 1.0, 6: 1.0, 5: 1.0, 4: 1.0, 3: 0.6, 2: 0.5, 1: 0.4 };
+export const APT_ACCEL_SURFACE = { 8: 1.05, 7: 1.0, 6: 0.9, 5: 0.8, 4: 0.7, 3: 0.5, 2: 0.3, 1: 0.1 };
+export const APT_WIT_STYLE = { 8: 1.1, 7: 1.0, 6: 0.85, 5: 0.75, 4: 0.6, 3: 0.4, 2: 0.2, 1: 0.1 };
+
+export const DEFAULT_APTITUDES = { distance: 7, surface: 7, style: 7 };
+export const aptSpeed = (a) => APT_SPEED[a?.distance ?? 7] ?? 1;
+export const aptAccel = (a) => (APT_ACCEL_DISTANCE[a?.distance ?? 7] ?? 1) * (APT_ACCEL_SURFACE[a?.surface ?? 7] ?? 1);
+export const aptWit = (a) => APT_WIT_STYLE[a?.style ?? 7] ?? 1;
+
+/**
+ * Some courses award a flat Speed bonus for carrying stats above thresholds —
+ * the course's "set status", which 67 of the 119 courses have. Each listed stat
+ * contributes 5 % per full 300 points (counted up to 901), averaged over
+ * however many stats the course lists.
+ */
+export function courseSpeedModifier(course, stats) {
+  const list = course.courseSetStatus ?? [];
+  if (!list.length) return 1;
+  const byIndex = [0, stats.speed, stats.stamina, stats.power, stats.guts, stats.wit];
+  const sum = list.reduce((n, stat) => n + (1 + Math.floor(Math.min(byIndex[stat] ?? 0, 901) / 300.01)) * 0.05, 0);
+  return 1 + sum / list.length;
+}
+
+/** Stats as the race actually sees them: course bonus first, then the going. */
+export function effectiveStats(stats, course, ground) {
+  const surface = course.surface;
+  return {
+    ...stats,
+    speed: Math.max(1, stats.speed * courseSpeedModifier(course, stats) + (GROUND_SPEED[surface]?.[ground] ?? 0)),
+    power: Math.max(1, stats.power + (GROUND_POWER[surface]?.[ground] ?? 0)),
+  };
+}
+
+/**
+ * Target speed per phase, and the last spurt on top of it.
+ *
+ * The Speed stat only enters the *final* leg. The last spurt is then built on
+ * the final-leg target, so the Speed term is counted twice — once inside the
+ * ×1.05 and once again after it.
+ */
+export function raceSpeeds({ distance, speed, guts, strategy, aptitudes = DEFAULT_APTITUDES }) {
+  const base = baseSpeed(distance);
+  const coef = STRATEGY_PHASE_COEF[strategy] ?? STRATEGY_PHASE_COEF[2];
+  const speedTerm = Math.sqrt(500 * speed) * aptSpeed(aptitudes) * 0.002;
+  const v2 = base * coef[2] + speedTerm;
+  return {
+    base,
+    v0: base * coef[0],
+    v1: base * coef[1],
+    v2,
+    spurt: (v2 + 0.01 * base) * 1.05 + speedTerm + (450 * Math.max(1, guts)) ** 0.597 * 0.0001,
+    min: base * 0.85 + Math.sqrt(200 * Math.max(1, guts)) * 0.001,
+  };
+}
+
+/**
+ * The last spurt is solved over the final leg minus a 60 m run-out: the game
+ * works out where to start spurting so that it lasts to 60 m from the line, and
+ * covers that tail at spurt speed regardless.
+ */
+export const SPURT_RUNOUT = 60;
 
 const DECEL = [-1.2, -1.2, -0.8, -0.8];
 const START_DASH_ACCEL = 24;
+const UPHILL_BASE_ACCEL = 0.0004;
+const FLAT_BASE_ACCEL = 0.0006;
 // Time spent standing after the gate. `startdash` skills scale it.
 const BASE_START_DELAY = 0.1;
 const BAD_START_DELAY = 0.22;
@@ -166,8 +238,11 @@ export function compileSkill(skill, course) {
 
 /* -------------------------------------------------------------- the runner */
 
-function effectivePower(power, surface, ground) {
-  return Math.max(1, power + (GROUND_POWER[surface]?.[ground] ?? 0));
+/** Acceleration in m/s², the one place Power enters the model. */
+export function accelRate(power, strategy, phaseIdx, aptitudes = DEFAULT_APTITUDES, uphill = false) {
+  return (uphill ? UPHILL_BASE_ACCEL : FLAT_BASE_ACCEL) * Math.sqrt(500 * Math.max(1, power))
+    * (STRATEGY_ACCEL_COEF[strategy] ?? STRATEGY_ACCEL_COEF[2])[phaseIdx]
+    * aptAccel(aptitudes);
 }
 
 /**
@@ -204,7 +279,7 @@ export function prepareRunner(def, race, seed, index) {
     strategy: def.strategy,
     base,
     stats,
-    aptitudes: def.aptitudes ?? { distance: 7, surface: 7, strategy: 7 },
+    aptitudes: def.aptitudes ?? { ...DEFAULT_APTITUDES },
     passives,
     timed,
     pos: 0,
@@ -283,25 +358,20 @@ export function prepareRunner(def, race, seed, index) {
   }
 
   const hpCoef = STRATEGY_HP_COEF[def.strategy] ?? 1;
+  // The going and the course bonus move Speed and Power, not Stamina, so the
+  // raw stat is what pays for the HP pool.
   runner.maxHp = d + 0.8 * hpCoef * stats.stamina;
   runner.hp = runner.maxHp;
   runner.groundHp = GROUND_HP[course.surface]?.[ground] ?? 1;
-  runner.gutsMul = 1 + 200 / Math.sqrt(600 * Math.max(1, stats.guts));
-  runner.powerEff = effectivePower(stats.power, course.surface, ground);
-  runner.aptSpeed = APT_DISTANCE[runner.aptitudes.distance] ?? 1;
-  runner.aptAccel = (APT_SURFACE[runner.aptitudes.surface] ?? 1) * (APT_STRATEGY[runner.aptitudes.strategy] ?? 1);
+  runner.eff = effectiveStats(stats, course, ground);
+  runner.gutsMul = 1 + 200 / Math.sqrt(600 * Math.max(1, runner.eff.guts));
+  runner.powerEff = runner.eff.power;
+  runner.aptAccel = aptAccel(runner.aptitudes);
+  runner.witEff = runner.eff.wit * aptWit(runner.aptitudes);
 
-  const b = baseSpeed(d);
-  const coef = STRATEGY_PHASE_COEF[def.strategy] ?? STRATEGY_PHASE_COEF[2];
-  const speedTerm = Math.sqrt(500 * stats.speed) * 0.002 * runner.aptSpeed;
-  runner.speeds = {
-    base: b,
-    v0: b * coef[0],
-    v1: b * coef[1],
-    v2: b * coef[2] + speedTerm,
-    spurt: (b * (coef[2] + 0.01)) * 1.05 + speedTerm + (450 * Math.max(1, stats.guts)) ** 0.597 * 0.0001,
-    min: b * 0.85 + Math.sqrt(200 * Math.max(1, stats.guts)) * 0.001,
-  };
+  runner.speeds = raceSpeeds({
+    distance: d, speed: runner.eff.speed, guts: runner.eff.guts, strategy: def.strategy, aptitudes: runner.aptitudes,
+  });
 
   // Roll the trigger point of every random-trigger skill, the way the game
   // does when the gate opens.
@@ -407,16 +477,17 @@ export function runRace(setup, seed = 1, { trace = false, traceStep = 20 } = {})
   // Last-spurt planning, recomputed when the final leg starts.
   const planSpurt = (r) => {
     const remain = d - r.pos;
-    const perMetre = (v, guts) => {
-      const drain = (20 * (v - r.speeds.base + 12) ** 2) / 144 * r.groundHp * (guts ? r.gutsMul : 1);
-      return drain / v;
-    };
-    const cruise = perMetre(r.speeds.v2, true);
-    const spurt = perMetre(r.speeds.spurt, true);
+    // The game solves the spurt so that it lasts to 60 m from the line and
+    // covers that tail at spurt speed regardless, so the tail is not charged
+    // for twice.
+    const solved = Math.max(0, remain - SPURT_RUNOUT);
+    const perMetre = (v) => ((20 * (v - r.speeds.base + 12) ** 2) / 144 * r.groundHp * r.gutsMul) / v;
+    const cruise = perMetre(r.speeds.v2);
+    const spurt = perMetre(r.speeds.spurt);
     const budget = r.hp;
-    if (budget >= spurt * remain) { r.spurtStart = r.pos; return; }
-    const x = (budget - cruise * remain) / Math.max(1e-6, spurt - cruise);
-    r.spurtStart = d - Math.max(0, Math.min(remain, x));
+    if (budget >= spurt * solved) { r.spurtStart = r.pos; return; }
+    const x = (budget - cruise * solved) / Math.max(1e-6, spurt - cruise);
+    r.spurtStart = d - Math.max(0, Math.min(remain, x + SPURT_RUNOUT));
   };
 
   let t = 0;
@@ -503,7 +574,7 @@ export function runRace(setup, seed = 1, { trace = false, traceStep = 20 } = {})
       // ---- pace-up (kakari) -------------------------------------------
       if (!r.temptationRolled && phase >= 1) {
         r.temptationRolled = true;
-        if (r.rngRace() < temptationChance(r.stats.wit)) {
+        if (r.rngRace() < temptationChance(r.witEff)) {
           r.temptation = 3 + r.rngRace() * 9;
           r.temptationCount += 1;
         }
@@ -514,7 +585,7 @@ export function runRace(setup, seed = 1, { trace = false, traceStep = 20 } = {})
       const slope = flags.slope[Math.min(flags.n - 1, Math.floor(r.pos))] ?? 0;
       if (slope < -0.01) {
         const roll = hashRand(r.seedDown, Math.floor(r.pos));
-        if (!r.downhill && roll < DOWNHILL_ENTER_PER_S * r.stats.wit * DT) r.downhill = true;
+        if (!r.downhill && roll < DOWNHILL_ENTER_PER_S * r.witEff * DT) r.downhill = true;
         else if (r.downhill && roll > 1 - DOWNHILL_LEAVE_PER_S * DT) r.downhill = false;
       } else r.downhill = false;
 
@@ -554,8 +625,9 @@ export function runRace(setup, seed = 1, { trace = false, traceStep = 20 } = {})
       const rising = r.v < target;
       let a;
       if (rising) {
-        a = 0.0006 * Math.sqrt(500 * r.powerEff) * (STRATEGY_ACCEL_COEF[r.strategy] ?? STRATEGY_ACCEL_COEF[2])[pi]
-          * r.aptAccel + r.mods.accel;
+        // Climbing costs acceleration as well as target speed: the base term
+        // drops from 0.0006 to 0.0004 while on an uphill.
+        a = accelRate(r.powerEff, r.strategy, pi, r.aptitudes, slope > 0.01) + r.mods.accel;
         if (r.v < 0.85 * r.speeds.base) a += START_DASH_ACCEL;
         a = Math.max(0.02, a);
       } else {
@@ -655,7 +727,8 @@ function tickSkills(r, race, runners, sorted, t, phase) {
 
       // Wit roll, once, at the moment the condition first holds.
       if (inst.skill.wisdomCheck) {
-        const rate = Math.min(1, Math.max(0.2, (100 - 9000 / Math.max(1, r.stats.wit)) / 100)) + r.activationBonus;
+        // Style aptitude scales the Wit the roll is made against.
+        const rate = Math.min(1, Math.max(0.2, (100 - 9000 / Math.max(1, r.witEff)) / 100)) + r.activationBonus;
         if (inst.rng() > rate) { inst.done = true; break; }
       }
       // the instance's own skill, so a level-scaled unique keeps its numbers

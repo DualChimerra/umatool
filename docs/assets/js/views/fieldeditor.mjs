@@ -9,7 +9,7 @@ import { db, isObtainable } from '../store.mjs';
 import { el, esc, on, skillPill } from '../ui.mjs';
 import {
   cm, commitContext, currentCourse, scoringContext, emptyRival,
-  normaliseField, outfitAptitudes,
+  normaliseField, aptitudesFor,
 } from '../context.mjs';
 import { STRATEGY, APT_GRADE, simulateRace, rankSkills } from '../model.mjs';
 import { clearFieldCache } from '../race/field.mjs';
@@ -163,7 +163,7 @@ function paint() {
 
   drawer.querySelector('[data-role="list"]').innerHTML = cm.field.rivals.map((r, i) => {
     const o = r.outfitId ? db.outfitById.get(r.outfitId) : null;
-    const apt = o ? outfitAptitudes(o, course, r.strategy) : null;
+    const apt = o ? aptitudesFor(o, course, r.strategy) : null;
     const unique = o?.uniqueId ? db.skillById.get(o.uniqueId) : null;
     const open = i === openIndex;
     return `<section class="rival ${open ? 'is-open' : ''}">
@@ -174,7 +174,7 @@ function paint() {
           <span class="tiny muted">${esc(o ? o.epithet : 'no umamusume picked')}</span>
         </span>
         <span class="chip chip--style${r.strategy}">${esc(STRATEGY[r.strategy].short)}</span>
-        ${apt ? `<span class="chip">${esc(APT_GRADE[apt.distance])}/${esc(APT_GRADE[apt.surface])}/${esc(APT_GRADE[apt.strategy])}</span>` : ''}
+        ${apt ? `<span class="chip">${esc(APT_GRADE[apt.distance])}/${esc(APT_GRADE[apt.surface])}/${esc(APT_GRADE[apt.style])}</span>` : ''}
         <span class="tiny muted num">${r.skills.length + (unique && r.unique ? 1 : 0)} skills</span>
         <span class="rival__chev" aria-hidden="true">▾</span>
       </button>

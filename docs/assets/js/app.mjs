@@ -1,5 +1,5 @@
 import { loadData, db } from './store.mjs';
-import { initTooltips, esc, el } from './ui.mjs';
+import { initTooltips, initImageFallback, esc, el } from './ui.mjs';
 import { initContext } from './context.mjs';
 import { initSkillDrawer } from './views/detail.mjs';
 import { renderPlanner } from './views/planner.mjs';
@@ -93,11 +93,12 @@ window.addEventListener('hashchange', () => {
 loadData().then(() => {
   initContext();
   initTooltips(document.body);
+  initImageFallback(document);
   initSkillDrawer(document.body);
   const meta = db.meta;
   if (meta.generatedAt) {
     document.getElementById('footer-meta').textContent =
-      ` · Data rebuilt ${new Date(meta.generatedAt).toISOString().slice(0, 10)} · ${meta.counts.learnableSkills} skills, ${meta.counts.supports} Global support cards, ${meta.counts.outfits} outfits.`;
+      ` Data rebuilt ${new Date(meta.generatedAt).toISOString().slice(0, 10)} — ${meta.counts.learnableSkills} skills, ${meta.counts.supports} Global support cards, ${meta.counts.outfits} outfits.`;
   }
   if (!location.hash) location.hash = '#/planner';
   app.dataset.view = currentView();

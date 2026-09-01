@@ -1,6 +1,18 @@
 import { db } from '../store.mjs';
 import { el, esc, fmt } from '../ui.mjs';
 
+// The counters from the last GameTora pass arrive as an object; printing it
+// with JSON.stringify dropped a brace-and-quote blob into the middle of a
+// sentence.
+const COUNT_LABEL = {
+  supports: 'cards total', supportsGlobal: 'cards on Global',
+  outfits: 'outfits total', outfitsGlobal: 'outfits on Global',
+  characters: 'umas', skills: 'skills',
+};
+const formatCounts = (counts) => Object.entries(counts)
+  .map(([k, v]) => `${COUNT_LABEL[k] ?? k} ${v}`)
+  .join(', ');
+
 export function renderData(root) {
   const m = db.meta;
   const when = m.generatedAt ? new Date(m.generatedAt) : null;
@@ -47,7 +59,7 @@ export function renderData(root) {
           <p style="margin-top:8px"><b>GameTora.</b> The refresh job also checks
           <a href="https://gametora.com/umamusume" style="color:var(--accent)">gametora.com</a> for release dates and the
           canonical Global spelling of every name. Status of the last attempt:
-          <b>${gt.ok ? 'succeeded' : 'not applied'}</b>${gt.counts ? ` (${esc(JSON.stringify(gt.counts))})` : ''}.
+          <b>${gt.ok ? 'succeeded' : 'not applied'}</b>${gt.counts ? ` (${esc(formatCounts(gt.counts))})` : ''}.
           When it does not apply, the master-database filter below is used on its own and names stay as they are in the
           Global client, which is the same wording GameTora shows.</p>
         </div>

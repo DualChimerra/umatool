@@ -2,7 +2,7 @@
 // allowed to offer — apart from the one card per deck you borrow from a friend.
 
 import { db } from '../store.mjs';
-import { el, esc, on, skillPill, debounce, readState, writeState } from '../ui.mjs';
+import { el, esc, on, skillPill, icon, debounce, readState, writeState } from '../ui.mjs';
 import { cm, commitContext, toggleOwned, setOwned } from '../context.mjs';
 import { STRATEGY } from '../model.mjs';
 
@@ -29,6 +29,11 @@ export function renderCollection(root) {
         </div>
         <div class="page-head__right" data-role="tools"></div>
       </div>
+      <details class="explain">
+        <summary>How the friend's card counts</summary>
+        <p>A deck has six slots. With the restriction on, five of them come from what is ticked here and the sixth may be any card you do not own — the one borrowed from a friend.</p>
+        <p>That slot is not a fixed position: the borrowed card can sit anywhere in the deck, the only limit is that there is one of them. In the card picker on the Team page, cards outside your collection are always listed and badged <i>friend</i>; once the borrow is spent they stay in the list but are disabled.</p>
+      </details>
       <div data-role="bar"></div>
       <div data-role="body"></div>
     </section>
@@ -58,8 +63,8 @@ export function renderCollection(root) {
       <div class="panel__body" style="gap:10px">
         <div class="row" style="justify-content:space-between">
           <div class="seg" data-role="tab" style="max-width:320px">
-            <button type="button" data-t="cards" aria-pressed="${state.tab === 'cards'}">Support cards · ${ownedCards}</button>
-            <button type="button" data-t="umas" aria-pressed="${state.tab === 'umas'}">Umas · ${ownedUmas}</button>
+            <button type="button" data-t="cards" aria-pressed="${state.tab === 'cards'}">Support cards <b>${ownedCards}</b></button>
+            <button type="button" data-t="umas" aria-pressed="${state.tab === 'umas'}">Umas <b>${ownedUmas}</b></button>
           </div>
           <div class="row">
             <button class="btn btn--sm" data-act="all" type="button">Tick everything shown</button>
@@ -88,7 +93,7 @@ export function renderCollection(root) {
 
     const rows = visible();
     body.replaceChildren(el(`<div class="stack">
-      <p class="small muted">${rows.length} shown · ${cm.owned[state.tab].length} owned in total</p>
+      <p class="small muted">${rows.length} shown, ${cm.owned[state.tab].length} owned in total</p>
       <div class="own-grid">${rows.map(tile).join('') || '<div class="empty">Nothing matches.</div>'}</div>
     </div>`));
 
@@ -117,7 +122,7 @@ export function renderCollection(root) {
     toggleOwned(state.tab, t.dataset.own);
     t.setAttribute('aria-pressed', String(cm.owned[state.tab].includes(t.dataset.own)));
     const tab = bar.querySelector(`[data-t="${state.tab}"]`);
-    if (tab) tab.textContent = state.tab === 'cards' ? `Support cards · ${cm.owned.cards.length}` : `Umas · ${cm.owned.umas.length}`;
+    if (tab) tab.innerHTML = state.tab === 'cards' ? `Support cards <b>${cm.owned.cards.length}</b>` : `Umas <b>${cm.owned.umas.length}</b>`;
   });
 
   function visible() {
@@ -143,7 +148,7 @@ export function renderCollection(root) {
       <img src="${img}" alt="" loading="lazy">
       <span class="own-tile__name">${esc(title)}</span>
       <span class="own-tile__sub">${esc(sub)}</span>
-      <span class="own-tile__tick" aria-hidden="true">✓</span>
+      <span class="own-tile__tick" aria-hidden="true">${icon('check', { size: 13 })}</span>
     </button>`;
   }
 

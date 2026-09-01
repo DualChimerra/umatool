@@ -16,7 +16,7 @@
 // twice as good as they are.
 
 import { db, isObtainable } from '../store.mjs';
-import { cm, fieldStyles, outfitAptitudes, yourSkills, DEFAULT_STATS, DEFAULT_APT } from '../context.mjs';
+import { cm, fieldStyles, aptitudesFor, yourSkills, DEFAULT_STATS, DEFAULT_APT } from '../context.mjs';
 import { rankSkills, simulateRace, STRATEGY, atUniqueLevel } from '../model.mjs';
 
 /** Skills a generic rival of this style would plausibly have finished with. */
@@ -84,7 +84,7 @@ export function buildSetup(you = {}, ctx) {
         outfit,
         strategy: style,
         stats: r.stats ?? { ...DEFAULT_STATS },
-        aptitudes: outfit ? outfitAptitudes(outfit, course, style) : { ...DEFAULT_APT },
+        aptitudes: outfit ? aptitudesFor(outfit, course, style) : { ...DEFAULT_APT },
         skills,
       });
     }
