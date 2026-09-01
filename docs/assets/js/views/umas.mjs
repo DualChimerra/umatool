@@ -1,5 +1,5 @@
 import { db } from '../store.mjs';
-import { el, esc, on, skillPill, effectSummary, readState, writeState } from '../ui.mjs';
+import { el, esc, on, skillPill, effectSummary, readState, writeState, collapsible } from '../ui.mjs';
 import { createSkillFilter, toggleGroup, searchField, selectField } from '../filters.mjs';
 import { STRATEGY } from '../model.mjs';
 
@@ -95,7 +95,7 @@ export function renderUmas(root) {
   });
   on(aptPanel, 'click', '[data-act="apt-clear"]', () => { state.apt = {}; paintApt(); paint(); });
 
-  rail.append(basics, skillFilter.element, aptPanel);
+  rail.append(collapsible(basics, 'umas.basics'), collapsible(skillFilter.element, 'umas.skills'), collapsible(aptPanel, 'umas.apt'));
 
   const sortSel = selectField({
     title: 'Sort by', options: SORTS, value: state.sort,

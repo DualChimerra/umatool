@@ -5,7 +5,7 @@
 // the team as a whole — so the totals are traceable rather than a verdict.
 
 import { db, skillIconUrl, isObtainable } from '../store.mjs';
-import { el, esc, on, skillPill, fmt, debounce } from '../ui.mjs';
+import { el, esc, on, skillPill, fmt, debounce, collapsible } from '../ui.mjs';
 import {
   cm, commitContext, currentCourse, scoringContext, togglePriority, togglePriorityRank,
   priorityAnyRank, DEFAULT_STATS, ownsCard, canPlace, borrowedIn,
@@ -101,8 +101,8 @@ export function renderTeam(root) {
   on(priorityPanel, 'click', '[data-act="clear"]', () => { cm.priority = []; cm.priorityOpts = {}; commitContext(); paint(); });
   on(priorityPanel, 'click', '[data-act="auto"]', () => {
     const ctx = scoringContext();
-    const sim = simulateRace({ course: currentCourse(), strategy: ctx.strategy, stats: ctx.stats, ground: ctx.ground, recoveryPct: cm.recovery });
-    const top = rankSkills(db.learnable.filter(isObtainable), { ...ctx, sim }, { tiers: ['gold', 'normal'], limit: 12 });
+    const sim = simulateRace({ ...ctx, recoveryPct: cm.recovery });
+    const top = rankSkills(db.learnable.filter(isObtainable), { ...ctx, sim, recoveryPct: cm.recovery }, { tiers: ['gold', 'normal'], limit: 12 });
     for (const r of top) if (!cm.priority.includes(r.skill.id)) togglePriority(r.skill.id);
     paint();
   });
@@ -176,7 +176,7 @@ export function renderTeam(root) {
     }).join('');
   }
 
-  rail.append(priorityPanel, buildsPanel);
+  rail.append(collapsible(priorityPanel, 'team.priority'), collapsible(buildsPanel, 'team.builds'));
 
   /* --------------------------------------------------------------- pickers */
 

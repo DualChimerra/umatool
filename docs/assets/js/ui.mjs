@@ -131,3 +131,42 @@ export function writeState(patch) {
   const q = params.toString();
   history.replaceState(null, '', `${route}${q ? `?${q}` : ''}`);
 }
+
+/* ------------------------------------------------------------- collapsing */
+
+const OPEN_KEY = 'paddock:open';
+
+function openState() {
+  try { return JSON.parse(localStorage.getItem(OPEN_KEY) || '{}'); } catch { return {}; }
+}
+
+/**
+ * Make a rail panel fold away at its header.
+ *
+ * The rail carries four or five panels now, and on a laptop that is more than
+ * one screen of controls sitting inside a sticky column — which is exactly the
+ * shape that ends up with half of it unreachable. Folding the ones you are not
+ * using is the fix, and which ones you folded is remembered.
+ */
+export function collapsible(panel, key, { open = true } = {}) {
+  const state = openState();
+  const isOpen = state[key] ?? open;
+  panel.classList.add('panel--fold');
+  panel.classList.toggle('is-closed', !isOpen);
+
+  const head = panel.querySelector('.panel__head');
+  if (!head || head.querySelector('.fold-btn')) return panel;
+  const btn = el(`<button class="fold-btn" type="button" aria-expanded="${isOpen}" aria-label="Collapse section">
+    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>`);
+  head.append(btn);
+  head.addEventListener('click', (e) => {
+    if (e.target.closest('button:not(.fold-btn), input, select, a')) return;
+    const next = panel.classList.toggle('is-closed');
+    btn.setAttribute('aria-expanded', String(!next));
+    const all = openState();
+    all[key] = !next;
+    try { localStorage.setItem(OPEN_KEY, JSON.stringify(all)); } catch { /* ignore */ }
+  });
+  return panel;
+}

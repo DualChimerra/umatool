@@ -2,7 +2,7 @@
 // or an uma would add to it, and the advice that falls out of both.
 
 import { db, isObtainable } from './store.mjs';
-import { cm, scoringContext, prioritySatisfiers, ownsCard, canPlace } from './context.mjs';
+import { cm, scoringContext, prioritySatisfiers, ownsCard, canPlace, outfitAptitudes } from './context.mjs';
 import { simulateRace, scoreSkill, STRATEGY, statSensitivity } from './model.mjs';
 
 // A hint has to be rolled and paid for, so it is not worth an event skill the
@@ -26,8 +26,8 @@ export function analyseSlot(slot) {
   const course = db.courseById.get(cm.courseId);
   const outfit = slot.outfitId ? db.outfitById.get(slot.outfitId) : null;
   const ctx = scoringContext(slot);
-  const sim = simulateRace({ course, strategy: ctx.strategy, stats: ctx.stats, ground: ctx.ground, recoveryPct: cm.recovery });
-  const full = { ...ctx, sim };
+  const sim = simulateRace({ ...ctx, recoveryPct: cm.recovery });
+  const full = { ...ctx, sim, recoveryPct: cm.recovery };
   const valueOf = valuer(full);
 
   const origin = new Map();
@@ -163,12 +163,14 @@ export function rankUmas({ ownedOnly = cm.useOwned, query = '', strategy = null 
     if (strategy && outfit.strategy !== strategy) continue;
     if (ownedOnly && !cm.owned.umas.includes(outfit.id)) continue;
 
-    if (!byStrategy.has(style)) {
+    const cacheKey = `${style}|${outfit.aptitudes[aptDistance]}|${outfit.aptitudes[aptSurface]}|${outfit.aptitudes[STRATEGY[style].key]}`;
+    if (!byStrategy.has(cacheKey)) {
       const ctx = scoringContext({ outfitId: outfit.id, strategy: style, stats: cm.stats, deck: [] });
-      const sim = simulateRace({ course, strategy: style, stats: cm.stats, ground: cm.ground, recoveryPct: cm.recovery });
-      byStrategy.set(style, valuer({ ...ctx, sim }));
+      ctx.aptitudes = outfitAptitudes(outfit, course, style);
+      const sim = simulateRace({ ...ctx, recoveryPct: cm.recovery });
+      byStrategy.set(cacheKey, valuer({ ...ctx, sim, recoveryPct: cm.recovery }));
     }
-    const valueOf = byStrategy.get(style);
+    const valueOf = byStrategy.get(cacheKey);
 
     const ids = [...(outfit.uniqueId ? [outfit.uniqueId] : []), ...outfit.skillIds];
     let value = 0;
@@ -270,7 +272,7 @@ export function recommendations(analyses) {
         { slot: i, card: best?.card.id });
     }
 
-    const sens = statSensitivity({ ...a.full, recoveryPct: cm.recovery }, db.learnable.filter(isObtainable));
+    const sens = statSensitivity(a.full, db.learnable.filter(isObtainable));
     const ordered = Object.entries(sens).filter(([, v]) => v.bashin != null).sort((x, y) => y[1].bashin - x[1].bashin);
     if (ordered.length) {
       const [bestStat, bestVal] = ordered[0];
