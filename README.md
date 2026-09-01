@@ -7,23 +7,41 @@ every name uses the Global (EN) wording.
 
 ## What it does
 
-**Planner** — pick a racecourse, distance, running style and field size (9 by default,
-because that is what a Champions Meeting runs). It returns:
+**Planner** — set the race: racecourse, direction, distance and surface, running
+style, going, **weather**, **season** and field size. Optionally set *who is
+running it* — a specific umamusume, her unique at the level you actually have
+it, her aptitudes, and the skills you expect to finish training with. Then set
+**the rest of the field**: either a headcount per running style, or every rival
+built out individually. It returns:
 
-* a course profile — corners, straights, slopes, phase boundaries, final corner, home
-  straight, and where your last spurt actually starts
-* the **Stamina you need**, solved from the HP model for a full-length last spurt on that
-  exact course, going and running style — plus how much of the last spurt your current
-  stats cover, your stamina pool and an estimated finishing time
-* **stat targets, and what the next 100 points are worth** in each stat, measured by
-  re-running the race with 100 more of it and converting the time saved into lengths
-* the **field model**: the order distribution for your running style over the 9 slots, the
-  `order_rate` each place corresponds to, and your Wit activation rate
-* **every skill ranked for that course** as expected lengths gained, with each factor
-  (trigger position, effect window, P(position), P(Wit), penalties) printed next to it
-* the best **uniques** that can fire with that running style, who carries them, and their
-  aptitude for this distance and surface
+* a course profile — corners, straights, slopes, phase boundaries (the last-spurt
+  phase starts at ⅚, not ⅔), the final corner, the home straight, where your last
+  spurt starts, and **every stretch where acceleration actually pays**
+* the **Stamina you need**, solved from the HP model for a full-length last spurt
+  on that exact course, going and running style — plus how much of the last spurt
+  your current stats cover, your stamina pool and an estimated finishing time
+* **stat targets, and what the next 100 points are worth** in each stat, measured
+  by re-running the race with 100 more of it and converting the time saved into
+  lengths. That same number prices every green skill
+* the **field model**: where your running style sits in *this* field mix at each
+  of the four phases, so a skill gated on placing is priced at the phase it fires
+  in rather than at the finish
+* **what your own run is worth** — every skill you plan to have, valued on this
+  race, with the unique scaled to its level
+* **every skill ranked for that race**, split into Speed & accel, Recovery,
+  Green / passive, Debuffs and Positioning, sortable by lengths or by lengths per
+  100 SP, with every factor printed next to it
+* the best **uniques** that can fire with that running style, who carries them,
+  and their aptitude for this distance and surface
 * the **support cards** that hand out the top-ranked skills
+
+**Race sim** — the whole field run forward at 1/15 s, a few hundred times. Your
+win rate, top-3 rate, average margin, place spread and stamina at the line, for
+you and for every rival. A step-by-step replay of one race showing every runner's
+gap to the leader with your skill activations marked on it. And a **check against
+the ranking**: pick your skills and the app runs the field with each one and
+without it, on identical seeds, and prints what the simulation says next to what
+the ranking said.
 
 **Team** — the actual Champions Meeting entry: three umamusume, **a six-card deck each**,
 all on one page and all planned against the course above. Per uma: aptitude check for this
@@ -114,7 +132,7 @@ npm run build:data:offline      # same, skipping the GameTora pass
 # icons (needs a checkout of alpha123/uma-tools and Pillow)
 python3 scripts/build_icons.py /path/to/uma-tools
 
-npm run serve                   # http://localhost:8080
+npm run serve                   # http://localhost:8080 (no-store, so edits show up)
 ```
 
 The site is plain static files — ES modules, no bundler, no dependencies.
@@ -137,31 +155,70 @@ repository redirects to `docs/` so the site still opens — but `/docs` is the c
 setting and avoids the extra hop. The `.nojekyll` files stop Pages from running the
 content through Jekyll, which it has no reason to do here.
 
+## How skills are valued
+
+There are two engines, and they agree.
+
+**The ranking** (`docs/assets/js/model.mjs`) is closed form, because it is asked
+about 600 skills every time a slider moves. It reads each skill's real condition
+string, intersects it with the actual course geometry, and works out expected
+**ground gained on the field**.
+
+**The simulator** (`docs/assets/js/race/`) runs all nine runners forward at
+1/15 s with the real conditions checked per tick. It is the reference. Over a
+basket of thirty-odd skills on Kyoto 2200 m the two correlate at **r ≈ 0.95** with
+a scale factor of ≈ 1.0, and any row can be re-checked against the simulator from
+the Race page.
+
+Three things the ranking gets right that a plain “m/s × seconds” score does not,
+and which is why it used to disagree with every published Champions Meeting list:
+
+* **Acceleration only pays on a ramp.** A +0.4 m/s² skill fired on the back
+  straight, where you are already at target speed, is worth almost nothing; the
+  same skill fired into the last-spurt ramp is one of the best things you can
+  carry. The model finds every stretch where you are below target speed — the
+  gate, the phase steps, the top of each hill, the run into the last spurt — and
+  asks whether the skill can reach one.
+* **Debuffs count.** Roughly a fifth of the obtainable skill pool does nothing to
+  you and something to everyone else. Scored as “metres gained” they come out at
+  zero and vanish from the list; scored as *ground gained on the field* they do
+  not. Slowing the runners ahead of you is worth more per head than slowing the
+  whole field, and slowing the ones behind you is worth almost nothing.
+* **Green skills are stat changes**, priced from the same finite difference as the
+  stat table — so a racecourse ○ is two lengths when the last spurt is short and
+  exactly nothing when it is already paid for, and Sunny Days ○ is worth nothing
+  in the rain because weather is now a hard gate.
+
 ## Accuracy notes
 
-* **Stamina needed** uses the standard community HP model: base speed from the distance,
-  per-phase target speeds from the running style, last-spurt speed from Speed and Guts,
-  and a drain of `20·(v − base + 12)² / 144` per second with the Guts multiplier applied
-  in the final leg. It models your own race only — no rivals, no positioning, no pace-ups
-  — so read it as a floor.
-* **Skill scores** are an estimate, not a simulation. Each effect is converted into
-  approximate metres gained on the selected course; the effect window is placed on the real
-  track geometry and capped by the distance left to the line; then it is multiplied by the
-  chance the position condition holds (from the order distribution for that running style
-  in a 9-runner field), the Wit activation roll `100 − 9000 / Wit`, and penalties for
-  conditions like being boxed in. Every factor applied is shown next to the skill.
-* **Stat ceilings are not hardcoded.** Set the cap your scenario gives you and the inputs
-  and target ranges follow it.
-* **Power** enters through acceleration: `0.0006 · √(500 · Power)` scaled per phase and
-  reduced by the going, applied to the opening dash out of the gate and the ramp into the
-  last spurt. Both cost seconds, and both get cheaper with Power. Its effect on cornering
-  and lane changes is still not simulated.
-* **Recovery is scored against how tight your stamina actually is.** Once the last spurt is
-  fully paid for, healing buys almost nothing and drops down the ranking by itself — it
-  only climbs back when the spurt is short.
+* **Race conditions are hard gates.** Running style, distance band, surface,
+  handedness, track, going, weather and season are read from the skill's own
+  condition string. Fail one and the skill is dropped, not discounted.
+* **Aptitudes are modelled.** Distance aptitude scales the Speed term in the final
+  leg; surface and running-style aptitude scale acceleration. Below A costs real
+  time and the model charges for it.
+* **Position keep is why early skills are cheap.** For the first two thirds of the
+  race every runner behind the leader is holding a slot, so ground stolen there is
+  largely handed back. Measured against the simulator, an early speed skill keeps
+  about half its nominal value and a last-spurt one keeps all of it. It is also
+  why a front runner needs the field to be stamina-tight to win: with stamina to
+  spare the closers simply out-spurt it, and the Race page shows that happening.
+* **Unique skill level.** The dump ships uniques at their base value, so level 1
+  is the game's own number. Levels above that are applied as +10 % of base each —
+  the community reading — and everything that uses it says which level it used.
+* **Stat ceilings are not hardcoded.** Set the cap your scenario gives you and the
+  inputs and target ranges follow it.
+* **Recovery is scored against how tight your stamina actually is.** Once the last
+  spurt is fully paid for, healing buys almost nothing and drops down the ranking
+  by itself.
+* **What the simulator does not model** is listed on the Race page itself: lanes
+  are one-dimensional, skill ordering inside a tick is list order, position keep is
+  a per-style nudge rather than the full four-mode state machine, and a handful of
+  conditions (post number, favourite, lane side) are rolled at a fixed probability
+  and named on the skill rather than simulated.
 * Support card **training effects** (friendship bonus, specialty rate, stat gains),
-  character growth bonuses and training event choices are not in the dump this build
-  reads, so they are not shown.
+  character growth bonuses and training event choices are not in the dump this
+  build reads, so they are not shown.
 
 ## Credits
 

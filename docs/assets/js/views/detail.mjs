@@ -4,8 +4,11 @@
 
 import { db, skillIconUrl, groupSiblings } from '../store.mjs';
 import { el, esc, on, effectSummary, TIER_LABEL, fmt } from '../ui.mjs';
-import { cm, scoringContext, togglePriority, currentCourse } from '../context.mjs';
-import { simulateRace, scoreSkill, BASHIN, STRATEGY } from '../model.mjs';
+import { cm, scoringContext, togglePriority, currentCourse, fieldSummary } from '../context.mjs';
+import {
+  simulateRace, scoreSkill, BASHIN, STRATEGY, TARGET_KIND, isPassive,
+  GROUND_NAME, WEATHER_NAME, SEASON_NAME,
+} from '../model.mjs';
 
 let drawer = null;
 let openId = null;
@@ -56,8 +59,8 @@ export function initSkillDrawer(scope = document.body) {
 function body(skill) {
   const course = currentCourse();
   const ctx = scoringContext();
-  const sim = simulateRace({ course, strategy: ctx.strategy, stats: ctx.stats, ground: ctx.ground, recoveryPct: cm.recovery });
-  const evaluated = scoreSkill(skill, { ...ctx, sim });
+  const sim = simulateRace({ ...ctx, recoveryPct: cm.recovery });
+  const evaluated = scoreSkill(skill, { ...ctx, sim, recoveryPct: cm.recovery });
   const inPriority = cm.priority.includes(skill.id);
 
   return `
@@ -99,36 +102,62 @@ function body(skill) {
 }
 
 function evaluationSection(skill, r, course, ctx, sim) {
-  const head = `<h3 class="drawer__h3">On ${esc(course.trackName)} ${course.distance}m ${esc(course.surfaceName)}, as ${esc(STRATEGY[ctx.strategy].name)}</h3>`;
+  const head = `<h3 class="drawer__h3">On ${esc(course.trackName)} ${course.distance}m ${esc(course.surfaceName)},
+    ${esc(GROUND_NAME[cm.ground])} / ${esc(WEATHER_NAME[cm.weather])} / ${esc(SEASON_NAME[cm.season])},
+    as ${esc(STRATEGY[ctx.strategy].name)}</h3>`;
   if (!r) {
-    return `<section>${head}<p class="note">Cannot fire here — the course, surface, distance band or running style rules it out.</p></section>`;
+    return `<section>${head}<p class="note">Cannot fire here. One of its hard gates — running style, distance band, surface,
+      handedness, track, going, weather or season — is not met by this race, so it is dropped rather than discounted.</p></section>`;
   }
 
+  const target = skill.effects.find((e) => e.target !== 1)?.target;
   const rows = [
-    ['Raw effect', `${r.metres.toFixed(2)} m (${(r.metres / BASHIN).toFixed(2)} lengths)`, Object.entries(r.parts).map(([k, v]) => `${k} ${v.toFixed(2)}m`).join(', ')],
-    ['Effect window', `${r.durSec.toFixed(1)} s`, `starts around ${Math.round(r.at)}m of ${course.distance}m`],
-    ['Position condition', fmt.pct(r.pPosition), `${ctx.fieldSize}-runner field, ${STRATEGY[ctx.strategy].name}`],
+    ['Raw effect', `${r.metres.toFixed(2)} m${r.rivalMetres ? ` + ${r.rivalMetres.toFixed(2)} m off the field` : ''}`,
+      Object.entries(r.parts).map(([k, v]) => `${k} ${v.toFixed(2)}m`).join(', ')],
+    ['Fires around', `${Math.round(r.at)}m`, `${Math.round(r.fraction * 100)}% into the race · ${['opening', 'middle', 'final', 'last spurt'][r.phase]} leg${r.window.random ? ` · rolled somewhere in ${Math.round(r.window.length)}m` : ''}`],
+    ['Effect window', r.nominal ? `${r.durSec.toFixed(1)} s` : 'permanent', r.nominal ? `${skill.duration}s base × ${(course.distance / 1000).toFixed(1)} for the distance` : 'applied before the gate opens'],
+    ['Position condition', fmt.pct(r.pPosition), positionText(r, ctx)],
     ['Wit activation', fmt.pct(r.pWit), skill.wisdomCheck ? `at ${ctx.stats.wit} Wit` : 'not Wit-checked'],
-    ['Other requirements', fmt.pct(r.pOther), [...skill.facets.needs].join(', ') || 'none'],
-    ['Race-position weight', `×${r.weight.toFixed(2)}`, `fires at ${Math.round(r.fraction * 100)}% into the race`],
+    ['Everything else', fmt.pct(r.pOther), r.reasons.find((x) => x.startsWith('needs ')) ?? 'no further conditions'],
+    ['Where in the race', `×${r.weight.toFixed(2)}`, 'ground gained early is partly given back through stamina and pace'],
   ];
+  if (target != null) {
+    rows.splice(1, 0, ['Lands on', esc(TARGET_KIND[target]?.label ?? 'rivals'),
+      `${r.victims.n} runner${r.victims.n === 1 ? '' : 's'} in this field`]);
+  }
 
   return `<section>
     ${head}
     <div class="stat-tile" style="margin-bottom:10px">
-      <h4>Expected gain</h4>
+      <h4>Expected gain on the field</h4>
       <div class="big">${r.bashin.toFixed(2)} <span style="font-size:15px;font-weight:500">lengths</span></div>
-      <div class="sub">${(r.score).toFixed(2)} m after weighting · fires ${fmt.pct(r.probability)} of the time</div>
+      <div class="sub">${r.selfBashin ? `${r.selfBashin.toFixed(2)} your own` : ''}${r.rivalBashin ? `${r.selfBashin ? ' · ' : ''}${r.rivalBashin.toFixed(2)} taken off rivals` : ''}
+        · fires ${fmt.pct(r.probability)} of the time${skill.cost ? ` · ${(r.perSp ?? 0).toFixed(2)} per 100 SP` : ''}</div>
     </div>
     <table class="calc">
       <tbody>
-        ${rows.map(([a, b, c]) => `<tr><td>${esc(a)}</td><td class="num">${esc(b)}</td><td class="small muted">${esc(c)}</td></tr>`).join('')}
+        ${rows.map(([a, b, c]) => `<tr><td>${esc(a)}</td><td class="num">${b}</td><td class="small muted">${esc(c)}</td></tr>`).join('')}
       </tbody>
     </table>
-    <p class="tiny muted" style="margin-top:6px">
-      Expected gain = raw effect × position weight × P(position) × P(Wit) × P(other requirements), converted to lengths at ${BASHIN} m each.
+    ${r.reasons.length ? `<ul class="cond-list" style="margin-top:9px">${r.reasons.map((x) => `<li class="small muted">${esc(x)}</li>`).join('')}</ul>` : ''}
+    <p class="tiny muted" style="margin-top:8px">
+      ${isPassive(skill) || skill.duration === 0
+    ? 'A passive: priced from the same finite difference as the stat table on the Planner, so it is worth what the stat is worth in <em>this</em> race.'
+    : 'Expected gain = raw effect × where-in-the-race weight × P(position) × P(Wit) × P(other conditions), in lengths of ' + BASHIN + ' m.'}
+      Check it against the full field on the <a href="#/race">Race</a> page.
     </p>
   </section>`;
+}
+
+function positionText(r, ctx) {
+  const p = r.position ?? {};
+  const bits = [];
+  if (p.orderMin != null) bits.push(`${p.orderMin}th or further back`);
+  if (p.orderMax != null) bits.push(`${p.orderMax}th or better`);
+  if (p.rateMin != null) bits.push(`bottom ${100 - p.rateMin}%`);
+  if (p.rateMax != null) bits.push(`top ${p.rateMax}%`);
+  if (!bits.length) return 'no positional requirement';
+  return `${bits.join(', ')} — in a field of ${esc(fieldSummary())}`;
 }
 
 function siblingsSection(skill) {
