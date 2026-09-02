@@ -20,6 +20,12 @@ const STATE_VERSION = 2;
 const listeners = new Set();
 
 export const DEFAULT_STATS = { speed: 1200, stamina: 900, power: 1000, guts: 500, wit: 900 };
+export const DEFAULT_APT = { distance: 7, surface: 7, style: 7 };
+
+/** A rival slot in the advanced field editor. */
+export function emptyRival(strategy = 2) {
+  return { outfitId: null, strategy, stats: { ...DEFAULT_STATS }, skills: [], unique: true };
+}
 
 // Each deck may carry one card you do not own — the one borrowed from a friend.
 export const BORROWED_ALLOWANCE = 1;
@@ -39,6 +45,24 @@ function defaults() {
     courseId: null,
     strategy: 2,
     ground: 1,
+    weather: 1,
+    season: 1,
+    aptitudes: { ...DEFAULT_APT },
+    // The rest of the field. `simple` is a headcount per running style, which
+    // is what you actually know before a Champions Meeting; `advanced` lets
+    // every rival be built out in full.
+    field: {
+      mode: 'simple',
+      counts: { 1: 2, 2: 2, 3: 2, 4: 2 },
+      strength: 0.92,
+      skillDepth: 4,
+      rivals: [],
+    },
+    simRuns: 200,
+    // The runner you are planning: optionally a specific umamusume, its unique
+    // at whatever level you have it, and the skills you expect to finish with.
+    you: { outfitId: null, uniqueLevel: 1, unique: true, lockAptitudes: true },
+    raceSkills: [],
     fieldSize: CM_FIELD_SIZE,
     statCap: 1600,
     recovery: 0,
@@ -70,11 +94,67 @@ export function initContext() {
       ?? db.courses[0].id;
   }
   cm.priority = dedupeByGroup(cm.priority.filter((id) => db.skillById.has(id)));
+  cm.raceSkills = (cm.raceSkills ?? []).filter((id) => db.skillById.has(id));
+  cm.you = { outfitId: null, uniqueLevel: 1, unique: true, lockAptitudes: true, ...(cm.you ?? {}) };
+  if (cm.you.outfitId && !db.outfitById.has(cm.you.outfitId)) cm.you.outfitId = null;
+  cm.you.uniqueLevel = Math.max(1, Math.min(6, Number(cm.you.uniqueLevel) || 1));
   cm.owned.umas = (cm.owned.umas ?? []).filter((id) => db.outfitById.has(id));
   cm.owned.cards = (cm.owned.cards ?? []).filter((id) => db.supportById.has(id));
   normaliseRoster(cm.roster);
   for (const build of cm.builds ?? []) normaliseRoster(build.roster ?? []);
+  normaliseField();
   return cm;
+}
+
+/** Keep the field description consistent with the field size. */
+export function normaliseField() {
+  const f = cm.field;
+  f.counts = { 1: 0, 2: 0, 3: 0, 4: 0, ...(f.counts ?? {}) };
+  for (const k of [1, 2, 3, 4]) f.counts[k] = Math.max(0, Math.min(17, Number(f.counts[k]) || 0));
+  const rivalsWanted = Math.max(0, cm.fieldSize - 1);
+  const total = [1, 2, 3, 4].reduce((n, k) => n + f.counts[k], 0);
+  if (total !== rivalsWanted) {
+    // Re-spread proportionally rather than silently dropping the tail.
+    const base = Math.floor(rivalsWanted / 4);
+    const out = { 1: base, 2: base, 3: base, 4: base };
+    let left = rivalsWanted - base * 4;
+    for (const k of [2, 3, 1, 4]) { if (left <= 0) break; out[k] += 1; left -= 1; }
+    f.counts = out;
+  }
+  f.rivals = (f.rivals ?? []).slice(0, 17).map((r) => ({
+    ...emptyRival(),
+    ...r,
+    stats: { ...DEFAULT_STATS, ...(r.stats ?? {}) },
+    skills: (r.skills ?? []).filter((id) => db.skillById.has(id)),
+    outfitId: r.outfitId && db.outfitById.has(r.outfitId) ? r.outfitId : null,
+  }));
+  while (f.rivals.length < rivalsWanted) f.rivals.push(emptyRival(styleForIndex(f.rivals.length)));
+  f.rivals.length = rivalsWanted;
+}
+
+function styleForIndex(i) {
+  const order = [];
+  for (const k of [1, 2, 3, 4]) for (let n = 0; n < (cm.field?.counts?.[k] ?? 0); n += 1) order.push(k);
+  return order[i] ?? 2;
+}
+
+/** The running style of every runner in the race, yours first. */
+export function fieldStyles() {
+  const out = [cm.strategy];
+  if (cm.field.mode === 'advanced') {
+    for (const r of cm.field.rivals) out.push(r.strategy);
+  } else {
+    for (const k of [1, 2, 3, 4]) for (let n = 0; n < cm.field.counts[k]; n += 1) out.push(Number(k));
+  }
+  return out.slice(0, cm.fieldSize);
+}
+
+/** Human-readable summary of the field, e.g. "2 Front · 2 Pace · 3 Late · 2 End". */
+export function fieldSummary() {
+  const styles = fieldStyles();
+  const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  for (const s of styles) counts[s] += 1;
+  return [1, 2, 3, 4].filter((k) => counts[k]).map((k) => `${counts[k]} ${STRATEGY[k].short}`).join(' · ');
 }
 
 function normaliseRoster(roster) {
@@ -125,11 +205,11 @@ export const currentCourse = () => db.courseById.get(cm.courseId);
  * back to A, which is what a planned Champions Meeting runner is assumed to be
  * brought up to.
  */
-export function aptitudesFor(outfit, course, strategy) {
+export function aptitudesFor(outfit, course = currentCourse(), strategy = null) {
   if (!outfit) return null;
   const distanceKey = ['', 'sprint', 'mile', 'medium', 'long'][course.distanceType];
   const surfaceKey = course.surface === 1 ? 'turf' : 'dirt';
-  const styleKey = STRATEGY_KEY[strategy];
+  const styleKey = STRATEGY_KEY[strategy ?? outfit.strategy];
   return {
     distance: outfit.aptitudes[distanceKey] ?? 7,
     surface: outfit.aptitudes[surfaceKey] ?? 7,
@@ -143,13 +223,26 @@ export function scoringContext(slot = null, sim = null) {
   const outfit = slot?.outfitId ? db.outfitById.get(slot.outfitId) : null;
   const strategy = slot ? (slot.strategy ?? outfit?.strategy ?? cm.strategy) : cm.strategy;
   const stats = slot ? slot.stats : cm.stats;
+  const styles = fieldStyles();
+  if (styles[0] !== strategy) styles[0] = strategy;
+  // On the Planner there is no roster slot, so "your uma" is whatever the You
+  // panel has been set to — its aptitudes are the ones the race is scored with
+  // unless they have been unlocked and overridden by hand.
+  const own = slot ? null : (cm.you.outfitId ? db.outfitById.get(cm.you.outfitId) : null);
+  const apt = aptitudesFor(outfit, course, strategy)
+    ?? (own && cm.you.lockAptitudes ? aptitudesFor(own, course, strategy) : { ...cm.aptitudes });
   return {
     course,
     strategy,
     ground: cm.ground,
+    weather: cm.weather,
+    season: cm.season,
     fieldSize: cm.fieldSize,
+    fieldStyles: styles,
+    outfit: outfit ?? own,
+    uniqueLevel: cm.you.uniqueLevel,
+    aptitudes: apt,
     recoveryPct: cm.recovery,
-    aptitudes: aptitudesFor(outfit, course, strategy),
     stats,
     sim,
   };
@@ -212,6 +305,18 @@ export const priorityAnyRank = (skillId) => cm.priorityOpts[skillId]?.anyRank ==
 export function togglePriorityRank(skillId) {
   cm.priorityOpts[skillId] = { ...(cm.priorityOpts[skillId] ?? {}), anyRank: !priorityAnyRank(skillId) };
   commitContext();
+}
+
+/** The full skill list your own runner takes into the race. */
+export function yourSkills() {
+  const out = [];
+  const outfit = cm.you.outfitId ? db.outfitById.get(cm.you.outfitId) : null;
+  if (outfit?.uniqueId && cm.you.unique) {
+    const u = db.skillById.get(outfit.uniqueId);
+    if (u) out.push(u);
+  }
+  for (const id of cm.raceSkills) { const s = db.skillById.get(id); if (s) out.push(s); }
+  return out;
 }
 
 /** The ranks of this entry's group split into what counts and what does not. */
@@ -293,7 +398,10 @@ export function saveBuild(name) {
     savedAt: new Date().toISOString(),
     courseId: cm.courseId,
     ground: cm.ground,
+    weather: cm.weather,
+    season: cm.season,
     fieldSize: cm.fieldSize,
+    field: clone(cm.field),
     roster: clone(cm.roster),
     priority: [...cm.priority],
     priorityOpts: clone(cm.priorityOpts),
@@ -308,7 +416,10 @@ export function loadBuild(id) {
   if (!build) return false;
   if (db.courseById.has(build.courseId)) cm.courseId = build.courseId;
   if (build.ground) cm.ground = build.ground;
+  if (build.weather) cm.weather = build.weather;
+  if (build.season) cm.season = build.season;
   if (build.fieldSize) cm.fieldSize = build.fieldSize;
+  if (build.field) { cm.field = clone(build.field); normaliseField(); }
   cm.roster = clone(build.roster);
   normaliseRoster(cm.roster);
   cm.priority = dedupeByGroup((build.priority ?? []).filter((id) => db.skillById.has(id)));

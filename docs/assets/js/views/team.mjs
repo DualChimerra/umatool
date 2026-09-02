@@ -5,7 +5,7 @@
 // the team as a whole — so the totals are traceable rather than a verdict.
 
 import { db, skillIconUrl, isObtainable } from '../store.mjs';
-import { el, esc, on, skillPill, fmt, debounce, turnLabel, icon } from '../ui.mjs';
+import { el, esc, on, skillPill, fmt, debounce, turnLabel, icon, collapsible } from '../ui.mjs';
 import {
   cm, commitContext, currentCourse, scoringContext, togglePriority, togglePriorityRank,
   priorityAnyRank, priorityLadder, priorityGroupMate, prioritySatisfiers, DEFAULT_STATS, canPlace,
@@ -111,10 +111,10 @@ export function renderTeam(root) {
   on(priorityPanel, 'click', '[data-act="clear"]', () => { cm.priority = []; cm.priorityOpts = {}; commitContext(); paint(); });
   on(priorityPanel, 'click', '[data-act="auto"]', () => {
     const ctx = scoringContext();
-    const sim = simulateRace({ course: currentCourse(), strategy: ctx.strategy, stats: ctx.stats, ground: ctx.ground, aptitudes: ctx.aptitudes, recoveryPct: cm.recovery });
+    const sim = simulateRace({ ...ctx, recoveryPct: cm.recovery });
     // Ask for more than needed: group duplicates are dropped from the result
     // and the list still has to end up 12 long.
-    const top = rankSkills(db.learnable.filter(isObtainable), { ...ctx, sim }, { tiers: ['gold', 'normal'], limit: 60 });
+    const top = rankSkills(db.learnable.filter(isObtainable), { ...ctx, sim, recoveryPct: cm.recovery }, { tiers: ['gold', 'normal'], limit: 60 });
     const groups = new Set(cm.priority.map((id) => db.skillById.get(id)?.groupId).filter(Boolean));
     let added = 0;
     for (const r of top) {
@@ -229,7 +229,11 @@ export function renderTeam(root) {
     }).join('');
   }
 
-  rail.append(priorityPanel, collectionPanel, buildsPanel);
+  rail.append(
+    collapsible(priorityPanel, 'team.priority'),
+    collapsible(collectionPanel, 'team.collection'),
+    collapsible(buildsPanel, 'team.builds'),
+  );
 
   /* --------------------------------------------------------------- pickers */
 

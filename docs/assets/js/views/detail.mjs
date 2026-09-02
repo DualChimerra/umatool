@@ -6,8 +6,11 @@ import { db, skillIconUrl, groupSiblings } from '../store.mjs';
 import {
   el, esc, on, icon, effectTags, valueBar, skillTrack, PART_NAME, TIER_LABEL, fmt,
 } from '../ui.mjs';
-import { cm, scoringContext, togglePriority, currentCourse } from '../context.mjs';
-import { simulateRace, scoreSkill, skillFiring, BASHIN, STRATEGY } from '../model.mjs';
+import { cm, scoringContext, togglePriority, currentCourse, fieldSummary } from '../context.mjs';
+import {
+  simulateRace, scoreSkill, skillFiring, BASHIN, STRATEGY, TARGET_KIND, isPassive,
+  GROUND_NAME, WEATHER_NAME, SEASON_NAME,
+} from '../model.mjs';
 
 let drawer = null;
 let openId = null;
@@ -58,8 +61,8 @@ export function initSkillDrawer(scope = document.body) {
 function body(skill) {
   const course = currentCourse();
   const ctx = scoringContext();
-  const sim = simulateRace({ course, strategy: ctx.strategy, stats: ctx.stats, ground: ctx.ground, aptitudes: ctx.aptitudes, recoveryPct: cm.recovery });
-  const evaluated = scoreSkill(skill, { ...ctx, sim });
+  const sim = simulateRace({ ...ctx, recoveryPct: cm.recovery });
+  const evaluated = scoreSkill(skill, { ...ctx, sim, recoveryPct: cm.recovery });
   const inPriority = cm.priority.includes(skill.id);
 
   return `
@@ -104,29 +107,45 @@ function body(skill) {
 }
 
 function evaluationSection(skill, r, course, ctx, sim) {
-  const head = `<h3 class="drawer__h3">${icon('gauge', { size: 13 })}On ${esc(course.trackName)} ${course.distance}m ${esc(course.surfaceName)}, as ${esc(STRATEGY[ctx.strategy].name)}</h3>`;
+  const head = `<h3 class="drawer__h3">${icon('gauge', { size: 13 })}On ${esc(course.trackName)} ${course.distance}m
+    ${esc(course.surfaceName)}, ${esc(GROUND_NAME[cm.ground])} / ${esc(WEATHER_NAME[cm.weather])} /
+    ${esc(SEASON_NAME[cm.season])}, as ${esc(STRATEGY[ctx.strategy].name)}</h3>`;
   if (!r) {
-    return `<section>${head}<p class="note">Cannot fire here — the course, surface, distance band or running style rules it out.</p></section>`;
+    return `<section>${head}<p class="note">Cannot fire here. One of its hard gates &mdash; running style, distance
+      band, surface, handedness, track, going, weather or season &mdash; is not met by this race, so it is dropped
+      rather than discounted.</p></section>`;
   }
 
   const firing = skillFiring(skill, r, course, sim);
   const nominal = skill.duration * (course.distance / 1000);
+  const target = skill.effects.find((e) => e.target !== 1)?.target;
 
   // Every multiplier between the raw effect and the number on the card, shown
   // as the chain it actually is rather than a single opaque total.
   const chain = [
-    ['Raw effect', `${(r.metres / BASHIN).toFixed(2)} len`, `${r.metres.toFixed(2)} m of ground`],
-    ['Race-position weight', `×${r.weight.toFixed(2)}`, `fires ${Math.round(r.fraction * 100)}% into the race`],
-    ['Position condition', `×${r.pPosition.toFixed(2)}`, `${ctx.fieldSize} runners, ${STRATEGY[ctx.strategy].name}`],
-    ['Wit activation', `×${r.pWit.toFixed(2)}`, skill.wisdomCheck ? `at ${ctx.stats.wit} Wit` : 'not Wit-checked'],
-    ['Other requirements', `×${r.pOther.toFixed(2)}`, skill.facets.needs.length ? skill.facets.needs.join(', ') : 'none'],
+    ['Raw effect', `${((r.metres + r.rivalMetres) / BASHIN).toFixed(2)} len`,
+      r.rivalMetres
+        ? `${r.metres.toFixed(2)} m of your own ground, ${r.rivalMetres.toFixed(2)} m off the field`
+        : `${r.metres.toFixed(2)} m of ground`],
+    ['Race-position weight', `\u00d7${r.weight.toFixed(2)}`, `fires ${Math.round(r.fraction * 100)}% into the race`],
+    ['Position condition', `\u00d7${r.pPosition.toFixed(2)}`, positionText(r, ctx)],
+    ['Wit activation', `\u00d7${r.pWit.toFixed(2)}`, skill.wisdomCheck ? `at ${ctx.stats.wit} Wit` : 'not Wit-checked'],
+    ['Other requirements', `\u00d7${r.pOther.toFixed(2)}`,
+      r.reasons.find((x) => x.startsWith('needs ')) ?? 'no further conditions'],
   ];
+  if ((r.pPre ?? 1) < 0.999) {
+    chain.push(['Precondition', `\u00d7${r.pPre.toFixed(2)}`, 'has to have been true once before the skill arms']);
+  }
+  if (target != null) {
+    chain.splice(1, 0, ['Lands on', esc(TARGET_KIND[target]?.label ?? 'rivals'),
+      `${r.victims.n} runner${r.victims.n === 1 ? '' : 's'} in this field`]);
+  }
 
   const partRows = Object.entries(r.parts)
-    .filter(([, v]) => v > 0)
-    .sort((a, b) => b[1] - a[1])
+    .filter(([, v]) => Math.abs(v) > 0)
+    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
     .map(([k, v]) => `<tr><td>${esc(PART_NAME[k] ?? k)}</td><td class="num">${(v / BASHIN).toFixed(2)} len</td>
-      <td class="num small muted">${Math.round((v / r.metres) * 100)}%</td></tr>`).join('');
+      <td class="num small muted">${Math.round((v / (r.metres + r.rivalMetres)) * 100)}%</td></tr>`).join('');
 
   return `<section>
     ${head}
@@ -137,6 +156,8 @@ function evaluationSection(skill, r, course, ctx, sim) {
         <div class="facts" style="margin-top:8px">
           <span class="fact">fires <b>${fmt.pct(r.probability)}</b> of the time</span>
           <span class="fact">runs <b>${r.durSec.toFixed(1)}s</b>${firing ? ` over <b>${Math.round(firing.length)}m</b>` : ''}</span>
+          ${skill.cost ? `<span class="fact"><b>${(r.perSp ?? 0).toFixed(2)}</b> per 100 SP</span>` : ''}
+          ${r.rivalBashin ? `<span class="fact"><b>${r.rivalBashin.toFixed(2)}</b> of it taken off rivals</span>` : ''}
         </div>
       </div>
     </div>
@@ -165,12 +186,28 @@ function evaluationSection(skill, r, course, ctx, sim) {
 
     <h4 class="drawer__h4">How the number is reached</h4>
     <table class="calc">
-      <tbody>${chain.map(([a, b, c]) => `<tr><td>${esc(a)}</td><td class="num">${esc(b)}</td><td class="small muted">${esc(c)}</td></tr>`).join('')}</tbody>
+      <tbody>${chain.map(([a, b, c]) => `<tr><td>${esc(a)}</td><td class="num">${b}</td><td class="small muted">${esc(c)}</td></tr>`).join('')}</tbody>
     </table>
+    ${r.reasons.length ? `<ul class="cond-list" style="margin-top:9px">${r.reasons.map((x) => `<li class="small muted">${esc(x)}</li>`).join('')}</ul>` : ''}
     <p class="tiny muted" style="margin-top:8px">
-      Multiply the chain together and divide by ${BASHIN} m to get the ${r.bashin.toFixed(2)} lengths above.
+      ${isPassive(skill) || skill.duration === 0
+    ? 'A passive: priced from the same finite difference as the stat table on the Planner, so it is worth what the stat is worth in <em>this</em> race.'
+    : `Multiply the chain together and divide by ${BASHIN} m to get the ${r.bashin.toFixed(2)} lengths above.`}
+      Check it against the full field on the <a href="#/race">Race</a> page.
     </p>
   </section>`;
+}
+
+/** What the positional requirement is, and how often this field satisfies it. */
+function positionText(r, ctx) {
+  const p = r.position ?? {};
+  const bits = [];
+  if (p.orderMin != null) bits.push(`${p.orderMin}th or further back`);
+  if (p.orderMax != null) bits.push(`${p.orderMax}th or better`);
+  if (p.rateMin != null) bits.push(`bottom ${100 - p.rateMin}%`);
+  if (p.rateMax != null) bits.push(`top ${p.rateMax}%`);
+  if (!bits.length) return `no positional requirement (${ctx.fieldSize} runners)`;
+  return `${bits.join(', ')} in a field of ${fieldSummary()}`;
 }
 
 function siblingsSection(skill) {

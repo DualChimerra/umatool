@@ -9,8 +9,10 @@
     "build:data:offline": "node scripts/build-data.mjs --no-gametora",
     "build:icons": "python3 scripts/build_icons.py",
     "verify:model": "node scripts/verify-model.mjs",
-    "serve": "python3 -m http.server 8080 --directory docs"
+    "serve": "python3 scripts/serve.py 8080"
   },
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "license": "MIT"
 }

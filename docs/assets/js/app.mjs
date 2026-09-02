@@ -4,6 +4,7 @@ import { initContext } from './context.mjs';
 import { initSkillDrawer } from './views/detail.mjs';
 import { renderPlanner } from './views/planner.mjs';
 import { renderTeam } from './views/team.mjs';
+import { renderRace } from './views/race.mjs';
 import { renderUmas } from './views/umas.mjs';
 import { renderCards } from './views/cards.mjs';
 import { renderSkills } from './views/skills.mjs';
@@ -13,6 +14,7 @@ import { renderData } from './views/data.mjs';
 const views = {
   planner: renderPlanner,
   team: renderTeam,
+  race: renderRace,
   umas: renderUmas,
   cards: renderCards,
   skills: renderSkills,

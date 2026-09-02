@@ -56,8 +56,8 @@ export function analyseSlot(slot) {
   const course = db.courseById.get(cm.courseId);
   const outfit = slot.outfitId ? db.outfitById.get(slot.outfitId) : null;
   const ctx = scoringContext(slot);
-  const sim = simulateRace({ course, strategy: ctx.strategy, stats: ctx.stats, ground: ctx.ground, aptitudes: ctx.aptitudes, recoveryPct: cm.recovery });
-  const full = { ...ctx, sim };
+  const sim = simulateRace({ ...ctx, recoveryPct: cm.recovery });
+  const full = { ...ctx, sim, recoveryPct: cm.recovery };
   const valueOf = valuer(full);
 
   const origin = new Map();
@@ -207,9 +207,11 @@ export function rankUmas({ own = 'all', query = '', strategy = null } = {}) {
     const aptitudes = aptitudesFor(outfit, course, style);
     const key = `${style}:${aptitudes.distance}:${aptitudes.surface}:${aptitudes.style}`;
     if (!byContext.has(key)) {
-      const ctx = scoringContext({ outfitId: outfit.id, strategy: style, stats: cm.stats, deck: [] });
-      const sim = simulateRace({ course, strategy: style, stats: cm.stats, ground: cm.ground, aptitudes, recoveryPct: cm.recovery });
-      byContext.set(key, { valueOf: valuer({ ...ctx, aptitudes, sim }), sim });
+      // The whole context goes in, so the going, weather, season and field mix
+      // reach the valuation the same way they do everywhere else.
+      const ctx = { ...scoringContext({ outfitId: outfit.id, strategy: style, stats: cm.stats, deck: [] }), aptitudes };
+      const sim = simulateRace({ ...ctx, recoveryPct: cm.recovery });
+      byContext.set(key, { valueOf: valuer({ ...ctx, sim, recoveryPct: cm.recovery }), sim });
     }
     const { valueOf, sim } = byContext.get(key);
 
@@ -357,7 +359,7 @@ export function recommendations(analyses) {
         { slot: i, card: best?.card.id });
     }
 
-    const sens = statSensitivity({ ...a.full, recoveryPct: cm.recovery }, db.learnable.filter(isObtainable));
+    const sens = statSensitivity(a.full, db.learnable.filter(isObtainable));
     const ordered = Object.entries(sens).filter(([, v]) => v.bashin != null).sort((x, y) => y[1].bashin - x[1].bashin);
     if (ordered.length) {
       const [bestStat, bestVal] = ordered[0];

@@ -1,5 +1,5 @@
 import { db } from '../store.mjs';
-import { el, esc, on, skillPill, icon, readState, writeState } from '../ui.mjs';
+import { el, esc, on, skillPill, icon, readState, writeState, collapsible } from '../ui.mjs';
 import { createSkillFilter, toggleGroup, searchField, selectField } from '../filters.mjs';
 
 const TYPES = [
@@ -101,7 +101,7 @@ export function renderCards(root) {
   hideUnverified.querySelector('input').addEventListener('change', (e) => { state.hideUnverified = e.target.checked; paint(); });
   body.append(globalToggle, hideUnverified);
 
-  rail.append(basics, skillFilter.element);
+  rail.append(collapsible(basics, 'cards.basics'), collapsible(skillFilter.element, 'cards.skills'));
 
   const sortSel = selectField({ title: 'Sort by', options: SORTS, value: state.sort, onChange: (v) => { state.sort = v; paint(); } });
   const dirBtn = el(`<button class="btn btn--sm" type="button" title="Reverse order" aria-label="Reverse order">${icon('sort')}</button>`);

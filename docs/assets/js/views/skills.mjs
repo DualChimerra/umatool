@@ -1,5 +1,5 @@
 import { db, skillIconUrl } from '../store.mjs';
-import { el, esc, on, effectSummary, readState, writeState } from '../ui.mjs';
+import { el, esc, on, effectSummary, readState, writeState, collapsible } from '../ui.mjs';
 import { toggleGroup, searchField } from '../filters.mjs';
 import { STRATEGY } from '../model.mjs';
 
@@ -86,7 +86,7 @@ export function renderSkills(root) {
   const p3 = el('<section class="panel"><div class="panel__head"><h3>Where to get it</h3></div><div class="panel__body"></div></section>');
   p3.querySelector('.panel__body').append(mk('Source', FROM, 'from'));
 
-  rail.append(p1, p2, p3);
+  rail.append(collapsible(p1, 'skills.1'), collapsible(p2, 'skills.2'), collapsible(p3, 'skills.3'));
 
   function paintHead() {
     thead.innerHTML = `<tr>${COLUMNS.map((c) => {
