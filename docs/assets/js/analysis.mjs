@@ -2,8 +2,14 @@
 // or an uma would add to it, and the advice that falls out of both.
 
 import { db, isObtainable } from './store.mjs';
-import { cm, scoringContext, prioritySatisfiers, ownsCard, canPlace, aptitudesFor } from './context.mjs';
-import { simulateRace, scoreSkill, STRATEGY, statSensitivity } from './model.mjs';
+import {
+  cm, scoringContext, prioritySatisfiers, ownsCard, canPlace, aptitudesFor,
+  fieldStyles, DEFAULT_APT,
+} from './context.mjs';
+import {
+  simulateRace, scoreSkill, STRATEGY, statSensitivity,
+  BASHIN, APT_GRADE, activationRate, aptWit, isUnique,
+} from './model.mjs';
 
 // A hint has to be rolled and paid for, so it is not worth an event skill the
 // training run hands you outright.
@@ -289,6 +295,409 @@ export function rankUniques() {
 
   out.sort((a, b) => b.bashin - a.bashin);
   return out;
+}
+
+/* ------------------------------------------------- running-style valuation */
+
+/**
+ * A unique is a different skill under every running style.
+ *
+ * Not one of the 117 uniques in the data names a running style in its condition
+ * string — the game does not have to, because a unique comes attached to one
+ * umamusume who runs one way. Nearly all of them (98 of 117) *are* gated on
+ * where you sit in the field, and that is decided almost entirely by how you
+ * run: `order<=3` is free for a Front Runner and a coin flip for an End Closer,
+ * `order_rate>=40` is the other way round. So the same unique is priced four
+ * different ways here, and the style you picked is the one that is shown.
+ *
+ * On top of the gate there is the question of whether the uma who carries it
+ * can be run that way at all. Style aptitude scales the Wit the activation roll
+ * is made against, so an End Closer with G Front aptitude does not merely run
+ * badly at the front — her skills stop firing.
+ */
+
+/** Style aptitude below this and the uma should not be run this way at all. */
+export const MIN_STYLE_APT = 5; // C
+/**
+ * ...and the same floor on the course itself. A unique is not separable from
+ * the uma carrying it, so a dirt sprinter's unique is not a turf 2400m pick,
+ * however well the skill itself scores there — and it can score well, because a
+ * runner crippled by F surface aptitude spends longer below target speed, which
+ * is exactly where an acceleration skill pays.
+ */
+export const MIN_COURSE_APT = 5; // C
+
+/** Skills an uma realistically ends a run with, out of her own list. */
+export const KIT_DEPTH = 6;
+/**
+ * How much of a skill on her own list is a reason to pick *her*.
+ *
+ * A skill only she teaches is: there is no other way to get it. A skill three
+ * Global support cards also hand out is barely one — you would have ended up
+ * with it whoever you ran. Counting both at face value is what made the ranking
+ * read as "who has the deepest skill list" and buried the unique, which is the
+ * one thing about an umamusume that cannot be obtained any other way.
+ */
+export const KIT_EXCLUSIVE = 0.9;
+export const KIT_SHARED = 0.35;
+
+/** Can a Global support card teach this skill without her? */
+function taughtByCard(skill) {
+  const s = skill?.sources;
+  if (!s) return false;
+  return s.event.some((id) => db.supportById.get(id)?.global)
+    || s.hint.some((id) => db.supportById.get(id)?.global);
+}
+
+// One scoring context per (style, aptitude) pair, thrown away whenever anything
+// about the race setup moves. Every uma on the page shares a handful of these.
+let ctxCacheKey = '';
+let ctxCache = new Map();
+
+function setupSignature() {
+  return [
+    cm.courseId, cm.ground, cm.weather, cm.season, cm.fieldSize, cm.recovery,
+    cm.you.uniqueLevel, fieldStyles().slice(1).join(''),
+    cm.stats.speed, cm.stats.stamina, cm.stats.power, cm.stats.guts, cm.stats.wit,
+  ].join('|');
+}
+
+/**
+ * Scoring context for "me, running this style, with these aptitudes".
+ *
+ * The field mix, going, weather and season are the ones set on the Planner, so
+ * a unique is never priced against a race nobody is planning to run.
+ */
+function ctxFor(strategy, aptitudes) {
+  const sig = setupSignature();
+  if (sig !== ctxCacheKey) { ctxCacheKey = sig; ctxCache = new Map(); }
+  const key = `${strategy}:${aptitudes.distance}:${aptitudes.surface}:${aptitudes.style}`;
+  let hit = ctxCache.get(key);
+  if (!hit) {
+    const styles = fieldStyles();
+    styles[0] = strategy;
+    const ctx = {
+      course: db.courseById.get(cm.courseId),
+      strategy,
+      ground: cm.ground,
+      weather: cm.weather,
+      season: cm.season,
+      fieldSize: cm.fieldSize,
+      fieldStyles: styles,
+      aptitudes,
+      stats: cm.stats,
+      recoveryPct: cm.recovery,
+      uniqueLevel: cm.you.uniqueLevel,
+    };
+    ctx.sim = simulateRace(ctx);
+    hit = { ctx, valueOf: valuer(ctx) };
+    ctxCache.set(key, hit);
+  }
+  return hit;
+}
+
+/**
+ * Lengths handed to the field by running on aptitudes below A, split the way
+ * the game splits them.
+ *
+ * Distance and surface aptitude move target speed and acceleration, so they
+ * come out of the race model as a time difference against an A/A/A runner on
+ * the same course. Style aptitude does not touch the clock at all — it scales
+ * the Wit the activation roll is made against — so it is priced against a
+ * typical load of Wit-checked skills instead, exactly as `statValue` does.
+ */
+export function aptitudeCost(strategy, aptitudes) {
+  const mine = ctxFor(strategy, aptitudes).ctx;
+  const ideal = ctxFor(strategy, DEFAULT_APT).ctx;
+  const clock = ((mine.sim.time - ideal.sim.time) * ideal.sim.speeds.spurt) / BASHIN;
+  const wit = (activationRate(cm.stats.wit * aptWit(DEFAULT_APT))
+    - activationRate(cm.stats.wit * aptWit(aptitudes))) * 5 * 0.35;
+  return { clock, wit, total: clock + wit };
+}
+
+/**
+ * Every unique that lands on this race, priced for the running style you chose
+ * rather than for the one its owner happens to prefer.
+ *
+ * Both readings are returned: `bashin` is what the unique is worth run your
+ * way, `nativeBashin` what it is worth run hers. When those disagree the row
+ * says so, because that gap is the whole reason a unique cannot be ranked
+ * style-blind.
+ */
+export function rankUniquesForStyle(strategy = cm.strategy) {
+  const course = db.courseById.get(cm.courseId);
+  const styleKey = STRATEGY[strategy].key;
+  const out = [];
+
+  for (const skill of db.skills) {
+    if (!isUnique(skill)) continue;
+    const owner = skill.sources.unique
+      .map((id) => db.outfitById.get(id))
+      .find((o) => o && o.global !== false);
+    if (!owner) continue;
+
+    const aptitudes = aptitudesFor(owner, course, strategy);
+    const scored = ctxFor(strategy, aptitudes).valueOf(skill);
+    if (!scored) continue;
+
+    const nativeApt = aptitudesFor(owner, course, owner.strategy);
+    const native = ctxFor(owner.strategy, nativeApt).valueOf(skill);
+    const styleApt = owner.aptitudes[styleKey] ?? 7;
+
+    out.push({
+      skill,
+      owner,
+      strategy,
+      aptitudes,
+      scored,
+      bashin: scored.bashin,
+      reasons: scored.reasons,
+      styleApt,
+      styleGrade: APT_GRADE[styleApt],
+      native: owner.strategy,
+      nativeBashin: native?.bashin ?? 0,
+      // Her own style always counts as runnable, whatever the grade table says.
+      fitsStyle: owner.strategy === strategy || styleApt >= MIN_STYLE_APT,
+      fitsCourse: aptitudes.distance >= MIN_COURSE_APT && aptitudes.surface >= MIN_COURSE_APT,
+      fits: (owner.strategy === strategy || styleApt >= MIN_STYLE_APT)
+        && aptitudes.distance >= MIN_COURSE_APT && aptitudes.surface >= MIN_COURSE_APT,
+    });
+  }
+
+  out.sort((a, b) => b.bashin - a.bashin);
+  return out;
+}
+
+/**
+ * The same unique read under all four running styles, so the row can show which
+ * style it actually wants. Computed only for the rows on screen — it is four
+ * full valuations per skill.
+ */
+export function uniqueStyleProfile(skill, owner) {
+  const course = db.courseById.get(cm.courseId);
+  const out = {};
+  let best = 0;
+  for (const s of [1, 2, 3, 4]) {
+    const v = ctxFor(s, aptitudesFor(owner, course, s)).valueOf(skill)?.bashin ?? 0;
+    out[s] = v;
+    if (v > (out[best] ?? -Infinity)) best = s;
+  }
+  return { by: out, best };
+}
+
+/* ------------------------------------------------------- parent inheritance */
+
+// A unique is handed down as its own weaker white copy, which the data ships as
+// a separate skill: unique `100381` → inherited `900381`. All 97 inheritable
+// uniques follow that rule, so the link is read off the id rather than guessed
+// from the name.
+let inheritLinks = null;
+function inheritance() {
+  if (inheritLinks) return inheritLinks;
+  const parentOf = new Map();   // inherited skill id → the unique it copies
+  const copyOf = new Map();     // unique skill id → its inherited copy
+  for (const s of db.skills) {
+    if (!s.inherited) continue;
+    const source = db.skillById.get(`1${s.id.slice(1)}`);
+    if (!source || !isUnique(source)) continue;
+    parentOf.set(s.id, source);
+    copyOf.set(source.id, s);
+  }
+  inheritLinks = { parentOf, copyOf };
+  return inheritLinks;
+}
+
+/** The inherited copy of a unique, if it has one. Evolved uniques do not. */
+export const inheritedCopy = (skill) => (skill ? inheritance().copyOf.get(skill.id) ?? null : null);
+
+/** The unique an inherited white skill is a copy of. */
+export const sourceUnique = (skill) => (skill ? inheritance().parentOf.get(skill.id) ?? null : null);
+
+/**
+ * Which parent to breed for: every inheritable unique, scored as the white copy
+ * you would actually be carrying, in the race and style *you* are running.
+ *
+ * This is a different question from "which unique is best on this track". You
+ * inherit the copy, not the original, and you run it on your own uma's
+ * aptitudes and running style — not the parent's. So the ranking is done in the
+ * caller's own scoring context, and the parent is only named as the place the
+ * skill comes from.
+ *
+ * @param {object} full the scoring context of the runner doing the inheriting
+ */
+export function rankParentUniques(full) {
+  const course = db.courseById.get(cm.courseId);
+  const styleKey = STRATEGY[full.strategy].key;
+  const value = valuer(full);
+  const out = [];
+
+  for (const skill of db.skills) {
+    if (!skill.inherited) continue;
+    const source = sourceUnique(skill);
+    if (!source) continue;
+    const parents = source.sources.unique
+      .map((id) => db.outfitById.get(id))
+      .filter((o) => o && o.global !== false);
+    if (!parents.length) continue;
+
+    const scored = value(skill);
+    if (!scored) continue;
+
+    // A parent is worth more than its unique: the same run also passes down
+    // aptitude sparks, and the ones that matter here are the course's own.
+    const sparks = [];
+    for (const p of parents) {
+      const apt = aptitudesFor(p, course, full.strategy);
+      if (apt.distance >= 8) sparks.push(`${p.charaName}: S ${course.distanceTypeName}`);
+      else if (apt.surface >= 8) sparks.push(`${p.charaName}: S ${course.surfaceName}`);
+      else if ((p.aptitudes[styleKey] ?? 0) >= 8) sparks.push(`${p.charaName}: S ${STRATEGY[full.strategy].short}`);
+    }
+
+    out.push({
+      skill, source, parents, parent: parents[0], scored,
+      bashin: scored.bashin,
+      reasons: scored.reasons,
+      sparks,
+      // What the full-strength original is worth in the same race, so the cost
+      // of taking the copy instead of the uma is visible.
+      fullBashin: value(source)?.bashin ?? 0,
+    });
+  }
+
+  out.sort((a, b) => b.bashin - a.bashin);
+  return out;
+}
+
+/* ---------------------------------------------------- best uma for a track */
+
+/**
+ * Which umamusume this course actually wants, and why.
+ *
+ * Four things decide it and all four are measured in the same unit — lengths
+ * on the field at the line — so they can simply be added up:
+ *
+ *   * her unique, priced on this course under the running style in play;
+ *   * the best of her own skill list, discounted because a training run does
+ *     not hand you all of it;
+ *   * what her distance and surface aptitudes cost against the clock;
+ *   * what her style aptitude costs the activation roll.
+ *
+ * @param {object} opts
+ * @param {number} opts.strategy   the style to judge her in
+ * @param {boolean} opts.ownStyle  judge every uma in her own style instead
+ */
+export function rateUmasForRace({ strategy = cm.strategy, ownStyle = false, own = 'all' } = {}) {
+  const course = db.courseById.get(cm.courseId);
+  const out = [];
+
+  for (const outfit of db.globalOutfits) {
+    const owned = !cm.useOwned || cm.owned.umas.includes(outfit.id);
+    if (own === 'mine' && !owned) continue;
+
+    const style = ownStyle ? outfit.strategy : strategy;
+    const styleKey = STRATEGY[style].key;
+    const aptitudes = aptitudesFor(outfit, course, style);
+    const { ctx, valueOf } = ctxFor(style, aptitudes);
+    const cost = aptitudeCost(style, aptitudes);
+
+    const uniqueSkill = outfit.uniqueId ? db.skillById.get(outfit.uniqueId) : null;
+    const uniqueScored = uniqueSkill ? valueOf(uniqueSkill) : null;
+    const uniqueValue = uniqueScored?.bashin ?? 0;
+
+    const kit = outfit.skillIds
+      .map((id) => db.skillById.get(id))
+      .filter(Boolean)
+      .map((skill) => {
+        const scored = valueOf(skill);
+        const shared = taughtByCard(skill);
+        const bashin = scored?.bashin ?? 0;
+        return { skill, scored, bashin, shared, worth: bashin * (shared ? KIT_SHARED : KIT_EXCLUSIVE) };
+      })
+      .sort((a, b) => b.worth - a.worth);
+    const kitTop = kit.slice(0, KIT_DEPTH).filter((x) => x.worth > 0);
+    const kitValue = kitTop.reduce((n, x) => n + x.worth, 0);
+
+    const styleApt = outfit.aptitudes[styleKey] ?? 7;
+    const total = uniqueValue + kitValue - cost.total;
+
+    out.push({
+      outfit, style, styleApt, aptitudes, owned,
+      sim: ctx.sim,
+      unique: uniqueSkill, uniqueScored, uniqueValue,
+      kit, kitTop, kitValue,
+      cost,
+      total,
+      fits: (outfit.strategy === style || styleApt >= MIN_STYLE_APT)
+        && aptitudes.distance >= MIN_COURSE_APT && aptitudes.surface >= MIN_COURSE_APT,
+      grades: {
+        distance: APT_GRADE[aptitudes.distance],
+        surface: APT_GRADE[aptitudes.surface],
+        style: APT_GRADE[styleApt],
+      },
+      reasons: umaReasons({ outfit, course, style, aptitudes, styleApt, cost, uniqueSkill, uniqueScored, kitTop, sim: ctx.sim }),
+    });
+  }
+
+  out.sort((a, b) => b.total - a.total);
+  return out;
+}
+
+/** The short, checkable "why" a row carries. Strongest claim first. */
+function umaReasons({ outfit, course, style, aptitudes, styleApt, cost, uniqueSkill, uniqueScored, kitTop, sim }) {
+  const why = [];
+
+  if (uniqueScored && uniqueSkill) {
+    const where = uniqueScored.at != null ? Math.round(uniqueScored.at) : null;
+    const inSpurt = where != null && where >= sim.spurtStart;
+    why.push(`${uniqueSkill.name} is worth ${uniqueScored.bashin.toFixed(2)} here${
+      inSpurt ? ', and it lands inside the last spurt' : where != null ? `, firing around ${where}m` : ''}`);
+    const ramp = uniqueScored.reasons.find((r) => r.startsWith('lands on the ramp'));
+    if (ramp) why.push(`her unique ${ramp}`);
+    else if (uniqueScored.reasons.includes('no acceleration to gain here — already at target speed')) {
+      why.push('her unique is mostly acceleration, and this course gives it nowhere to spend it');
+    }
+    if (uniqueScored.probability < 0.5) {
+      why.push(`but it only fires ${Math.round(uniqueScored.probability * 100)}% of the time as ${STRATEGY[style].name}`);
+    }
+  } else if (!uniqueSkill) {
+    why.push('no unique in the data for this outfit');
+  }
+
+  if (outfit.strategy !== style) {
+    why.push(`built as a ${STRATEGY[outfit.strategy].name}; ${APT_GRADE[styleApt]} aptitude for ${STRATEGY[style].name}`);
+  }
+  const aptLabel = `${APT_GRADE[aptitudes.distance]} ${course.distanceTypeName} / ${APT_GRADE[aptitudes.surface]} ${course.surfaceName}`;
+  if (cost.clock > 0.15) {
+    why.push(`gives up ${cost.clock.toFixed(2)} lengths to ${aptLabel}`);
+  } else if (cost.clock < -0.05) {
+    // Aptitude coming out *ahead* of A means one of two very different things,
+    // and saying "S pays above A" for a B-grade runner would be a lie.
+    if (aptitudes.distance >= 8 || aptitudes.surface >= 8) {
+      why.push(`${Math.abs(cost.clock).toFixed(2)} lengths of it is her S aptitude, which pays above A`);
+    } else {
+      why.push(`${aptLabel} is worth ${Math.abs(cost.clock).toFixed(2)} lengths here — below A she runs slower, and at ${cm.stats.stamina} Stamina that buys back more spurt than it costs in speed`);
+    }
+  }
+  if (cost.wit > 0.05) {
+    why.push(`${APT_GRADE[styleApt]} style aptitude costs ${cost.wit.toFixed(2)} lengths of skill activation`);
+  }
+
+  const golds = kitTop.filter((x) => x.skill.tier === 'gold');
+  if (golds.length) {
+    why.push(golds.length > 1
+      ? `her own list carries ${golds.length} gold skills that land here`
+      : 'her own list carries a gold skill that lands here');
+  }
+  const only = kitTop.filter((x) => !x.shared);
+  if (only.length) {
+    why.push(only.length > 1
+      ? `${only.length} of her best skills here come from nobody else`
+      : 'one of her best skills here comes from nobody else');
+  }
+  if (sim.spurtCoverage < 0.999) {
+    why.push(`at these stats she only spurts the last ${Math.round(sim.spurtCoverage * 100)}% of the final leg`);
+  }
+  return why;
 }
 
 /* ----------------------------------------------------------- the advisor */

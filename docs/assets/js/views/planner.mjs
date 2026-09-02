@@ -14,6 +14,10 @@ import {
   uniqueScale, atUniqueLevel, scoreSkill, skillFiring, skillOverlaps, raceProfile, staminaMatrix,
   effectiveStats, courseSpeedModifier,
 } from '../model.mjs';
+import {
+  rankUniquesForStyle, uniqueStyleProfile, rankParentUniques, rateUmasForRace,
+  MIN_STYLE_APT, MIN_COURSE_APT, KIT_DEPTH, KIT_EXCLUSIVE, KIT_SHARED,
+} from '../analysis.mjs';
 import { clearFieldCache, FIELD_PRESETS } from '../race/field.mjs';
 import { openFieldEditor } from './fieldeditor.mjs';
 import { pickUma, pickSkill } from './picker.mjs';
@@ -38,6 +42,10 @@ const FAMILIES = [
 let family = 'all';
 let sortBy = 'value';
 let lastSim = null;
+// Uniques belong to one umamusume, so "show me the good ones" has to mean
+// "the ones I could actually run this way" by default.
+let uniqueFit = true;
+let umaStyleMode = 'mine';
 
 export function renderPlanner(root) {
   const layout = el(`<div class="layout">
@@ -495,7 +503,6 @@ export function renderPlanner(root) {
       </div>`;
 
     const ranked = rankSkills(db.learnable, full);
-    const uniques = ranked.filter((r) => r.skill.tier === 'unique' || r.skill.tier === 'evolved');
     const allLearnable = ranked.filter((r) => r.skill.tier === 'gold' || r.skill.tier === 'normal');
     const learnable = cm.obtainableOnly === false ? allLearnable : allLearnable.filter((r) => isObtainable(r.skill));
     const hiddenCount = allLearnable.length - learnable.length;
@@ -504,7 +511,8 @@ export function renderPlanner(root) {
     layout.querySelector('[data-role="jump"]').innerHTML = [
       ['course', 'Course'], ['stats', 'Stat targets'], ['field', 'Field model'],
       ['matrix', 'Going matrix'], ['you', 'Your run'], ['skills', 'Best skills'],
-      ['uniques', 'Uniques'], ['cards', 'Cards'],
+      ['uniques', 'Uniques'], ['parents', 'Parent uniques'], ['umas', 'Best umas'],
+      ['cards', 'Cards'],
     ].map(([id, label]) => `<a href="#/planner" data-jump="${id}">${label}</a>`).join('');
 
     out.replaceChildren(
@@ -516,7 +524,9 @@ export function renderPlanner(root) {
       yourRunCard(full),
       rankCard(learnable, hiddenCount),
       overlapCard(learnable, course, sim),
-      uniqueCard(uniques.slice(0, 24), uniques.length),
+      uniqueCard(course),
+      parentUniqueCard(full),
+      bestUmasCard(course),
       cardSourcesCard(learnable.slice(0, 24)),
       scoringExplainer(),
     );
@@ -942,39 +952,202 @@ export function renderPlanner(root) {
     </div>`;
   }
 
-  function uniqueCard(rows, total) {
-    if (!rows.length) return el('<span hidden></span>');
-    const course = currentCourse();
-    const aptKey = ['', 'sprint', 'mile', 'medium', 'long'][course.distanceType];
+  /**
+   * A four-cell strip of what one unique is worth under each running style,
+   * with the one in play marked. This is the answer to "does the style I picked
+   * even matter here" — for most uniques the bars are visibly uneven, because
+   * nearly all of them are gated on where you sit in the field.
+   */
+  function styleStrip(profile, chosen) {
+    const max = Math.max(...Object.values(profile.by), 0.01);
+    return `<span class="sstrip" role="img" aria-label="${esc([1, 2, 3, 4]
+      .map((s) => `${STRATEGY[s].short} ${profile.by[s].toFixed(2)}`).join(', '))}">
+      ${[1, 2, 3, 4].map((s) => `<i class="sstrip__b${s === chosen ? ' is-on' : ''}${s === profile.best ? ' is-best' : ''}"
+        style="--h:${Math.max(3, (Math.max(0, profile.by[s]) / max) * 19).toFixed(1)}px"><b>${STRATEGY[s].short[0]}</b></i>`).join('')}
+    </span>`;
+  }
+
+  function uniqueCard(course) {
+    const all = rankUniquesForStyle(cm.strategy);
+    if (!all.length) return el('<span hidden></span>');
+    const eligible = uniqueFit ? all.filter((r) => r.fits) : all;
+    const rows = eligible.slice(0, 24);
+    const styleName = STRATEGY[cm.strategy].name;
     const surfKey = course.surface === 1 ? 'turf' : 'dirt';
 
-    return el(`<section class="panel" data-section="uniques">
-      <div class="panel__head"><h3>Uniques that land on this race</h3><span class="sk-count">${rows.length} of ${total}</span></div>
+    const node = el(`<section class="panel" data-section="uniques">
+      <div class="panel__head panel__head--wrap">
+        <h3>Uniques that land on this race</h3>
+        <div class="row" style="gap:6px;flex-wrap:wrap">
+          <span class="sk-count">${rows.length} shown &middot; ${eligible.length} of ${all.length} qualify</span>
+          <div class="seg" data-role="ufit">
+            <button type="button" data-v="1" aria-pressed="${uniqueFit}">Can run this as ${esc(STRATEGY[cm.strategy].short)}</button>
+            <button type="button" data-v="0" aria-pressed="${!uniqueFit}">Every uma</button>
+          </div>
+        </div>
+      </div>
       <div class="panel__body" style="padding:0">
         <div class="rank-list">
           ${rows.map((r, i) => {
-    const owners = r.skill.sources.unique.map((id) => db.outfitById.get(id)).filter(Boolean);
-    const owner = owners[0];
-    const apt = owner ? owner.aptitudeGrades[aptKey] : null;
-    const surf = owner ? owner.aptitudeGrades[surfKey] : null;
+    const profile = uniqueStyleProfile(r.skill, r.owner);
+    const gap = r.bashin - r.nativeBashin;
+    const notes = [];
+    if (r.owner.strategy !== cm.strategy) {
+      notes.push(`<span class="etag${r.styleApt >= MIN_STYLE_APT ? '' : ' etag--warn'}">runs ${esc(r.owner.strategyName)} · ${esc(r.styleGrade)} ${esc(STRATEGY[cm.strategy].short)}</span>`);
+      notes.push(`<span class="etag etag--note">${esc(fmt.signed(gap))} vs her own style</span>`);
+    } else {
+      notes.push('<span class="etag etag--good">her own style</span>');
+    }
+    if (profile.best !== cm.strategy) {
+      notes.push(`<span class="etag etag--note">wants ${esc(STRATEGY[profile.best].short)} (${profile.by[profile.best].toFixed(2)})</span>`);
+    }
     return `<div class="rank-row rank-row--uni">
               <span class="rank-row__i">${i + 1}</span>
-              ${owner ? `<img src="./img/chara/${esc(owner.id)}.webp" alt="" width="34" height="34" loading="lazy" class="av">` : '<span></span>'}
+              <img src="./img/chara/${esc(r.owner.id)}.webp" alt="" width="34" height="34" loading="lazy" class="av">
               <span style="min-width:0">
                 ${skillPill(r.skill)}
-                <span class="rank-row__why">${esc(owner ? `${owner.charaName} (${owner.epithet}) · ${owner.strategyName}` : 'no Global uma carries this')}${esc(r.reasons.length ? ` · ${r.reasons[0]}` : '')}</span>
+                <span class="rank-row__why">
+                  <span class="etag etag--note">${esc(r.owner.charaName)} (${esc(r.owner.epithet)})</span>
+                  ${notes.join('')}
+                  ${r.reasons.length ? `<span class="etag etag--note">${esc(r.reasons[0])}</span>` : ''}
+                </span>
               </span>
-              <span class="rank-row__mid row" style="gap:4px">
-                ${apt ? `<span class="chip">${esc(course.distanceTypeName)} ${esc(apt)}</span>` : ''}
-                ${surf ? `<span class="chip chip--${surfKey}">${esc(surf)}</span>` : ''}
+              <span class="rank-row__mid">${styleStrip(profile, cm.strategy)}</span>
+              <span class="rank-row__mid row" style="gap:4px;flex-wrap:wrap">
+                <span class="chip">${esc(course.distanceTypeName)} ${esc(APT_GRADE[r.aptitudes.distance])}</span>
+                <span class="chip chip--${surfKey}">${esc(APT_GRADE[r.aptitudes.surface])}</span>
+                <span class="chip chip--style${cm.strategy}">${esc(STRATEGY[cm.strategy].short)} ${esc(r.styleGrade)}</span>
               </span>
               <span class="rank-row__score">${r.bashin.toFixed(2)}</span>
             </div>`;
-  }).join('')}
+  }).join('') || `<div class="empty empty--sm">No unique owner can run ${esc(styleName)} on this race — switch to <b>Every uma</b>.</div>`}
         </div>
       </div>
-      <div class="panel__foot"><p class="tiny muted">Only uniques that can fire as ${esc(STRATEGY[cm.strategy].name)} on this race, scored the same way as everything else.</p></div>
+      <div class="panel__foot">
+        <p class="tiny muted">Scored as <b>${esc(styleName)}</b>, on the owner's own aptitudes for running that way.
+        Not one unique in the game names a running style in its condition, but 98 of the 117 are gated on where you sit in the
+        field — so the style decides them anyway, and the four bars on each row are that skill read under each style in turn.
+        <b>Can run this as ${esc(STRATEGY[cm.strategy].short)}</b> drops owners below ${esc(APT_GRADE[MIN_STYLE_APT])} aptitude for the style —
+        where the Wit roll starts failing badly enough that the unique stops firing — and below
+        ${esc(APT_GRADE[MIN_COURSE_APT])} for this distance or surface, since you cannot take the unique without taking her.</p>
+      </div>
     </section>`);
+
+    on(node, 'click', '[data-role="ufit"] button', (e, t) => { uniqueFit = t.dataset.v === '1'; repaint(); });
+    return node;
+  }
+
+  /**
+   * Which parent to breed for. You inherit the *white copy* of a parent's
+   * unique, not the unique itself, so this ranks the copies — and it ranks them
+   * on your own runner's style and aptitudes, because the copy runs on your
+   * legs, not the parent's.
+   */
+  function parentUniqueCard(full) {
+    const rows = rankParentUniques(full).slice(0, 18);
+    if (!rows.length) return el('<span hidden></span>');
+    const outfit = cm.you.outfitId ? db.outfitById.get(cm.you.outfitId) : null;
+    const who = outfit ? `${outfit.charaName} (${outfit.epithet})` : `a generic ${STRATEGY[cm.strategy].name}`;
+
+    return el(`<section class="panel" data-section="parents">
+      <div class="panel__head panel__head--wrap">
+        <h3>Best unique to inherit from a parent</h3>
+        <span class="sk-count">for ${esc(who)}</span>
+      </div>
+      <div class="panel__body" style="padding:0">
+        <div class="rank-list">
+          ${rows.map((r, i) => `
+            <div class="rank-row rank-row--uni">
+              <span class="rank-row__i">${i + 1}</span>
+              <img src="./img/chara/${esc(r.parent.id)}.webp" alt="" width="34" height="34" loading="lazy" class="av">
+              <span style="min-width:0">
+                ${skillPill(r.skill)}
+                <span class="rank-row__why">
+                  <span class="etag etag--note">from ${esc(r.parents.map((p) => p.charaName).join(', '))}</span>
+                  <span class="etag etag--note">${r.fullBashin.toFixed(2)} at full strength</span>
+                  ${r.sparks.map((s) => `<span class="etag etag--good">${esc(s)}</span>`).join('')}
+                  ${r.reasons.length ? `<span class="etag etag--note">${esc(r.reasons[0])}</span>` : ''}
+                </span>
+              </span>
+              <span class="rank-row__mid">
+                ${skillTrack(skillFiring(r.skill, r.scored, currentCourse(), lastSim), currentCourse(), { height: 16 })}
+              </span>
+              <span class="rank-row__mid"><span class="tiny muted num">${fmt.pct(r.scored.probability)} of the time</span></span>
+              <span class="rank-row__score">${r.bashin.toFixed(2)}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="panel__foot">
+        <p class="tiny muted">These are the <b>inherited copies</b> — the weaker white version a parent hands down, which is what
+        you would actually be carrying, so the numbers are far below the uniques above and that is correct.
+        Everything is scored on <b>your</b> runner: ${esc(STRATEGY[cm.strategy].name)}, ${esc(who)}'s aptitudes, this going and this
+        field. A parent marked with an S grade passes that aptitude spark down as well, which is worth having on top of the skill.</p>
+      </div>
+    </section>`);
+  }
+
+  /**
+   * The whole roster read against one course. Every component is in lengths, so
+   * the total is an addition rather than a weighting nobody can check.
+   */
+  function bestUmasCard(course) {
+    const ownStyle = umaStyleMode === 'own';
+    const all = rateUmasForRace({ strategy: cm.strategy, ownStyle });
+    const rows = (ownStyle ? all : all.filter((r) => r.fits)).slice(0, 15);
+    if (!rows.length) return el('<span hidden></span>');
+    const surfKey = course.surface === 1 ? 'turf' : 'dirt';
+
+    const node = el(`<section class="panel" data-section="umas">
+      <div class="panel__head panel__head--wrap">
+        <h3>Best umamusume for this race</h3>
+        <div class="seg" data-role="umode">
+          <button type="button" data-v="mine" aria-pressed="${!ownStyle}">As ${esc(STRATEGY[cm.strategy].short)}</button>
+          <button type="button" data-v="own" aria-pressed="${ownStyle}">In her own style</button>
+        </div>
+      </div>
+      <div class="panel__body" style="padding:0">
+        <div class="rank-list">
+          ${rows.map((r, i) => `
+            <div class="rank-row rank-row--uma">
+              <span class="rank-row__i">${i + 1}</span>
+              <img src="./img/chara/${esc(r.outfit.id)}.webp" alt="" width="38" height="38" loading="lazy" class="av">
+              <span style="min-width:0">
+                <div class="row" style="gap:6px;flex-wrap:wrap">
+                  <b>${esc(r.outfit.charaName)}</b>
+                  <span class="chip chip--style${r.style}">${esc(STRATEGY[r.style].name)}</span>
+                  ${r.unique ? skillPill(r.unique) : ''}
+                </div>
+                <span class="rank-row__why">
+                  ${r.reasons.map((w) => `<span class="etag etag--note">${esc(w)}</span>`).join('')}
+                </span>
+              </span>
+              <span class="rank-row__mid row" style="gap:4px;flex-wrap:wrap">
+                <span class="chip">${esc(course.distanceTypeName)} ${esc(r.grades.distance)}</span>
+                <span class="chip chip--${surfKey}">${esc(r.grades.surface)}</span>
+                <span class="chip chip--style${r.style}">${esc(STRATEGY[r.style].short)} ${esc(r.grades.style)}</span>
+              </span>
+              <span class="rank-row__mid">
+                ${valueBar({ unique: Math.max(0, r.uniqueValue), kit: Math.max(0, r.kitValue) })}
+                <span class="tiny muted num">unique ${r.uniqueValue.toFixed(2)} · kit ${r.kitValue.toFixed(2)} · aptitude ${fmt.signed(-r.cost.total)}</span>
+              </span>
+              <span class="rank-row__score">${r.total.toFixed(2)}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="panel__foot">
+        <p class="tiny muted">One number, added up from four measured parts, all in lengths on the field:
+        <b>her unique</b> priced on this course at Lv${cm.you.uniqueLevel} and under this running style,
+        plus <b>the best ${KIT_DEPTH} of her own skill list</b> — a skill only she teaches counts at ${Math.round(KIT_EXCLUSIVE * 100)}%,
+        one a Global card also hands out at ${Math.round(KIT_SHARED * 100)}%, because that one is not a reason to pick <em>her</em> —
+        minus what <b>${esc(course.distanceTypeName)} and ${esc(course.surfaceName)} aptitude</b> cost against the clock,
+        minus what <b>style aptitude</b> costs the activation roll. Stats are the ones in the rail, so the ranking is for
+        <em>your</em> build, not a theoretical one. <b>As ${esc(STRATEGY[cm.strategy].short)}</b> drops anyone below
+        ${esc(APT_GRADE[MIN_STYLE_APT])} aptitude for that style or ${esc(APT_GRADE[MIN_COURSE_APT])} for this distance or surface.</p>
+      </div>
+    </section>`);
+
+    on(node, 'click', '[data-role="umode"] button', (e, t) => { umaStyleMode = t.dataset.v; repaint(); });
+    return node;
   }
 
   function cardSourcesCard(top) {
