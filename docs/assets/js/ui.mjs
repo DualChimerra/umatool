@@ -86,6 +86,7 @@ export function skillPill(skill, { tag = null, match = false, dim = false, count
  */
 const ICONS = {
   sort: '<path d="M7 4v16m0 0-3-3.5M7 20l3-3.5M17 20V4m0 0-3 3.5M17 4l3 3.5"/>',
+  arrow: '<path d="M12 4v16m0 0-5.5-5.5M12 20l5.5-5.5"/>',
   chevron: '<path d="m9 6 6 6-6 6"/>',
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
   check: '<path d="m4 12 5.5 5.5L20 7"/>',
@@ -214,21 +215,43 @@ function tooltipHtml(skill) {
 }
 
 export function initTooltips(root = document.body) {
+  let current = null;
+
   const show = (e, target) => {
+    if (target === current) return;
     const skill = db.skillById.get(target.dataset.skill);
     if (!skill) return;
+    current = target;
     const t = tip();
     t.innerHTML = tooltipHtml(skill);
     t.hidden = false;
     position(t, target);
   };
-  const hide = () => { tip().hidden = true; };
+  const hide = () => { current = null; tip().hidden = true; };
 
-  on(root, 'pointerenter', '[data-skill]', show);
+  // `pointerenter` and `pointerleave` do not bubble, so this delegated listener
+  // on <body> never saw them and no tooltip ever opened. over/out do bubble;
+  // the pair just has to be filtered so moving inside a pill is not a re-entry.
+  on(root, 'pointerover', '[data-skill]', (e, target) => {
+    if (e.pointerType !== 'touch') show(e, target);
+  });
+  on(root, 'pointerout', '[data-skill]', (e, target) => {
+    if (target === current && !target.contains(e.relatedTarget)) hide();
+  });
   on(root, 'focusin', '[data-skill]', show);
-  on(root, 'pointerleave', '[data-skill]', hide);
   on(root, 'focusout', '[data-skill]', hide);
+  on(root, 'click', '[data-skill]', hide);
   window.addEventListener('scroll', hide, true);
+}
+
+/** One row of an autocomplete list, for every "add a skill" box. */
+export function skillOption(skill) {
+  return `<img src="${skillIconUrl(skill)}" alt="" width="26" height="26" loading="lazy">
+    <span class="ac__text">
+      <b>${esc(skill.name)}</b>
+      <span class="ac__sub">${esc(skill.variants[0]?.text ?? '')}</span>
+    </span>
+    <span class="chip chip--${skill.tier === 'normal' ? '' : skill.tier}">${TIER_LABEL[skill.tier]}</span>`;
 }
 
 function position(t, target) {

@@ -56,7 +56,14 @@ function route() {
   for (const a of document.querySelectorAll('#tabs a')) {
     a.classList.toggle('is-active', a.dataset.view === name);
   }
-  app.scrollTop = 0;
+  // Overlays live on <body>, so nothing else would take them down when the
+  // page under them is replaced.
+  for (const overlay of document.querySelectorAll('.drawer:not([hidden]), .picker-pop:not([hidden])')) {
+    overlay.hidden = true;
+  }
+  // The page itself is the scroll container, so a section change has to reset
+  // the window — not <main>, which never scrolls on its own.
+  window.scrollTo({ top: 0, behavior: 'instant' });
   try {
     views[name](app);
     setupMobileRail(app);

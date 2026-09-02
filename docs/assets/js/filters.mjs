@@ -1,12 +1,13 @@
 // The multi-skill picker shared by the Umas, Support cards and Skills views.
 
 import { db, expandSelection } from './store.mjs';
-import { el, esc, on, debounce, skillPill, TIER_LABEL } from './ui.mjs';
+import { el, esc, on, debounce, skillOption } from './ui.mjs';
+import { combobox } from './combobox.mjs';
 
 const TIER_ORDER = { unique: 0, evolved: 1, gold: 2, normal: 3 };
 
 export function createSkillFilter({ onChange, label = 'Skills', hint = '' } = {}) {
-  const state = { ids: [], mode: 'all', otherRanks: true, query: '' };
+  const state = { ids: [], mode: 'all', otherRanks: true };
 
   const root = el(`
     <section class="panel">
@@ -16,10 +17,7 @@ export function createSkillFilter({ onChange, label = 'Skills', hint = '' } = {}
       </div>
       <div class="panel__body">
         ${hint ? `<p class="tiny muted">${esc(hint)}</p>` : ''}
-        <div class="field" style="position:relative">
-          <input class="input" type="search" data-role="q" placeholder="Search a skill, e.g. Determined Descent" autocomplete="off">
-          <div data-role="results" class="panel" style="position:fixed;z-index:60;max-height:300px;overflow:auto;box-shadow:var(--shadow-md)" hidden></div>
-        </div>
+        <div data-role="search"></div>
         <div class="chips" data-role="picked"></div>
         <div class="seg" data-role="mode">
           <button type="button" data-mode="all" aria-pressed="true">Has all</button>
@@ -34,8 +32,6 @@ export function createSkillFilter({ onChange, label = 'Skills', hint = '' } = {}
       </div>
     </section>`);
 
-  const q = root.querySelector('[data-role="q"]');
-  const results = root.querySelector('[data-role="results"]');
   const picked = root.querySelector('[data-role="picked"]');
   const clearBtn = root.querySelector('[data-act="clear"]');
 
@@ -53,39 +49,13 @@ export function createSkillFilter({ onChange, label = 'Skills', hint = '' } = {}
     return scored.slice(0, 24).map((x) => x[3]);
   }
 
-  function renderResults() {
-    const list = search(state.query);
-    if (!list.length) { results.hidden = true; results.innerHTML = ''; return; }
-    results.innerHTML = list.map((s) => `
-      <button type="button" class="rank-row" data-add="${esc(s.id)}" style="width:100%;text-align:left;border:0;background:transparent;cursor:pointer;grid-template-columns:minmax(0,1fr) auto">
-        <span>
-          <span style="font-weight:500">${esc(s.name)}</span>
-          <span class="rank-row__why">${esc(s.variants[0]?.text ?? '')}</span>
-        </span>
-        <span class="chip chip--${s.tier === 'normal' ? '' : s.tier}">${TIER_LABEL[s.tier]}</span>
-      </button>`).join('');
-    results.hidden = false;
-    placeResults();
-  }
-
-  // The rail scrolls, so an absolutely positioned dropdown would be clipped by
-  // it. Pin the list to the viewport instead and track the input.
-  function placeResults() {
-    if (results.hidden) return;
-    const r = q.getBoundingClientRect();
-    results.style.left = `${r.left}px`;
-    results.style.width = `${r.width}px`;
-    const below = window.innerHeight - r.bottom - 12;
-    if (below < 180 && r.top > below) {
-      results.style.top = 'auto';
-      results.style.bottom = `${window.innerHeight - r.top + 4}px`;
-      results.style.maxHeight = `${r.top - 16}px`;
-    } else {
-      results.style.bottom = 'auto';
-      results.style.top = `${r.bottom + 4}px`;
-      results.style.maxHeight = `${Math.max(140, below)}px`;
-    }
-  }
+  const picker = combobox({
+    placeholder: 'Search a skill…',
+    search: (needle) => search(needle).filter((x) => !state.ids.includes(x.id)),
+    row: skillOption,
+    onPick: (skill) => { state.ids.push(skill.id); emit(); },
+  });
+  root.querySelector('[data-role="search"]').append(picker.element);
 
   function renderPicked() {
     picked.innerHTML = state.ids.map((id) => {
@@ -104,18 +74,6 @@ export function createSkillFilter({ onChange, label = 'Skills', hint = '' } = {}
 
   function emit() { renderPicked(); onChange?.(api); }
 
-  q.addEventListener('input', debounce(() => { state.query = q.value; renderResults(); }, 110));
-  q.addEventListener('focus', renderResults);
-  document.addEventListener('click', (e) => { if (!root.contains(e.target)) results.hidden = true; });
-  window.addEventListener('resize', placeResults);
-  window.addEventListener('scroll', placeResults, true);
-
-  on(root, 'click', '[data-add]', (e, t) => {
-    const id = t.dataset.add;
-    if (!state.ids.includes(id)) state.ids.push(id);
-    q.value = ''; state.query = ''; results.hidden = true;
-    emit();
-  });
   on(root, 'click', '[data-remove]', (e, t) => {
     state.ids = state.ids.filter((x) => x !== t.dataset.remove);
     emit();

@@ -6,6 +6,7 @@
 
 import { db, skillIconUrl, isObtainable } from '../store.mjs';
 import { el, esc, on, skillPill, fmt, debounce, turnLabel, icon, collapsible } from '../ui.mjs';
+import { combobox } from '../combobox.mjs';
 import {
   cm, commitContext, currentCourse, scoringContext, togglePriority, togglePriorityRank,
   priorityAnyRank, priorityLadder, priorityGroupMate, prioritySatisfiers, DEFAULT_STATS, canPlace,
@@ -17,6 +18,11 @@ import { analyseSlot, rankCards, rankUmas, recommendations, sourceNames, HINT_CO
 const STATS = [['speed', 'Spd'], ['stamina', 'Sta'], ['power', 'Pwr'], ['guts', 'Gut'], ['wit', 'Wit']];
 const SEV_LABEL = { blocker: 'Fix', warn: 'Check', tip: 'Tip' };
 const KIND_LABEL = { unique: 'unique', own: 'own', event: 'event', hint: 'hint' };
+document.addEventListener('keydown', (e) => {
+  const open = document.getElementById('team-picker');
+  if (e.key === 'Escape' && open && !open.hidden) open.hidden = true;
+});
+
 const CARD_TYPES = [['speed', 'Speed'], ['stamina', 'Stamina'], ['power', 'Power'], ['guts', 'Guts'], ['wit', 'Wit'], ['friend', 'Friend'], ['group', 'Group']];
 
 export function renderTeam(root) {
@@ -50,10 +56,7 @@ export function renderTeam(root) {
       <button class="btn btn--ghost btn--sm" data-act="clear" type="button">Clear</button>
     </div>
     <div class="panel__body">
-      <div class="field" style="position:relative">
-        <input class="input" type="search" data-role="q" placeholder="Add a skill…" autocomplete="off">
-        <div class="panel" data-role="results" style="position:fixed;z-index:60;max-height:280px;overflow:auto;box-shadow:var(--shadow-md)" hidden></div>
-      </div>
+      <div data-role="search"></div>
       <button class="btn btn--sm" data-act="auto" type="button">Fill from top 12 for this course</button>
       <div data-role="list" class="stack" style="gap:6px"></div>
       <details class="explain">
@@ -64,48 +67,25 @@ export function renderTeam(root) {
     </div>
   </section>`);
 
-  const q = priorityPanel.querySelector('[data-role="q"]');
-  const results = priorityPanel.querySelector('[data-role="results"]');
+  priorityPanel.querySelector('[data-role="search"]').append(combobox({
+    placeholder: 'Add a skill…',
+    search: (needle) => db.learnable
+      .filter((x) => x.name.toLowerCase().includes(needle.toLowerCase()) && !cm.priority.includes(x.id))
+      .slice(0, 20),
+    // One entry per group, so picking another rank replaces the existing row
+    // rather than adding a second one — better said before the click.
+    row: (x) => {
+      const mate = db.skillById.get(priorityGroupMate(x.id));
+      return `<img src="${skillIconUrl(x)}" alt="" width="26" height="26" loading="lazy">
+        <span class="ac__text">
+          <b>${esc(x.name)}</b>
+          <span class="ac__sub">${mate ? `replaces ${esc(mate.name)}` : esc(x.variants[0]?.text ?? '')}</span>
+        </span>
+        <span class="chip chip--${x.tier === 'normal' ? '' : x.tier}">${esc(x.tierName)}</span>`;
+    },
+    onPick: (skill) => { togglePriority(skill.id); paint(); },
+  }).element);
 
-  function placeResults() {
-    if (results.hidden) return;
-    const r = q.getBoundingClientRect();
-    Object.assign(results.style, {
-      left: `${r.left}px`, width: `${r.width}px`, top: `${r.bottom + 4}px`,
-      maxHeight: `${Math.max(160, window.innerHeight - r.bottom - 16)}px`,
-    });
-  }
-
-  function renderResults() {
-    const needle = q.value.trim().toLowerCase();
-    if (!needle) { results.hidden = true; return; }
-    const list = db.learnable
-      .filter((s) => s.name.toLowerCase().includes(needle) && !cm.priority.includes(s.id))
-      .slice(0, 20);
-    if (!list.length) { results.hidden = true; return; }
-    results.innerHTML = list.map((s) => {
-      // One entry per group, so picking another rank replaces the existing row
-      // rather than adding a second one — better said before the click.
-      const mate = db.skillById.get(priorityGroupMate(s.id));
-      return `<button type="button" class="src-row" data-add="${esc(s.id)}" style="width:100%;border:0;background:transparent;cursor:pointer">
-        <img src="${skillIconUrl(s)}" alt="" width="26" height="26">
-        <span style="min-width:0"><b>${esc(s.name)}</b><span class="src-row__sub">${mate ? `replaces ${esc(mate.name)}` : esc(s.variants[0]?.text ?? '')}</span></span>
-        <span class="chip chip--${s.tier === 'normal' ? '' : s.tier}">${esc(s.tierName)}</span>
-      </button>`;
-    }).join('');
-    results.hidden = false;
-    placeResults();
-  }
-
-  q.addEventListener('input', debounce(renderResults, 110));
-  window.addEventListener('scroll', placeResults, true);
-  document.addEventListener('click', (e) => { if (!priorityPanel.contains(e.target)) results.hidden = true; });
-
-  on(priorityPanel, 'click', '[data-add]', (e, t) => {
-    togglePriority(t.dataset.add);
-    q.value = ''; results.hidden = true;
-    paint();
-  });
   on(priorityPanel, 'click', '[data-drop]', (e, t) => { togglePriority(t.dataset.drop); paint(); });
   on(priorityPanel, 'change', '[data-rank]', (e, t) => { togglePriorityRank(t.dataset.rank); paint(); });
   on(priorityPanel, 'click', '[data-act="clear"]', () => { cm.priority = []; cm.priorityOpts = {}; commitContext(); paint(); });
@@ -262,7 +242,7 @@ export function renderTeam(root) {
   </div>`);
   document.body.append(picker);
   on(picker, 'click', '[data-act="close-picker"]', () => { picker.hidden = true; });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !picker.hidden) picker.hidden = true; });
+  // Registered at module scope, or a listener is added on every visit.
 
   let pickerState = null;
 
