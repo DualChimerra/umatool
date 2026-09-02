@@ -805,6 +805,23 @@ details.reach[open] > summary::before { transform: rotate(45deg); }
 
 .etag--warn { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
 .etag--good { background: color-mix(in srgb, var(--turf) 14%, transparent); color: var(--turf); }
+
+/* A few headline numbers where a table would bury them. */
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.kpi {
+  background: var(--sunken); border-radius: var(--radius-sm); padding: 11px 13px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.kpi__v { font-size: 22px; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.kpi__k { font-size: 11.5px; color: var(--ink-3); line-height: 1.35; }
+.kpi--good .kpi__v { color: var(--turf); }
+.kpi--warn .kpi__v { color: var(--gold); }
+.kpi--bad .kpi__v { color: var(--danger); }
+
+/* A measured row the sample size cannot separate from doing nothing. */
+tr.is-noise td { color: var(--ink-3); }
+tr.is-noise td:first-child { opacity: .72; }
+.tag--muted { background: var(--sunken); color: var(--ink-3); }
 .av { border-radius: 7px; background: var(--sunken); object-fit: cover; }
 .av--card { border-radius: 6px; }
 .av--empty { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 7px; background: var(--sunken); color: var(--ink-3); }

@@ -65,6 +65,7 @@ function defaults() {
     raceSkills: [],
     fieldSize: CM_FIELD_SIZE,
     statCap: 1600,
+    spBudget: 1200,
     recovery: 0,
     obtainableOnly: true,
     stats: { ...DEFAULT_STATS },
@@ -98,6 +99,7 @@ export function initContext() {
   cm.you = { outfitId: null, uniqueLevel: 1, unique: true, lockAptitudes: true, ...(cm.you ?? {}) };
   if (cm.you.outfitId && !db.outfitById.has(cm.you.outfitId)) cm.you.outfitId = null;
   cm.you.uniqueLevel = Math.max(1, Math.min(6, Number(cm.you.uniqueLevel) || 1));
+  cm.spBudget = Math.max(200, Math.min(3000, Number(cm.spBudget) || 1200));
   cm.owned.umas = (cm.owned.umas ?? []).filter((id) => db.outfitById.has(id));
   cm.owned.cards = (cm.owned.cards ?? []).filter((id) => db.supportById.has(id));
   normaliseRoster(cm.roster);
@@ -405,6 +407,15 @@ export function saveBuild(name) {
     roster: clone(cm.roster),
     priority: [...cm.priority],
     priorityOpts: clone(cm.priorityOpts),
+    // The runner herself. A saved build used to keep the race and the team but
+    // not the person running it, so loading one left whatever runner happened
+    // to be set — which made two builds impossible to compare.
+    you: clone(cm.you),
+    strategy: cm.strategy,
+    stats: clone(cm.stats),
+    aptitudes: clone(cm.aptitudes),
+    raceSkills: [...cm.raceSkills],
+    recovery: cm.recovery,
   });
   cm.builds = cm.builds.slice(0, 24);
   commitContext();
@@ -424,8 +435,46 @@ export function loadBuild(id) {
   normaliseRoster(cm.roster);
   cm.priority = dedupeByGroup((build.priority ?? []).filter((id) => db.skillById.has(id)));
   cm.priorityOpts = clone(build.priorityOpts ?? {});
+  // Builds saved before the runner was part of a build simply have no runner
+  // to restore, so the current one is left alone rather than blanked.
+  if (build.you) cm.you = { ...cm.you, ...clone(build.you) };
+  if (build.strategy) cm.strategy = build.strategy;
+  if (build.stats) cm.stats = { ...DEFAULT_STATS, ...clone(build.stats) };
+  if (build.aptitudes) cm.aptitudes = { ...DEFAULT_APT, ...clone(build.aptitudes) };
+  if (build.raceSkills) cm.raceSkills = build.raceSkills.filter((id) => db.skillById.has(id));
+  if (build.recovery != null) cm.recovery = build.recovery;
   commitContext();
   return true;
+}
+
+/**
+ * The runner a saved build describes, without loading it.
+ *
+ * Comparing two builds means racing both, and racing one must not disturb the
+ * live context — so this hands back just the pieces `buildSetup` needs.
+ */
+export function buildRunner(build) {
+  if (!build) return null;
+  const outfit = build.you?.outfitId ? db.outfitById.get(build.you.outfitId) : null;
+  const strategy = build.strategy ?? cm.strategy;
+  const course = db.courseById.get(build.courseId) ?? currentCourse();
+  const skills = [];
+  if (outfit?.uniqueId && build.you?.unique !== false) {
+    const u = db.skillById.get(outfit.uniqueId);
+    if (u) skills.push(u);
+  }
+  for (const id of build.raceSkills ?? []) { const s = db.skillById.get(id); if (s) skills.push(s); }
+  return {
+    name: build.name,
+    outfit,
+    strategy,
+    stats: { ...DEFAULT_STATS, ...(build.stats ?? cm.stats) },
+    aptitudes: outfit && build.you?.lockAptitudes !== false
+      ? aptitudesFor(outfit, course, strategy)
+      : { ...DEFAULT_APT, ...(build.aptitudes ?? cm.aptitudes) },
+    uniqueLevel: build.you?.uniqueLevel ?? 1,
+    skills,
+  };
 }
 
 export function deleteBuild(id) {

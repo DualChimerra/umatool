@@ -12,7 +12,7 @@ import {
   orderDistribution, orderRate, activationRate, CM_FIELD_SIZE,
   GROUND_NAME, WEATHER_NAME, SEASON_NAME, APT_GRADE, isPassive,
   uniqueScale, atUniqueLevel, scoreSkill, skillFiring, skillOverlaps, raceProfile, staminaMatrix,
-  effectiveStats, courseSpeedModifier,
+  effectiveStats, courseSpeedModifier, valueDeck, optimiseDeck, temptationChance, aptWit, BASHIN,
 } from '../model.mjs';
 import {
   rankUniquesForStyle, uniqueStyleProfile, rankParentUniques, rateUmasForRace,
@@ -510,7 +510,8 @@ export function renderPlanner(root) {
 
     layout.querySelector('[data-role="jump"]').innerHTML = [
       ['course', 'Course'], ['stats', 'Stat targets'], ['field', 'Field model'],
-      ['matrix', 'Going matrix'], ['you', 'Your run'], ['skills', 'Best skills'],
+      ['matrix', 'Going matrix'], ['kakari', 'Pace-up risk'], ['you', 'Your run'],
+      ['optimise', 'Best deck'], ['skills', 'Best skills'],
       ['uniques', 'Uniques'], ['parents', 'Parent uniques'], ['umas', 'Best umas'],
       ['cards', 'Cards'],
     ].map(([id, label]) => `<a href="#/planner" data-jump="${id}">${label}</a>`).join('');
@@ -521,7 +522,9 @@ export function renderPlanner(root) {
       guideCard(course, sim, sensitivity),
       matrixCard(course),
       fieldCard(ctx, sim),
+      kakariCard(ctx, sim),
       yourRunCard(full),
+      optimiserCard(full),
       rankCard(learnable, hiddenCount),
       overlapCard(learnable, course, sim),
       uniqueCard(course),
@@ -539,37 +542,167 @@ export function renderPlanner(root) {
   function yourRunCard(full) {
     const list = yourSkills();
     if (!list.length) return el('<span hidden></span>');
-    const rows = list.map((sk) => {
-      const scaled = atUniqueLevel(sk, cm.you.uniqueLevel);
-      const r = scoreSkill(scaled, full);
-      return { sk, r, unique: sk.tier === 'unique' || sk.tier === 'evolved' };
-    }).sort((a, b) => (b.r?.bashin ?? -1) - (a.r?.bashin ?? -1));
-    const total = rows.reduce((n, x) => n + (x.r?.bashin ?? 0), 0);
+    const scaled = list.map((sk) => atUniqueLevel(sk, cm.you.uniqueLevel));
+    const deck = valueDeck(scaled, full);
     const sp = list.reduce((n, x) => n + (x.cost ?? 0), 0);
+    const shrunk = deck.rows.filter((r) => r.alone - r.marginal > 0.005);
 
     return el(`<section class="panel" data-section="you">
       <div class="panel__head">
         <h3>What your run is worth here</h3>
-        <span class="sk-count">${rows.length} skills &middot; ${fmt.int(sp)} SP</span>
+        <span class="sk-count">${deck.rows.length} skills &middot; ${fmt.int(sp)} SP</span>
       </div>
       <div class="panel__body" style="padding:0">
         <div class="rank-list">
-          ${rows.map((x, i) => `<div class="rank-row">
+          ${deck.rows.map((x, i) => {
+    const orig = list.find((s) => s.id === x.skill.id) ?? x.skill;
+    const unique = orig.tier === 'unique' || orig.tier === 'evolved';
+    const lost = x.alone - x.marginal;
+    return `<div class="rank-row">
             <span class="rank-row__i">${i + 1}</span>
             <span style="min-width:0">
-              <span class="row" style="gap:5px;flex-wrap:wrap">${skillPill(x.sk)}${x.unique ? `<span class="tag tag--green">unique Lv${cm.you.uniqueLevel}</span>` : ''}</span>
-              <span class="rank-row__why">${esc(x.r ? [effectSummary(x.sk), ...x.r.reasons].join(' \u00b7 ') : 'cannot fire in this race')}</span>
+              <span class="row" style="gap:5px;flex-wrap:wrap">${skillPill(orig)}${unique ? `<span class="tag tag--green">unique Lv${cm.you.uniqueLevel}</span>` : ''}</span>
+              <span class="rank-row__why">
+                ${esc(x.scored ? [effectSummary(orig), ...x.scored.reasons].join(' \u00b7 ') : 'nothing left for it to do in this deck')}
+                ${lost > 0.005 ? `<span class="etag etag--warn">${x.alone.toFixed(2)} alone \u00b7 \u2212${lost.toFixed(2)} to the rest of the deck</span>` : ''}
+              </span>
             </span>
-            <span class="rank-row__mid"><span class="tiny muted num">${x.r ? `${fmt.pct(x.r.probability)} of the time` : '\u2014'}</span></span>
-            <span class="rank-row__score${x.r ? '' : ' is-neg'}">${x.r ? x.r.bashin.toFixed(2) : '0.00'}</span>
-          </div>`).join('')}
+            <span class="rank-row__mid"><span class="tiny muted num">${x.scored ? `${fmt.pct(x.scored.probability)} of the time` : '\u2014'}</span></span>
+            <span class="rank-row__score${x.marginal > 0 ? '' : ' is-neg'}">${x.marginal.toFixed(2)}</span>
+          </div>`;
+  }).join('')}
         </div>
       </div>
       <div class="panel__foot">
-        <p class="tiny muted"><b>${total.toFixed(2)} lengths</b> from this skill list on this race.
+        <p class="tiny muted"><b>${deck.total.toFixed(2)} lengths</b> from this skill list on this race.
+        ${deck.overcount > 0.02 ? `Added up one skill at a time it would read ${deck.naive.toFixed(2)}, but
+        ${shrunk.length === 1 ? 'one of these skills is' : `${shrunk.length} of these skills are`} competing with the rest of the deck
+        for the same stamina hole, the same ramp or the same stat \u2014 so <b>${deck.overcount.toFixed(2)} lengths of that is counted twice</b>
+        and is not in the number above.` : 'Nothing here is competing with anything else for the same ground, so the deck is worth the sum of its parts.'}
         Run it against the field on the <a href="#/race">Race</a> page to see what that is worth in win rate.</p>
       </div>
     </section>`);
+  }
+
+  /**
+   * Kakari (pace-up) is rolled every race by the simulator and has never been
+   * named anywhere in the interface \u2014 which makes Wit look like a stat that
+   * only buys activation rate, when its other job is keeping you out of a 1.6\u00d7
+   * drain that regularly decides a stamina-tight Champions Meeting.
+   */
+  function kakariCard(ctx, sim) {
+    const witEff = cm.stats.wit * aptWit(ctx.aptitudes);
+    const p = temptationChance(witEff);
+    const meanSeconds = 3 + 9 / 2;
+    // While it lasts you run 4% faster and burn 1.6\u00d7 the HP. On a race that is
+    // already short of stamina the speed is not a gift, it is a bill.
+    const extraDrain = sim.rates.spurt * 0.6 * meanSeconds;
+    const hpShare = extraDrain / Math.max(1, sim.maxHp);
+    const lengths = p * (extraDrain / Math.max(0.1, sim.rates.spurt))
+      * Math.max(0, sim.speeds.spurt - sim.speeds.v2) * sim.staminaPressure / BASHIN;
+    const grade = p < 0.06 ? 'good' : p < 0.12 ? 'warn' : 'bad';
+
+    return el(`<section class="panel" data-section="kakari">
+      <div class="panel__head">
+        <h3>Pace-up risk</h3>
+        <span class="sk-count">Wit ${fmt.int(cm.stats.wit)}${ctx.aptitudes.style !== 7 ? ` &times; ${aptWit(ctx.aptitudes).toFixed(2)} style apt` : ''}</span>
+      </div>
+      <div class="panel__body">
+        <div class="kpi-row">
+          <div class="kpi kpi--${grade}">
+            <span class="kpi__v">${(p * 100).toFixed(1)}%</span>
+            <span class="kpi__k">chance of kakari</span>
+          </div>
+          <div class="kpi">
+            <span class="kpi__v">${(hpShare * 100).toFixed(1)}%</span>
+            <span class="kpi__k">of your HP pool, if it lands</span>
+          </div>
+          <div class="kpi">
+            <span class="kpi__v">${lengths.toFixed(2)}</span>
+            <span class="kpi__k">expected cost, lengths</span>
+          </div>
+        </div>
+        <details class="explain">
+          <summary>What this is</summary>
+          <p>Somewhere after the opening leg a runner can get pulled along by the pace. She runs
+          <b>4% above target speed</b> for ${meanSeconds.toFixed(1)}s on average and pays <b>1.6&times; the HP drain</b> for it \u2014
+          speed you did not ask for, bought with stamina you needed for the spurt. The chance is read off Wit alone,
+          on the community <code>1/log\u2081\u2080(0.1&middot;Wit+1)</code> curve, and <b>style aptitude scales the Wit it is read from</b>,
+          which is a second reason not to run an uma out of her lane.</p>
+          <p>The cost above is the expected one: the drain it inflicts, converted through this build's
+          stamina pressure (${sim.staminaPressure.toFixed(2)}). On a race you can already spurt end to end it is
+          close to free; on a tight one it is the difference. The Race page rolls it for real every run.</p>
+        </details>
+      </div>
+    </section>`);
+  }
+
+  /**
+   * Skill picking against the SP you will actually have. `Best 6` used to be
+   * the six highest-scoring skills with cost ignored entirely, which on a
+   * finite pool is the wrong answer whenever a 360 SP gold displaces three
+   * cheap ones worth more together.
+   */
+  function optimiserCard(full) {
+    const pool = db.learnable.filter((s) => (s.tier === 'gold' || s.tier === 'normal') && isObtainable(s));
+    const keep = yourSkills().filter((s) => s.tier === 'unique' || s.tier === 'evolved');
+    const plan = optimiseDeck(pool, full, { budget: cm.spBudget, limit: 12, keep });
+    const bought = plan.rows.filter((r) => (r.skill.cost ?? 0) > 0);
+    const have = new Set(cm.raceSkills);
+
+    const node = el(`<section class="panel" data-section="optimise">
+      <div class="panel__head panel__head--wrap">
+        <h3>Best deck for ${fmt.int(cm.spBudget)} SP</h3>
+        <span class="sk-count">${plan.total.toFixed(2)} lengths &middot; ${fmt.int(plan.spent)} SP spent</span>
+      </div>
+      <div class="panel__body">
+        <div class="field">
+          <label>SP budget <span class="muted" data-out="sp">${fmt.int(cm.spBudget)}</span></label>
+          <input type="range" min="200" max="3000" step="50" data-role="spbudget" value="${cm.spBudget}">
+        </div>
+      </div>
+      <div class="panel__body" style="padding:0">
+        <div class="rank-list">
+          ${plan.rows.map((r, i) => `
+            <div class="rank-row rank-row--skill">
+              <span class="rank-row__i">${i + 1}</span>
+              <span style="min-width:0">
+                ${skillPill(r.skill, { match: have.has(r.skill.id) })}
+                <span class="rank-row__why">
+                  ${effectTags(r.skill)}
+                  ${have.has(r.skill.id) ? '<span class="etag etag--good">already on your list</span>' : ''}
+                  ${r.skill.cost ? '' : '<span class="etag etag--good">free</span>'}
+                </span>
+              </span>
+              <span class="rank-row__mid"><span class="tiny muted num">${r.skill.cost ? `${fmt.int(r.skill.cost)} SP` : '\u2014'}</span></span>
+              <span class="rank-row__mid"><span class="tiny muted num">${r.perSp != null ? `${r.perSp.toFixed(2)} / 100 SP` : ''}</span></span>
+              <span class="rank-row__score">${r.marginal.toFixed(2)}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="panel__foot">
+        <div class="btn-row" style="margin-bottom:8px">
+          <button class="btn btn--sm btn--primary" type="button" data-act="take-plan">Put this on my skill list</button>
+        </div>
+        <p class="tiny muted">Picked greedily by <b>marginal lengths per SP</b> \u2014 each skill priced against the deck above it,
+        not against an empty one, so a second heal or a fourth acceleration skill is charged what it is really worth.
+        ${keep.length ? `Your unique is pinned at the top and its SP is free. ` : ''}
+        ${bought.length} of the ${plan.rows.length} cost SP. Raising the budget past ${fmt.int(plan.spent)} adds nothing:
+        everything left either scores zero here or is already on the list.</p>
+      </div>
+    </section>`);
+
+    node.querySelector('[data-role="spbudget"]').addEventListener('input', (e) => {
+      cm.spBudget = Number(e.target.value);
+      node.querySelector('[data-out="sp"]').textContent = fmt.int(cm.spBudget);
+      commitContext(); repaint();
+    });
+    on(node, 'click', '[data-act="take-plan"]', () => {
+      cm.raceSkills = plan.rows.filter((r) => !(r.skill.tier === 'unique' || r.skill.tier === 'evolved'))
+        .map((r) => r.skill.id);
+      commitContext(); paintYou(); repaint();
+    });
+    return node;
   }
 
   function courseCard(course, sim) {

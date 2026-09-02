@@ -26,13 +26,24 @@ built out individually. It returns:
 * the **field model**: where your running style sits in *this* field mix at each
   of the four phases, so a skill gated on placing is priced at the phase it fires
   in rather than at the finish
+* the **pace-up (kakari) risk** your Wit and style aptitude buy you, and what it
+  is expected to cost in lengths on this course
 * **what your own run is worth** — every skill you plan to have, valued on this
-  race, with the unique scaled to its level
+  race as a *deck* rather than as a pile of independent skills, with the unique
+  scaled to its level and each row saying what it is worth alone and what it is
+  worth next to everything above it
+* the **best deck for an SP budget you set**, picked by marginal lengths per SP
 * **every skill ranked for that race**, split into Speed & accel, Recovery,
   Green / passive, Debuffs and Positioning, sortable by lengths or by lengths per
   100 SP, with every factor printed next to it
-* the best **uniques** that can fire with that running style, who carries them,
-  and their aptitude for this distance and surface
+* the best **uniques** that can fire with that running style — scored under the
+  style *you* picked rather than the one their owner prefers, each with the same
+  skill read under all four styles, and gated on whether the owner can run this
+  race at all
+* the best **unique to inherit from a parent**, ranked as the weaker white copy
+  you would actually be carrying, on your own runner's style and aptitudes
+* the **best umamusume for this race**, added up from her unique, her own skill
+  list, and what her aptitudes cost against the clock and the activation roll
 * the **support cards** that hand out the top-ranked skills
 
 **Race sim** — the whole field run forward at 1/15 s, a few hundred times. Your
@@ -41,7 +52,25 @@ you and for every rival. A step-by-step replay of one race showing every runner'
 gap to the leader with your skill activations marked on it. And a **check against
 the ranking**: pick your skills and the app runs the field with each one and
 without it, on identical seeds, and prints what the simulation says next to what
-the ranking said.
+the ranking said — with a **95% confidence interval on every row**, so a result
+the sample size cannot separate from zero is labelled *noise* rather than ranked.
+Because every variant runs on the same seeds, that interval is the paired one and
+is far tighter than the gap between two independent win rates.
+
+It also answers the question a Champions Meeting actually asks. The **field-shape
+sweep** races the same build against five plausible field compositions on
+identical seeds and reports the spread: a build that wins 80% against a
+closer-heavy field and 25% against a front-heavy one is a worse pick than a
+flatter one, and the worst case is the number to plan against when the round is
+not announced yet. **Build against build** does the same for two saved builds,
+head to head, with the interval that says whether the difference is real.
+
+**Courses** — every course on the Global server read against one build: what your
+kit is worth there priced as a deck, which of the four running styles each course
+wants, the Stamina it asks for at this going, how much of the last spurt your
+stats can pay for, and the pace-up risk. Sort by fit, by stamina need, by distance
+or by track. It is the inverse of the Planner: not *what wins on this course* but
+*where does this runner belong*.
 
 **Team** — the actual Champions Meeting entry: three umamusume, **a six-card deck each**,
 all on one page and all planned against the course above. Per uma: aptitude check for this
@@ -213,6 +242,20 @@ and which is why it used to disagree with every published Champions Meeting list
   exactly nothing when it is already paid for, and Sunny Days ○ is worth nothing
   in the rain because weather is now a hard gate.
 
+And one thing a per-skill score cannot do at all: **a deck is not the sum of its
+skills.** Skills compete for finite things — there is one stamina hole, each ramp
+is one climb, and a stat only crosses a regime boundary once. Four recovery skills
+scored independently on Tokyo 2400 m at 900 Stamina come to 2.74 lengths; scored
+in sequence they are 1.40, and the fourth is worth exactly nothing. Four
+acceleration skills that each reach the run-up into the last spurt come to 3.63
+independently and 2.89 as a deck, because that ramp is 6.97 seconds long and there
+is only one of it. Every total on the site is now a deck valuation: skills are
+scored greedily, each one against the state the ones above it leave behind, and
+each row reports both what it is worth alone and what it is worth in place.
+Greedy is exact rather than approximate here, because both resources are convex —
+the next skill onto a ramp always saves less than the last, so no later pick can
+overtake an earlier one.
+
 ## Accuracy notes
 
 * **Race conditions are hard gates.** Running style, distance band, surface,
@@ -234,7 +277,15 @@ and which is why it used to disagree with every published Champions Meeting list
   inputs and target ranges follow it.
 * **Recovery is scored against how tight your stamina actually is.** Once the last
   spurt is fully paid for, healing buys almost nothing and drops down the ranking
-  by itself.
+  by itself — and inside a deck, each heal is priced against the hole the ones
+  before it already filled, so the third one is charged what it is really worth.
+* **Position keep in the opening leg is a per-style nudge, not the game's
+  four-mode state machine.** This is the largest remaining fidelity gap and it is
+  deliberately still open: the reference implementation is not vendored here, and
+  `verify:model` covers the speed, acceleration and HP formulas rather than
+  position keep, so a hand-written state machine could not be checked against
+  anything. A calibrated approximation that is disclosed beats an unvalidated
+  guess that is not.
 * **What the simulator does not model** is listed on the Race page itself: lanes
   are one-dimensional, skill ordering inside a tick is list order, position keep is
   a per-style nudge rather than the full four-mode state machine, and a handful of
