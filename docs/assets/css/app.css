@@ -200,6 +200,13 @@ ul { margin: 0; padding: 0; list-style: none; }
   max-height: calc(100dvh - 96px); overflow-y: auto; overscroll-behavior: contain;
   scrollbar-gutter: stable; padding-right: 2px; min-height: 0;
 }
+/* A flex column that scrolls must not also squeeze what is inside it. Panels
+   are flex items, and a flex item shrinks past its own content by default — so
+   a rail taller than the viewport folded every panel down to a fraction of its
+   height and `overflow: hidden` on .panel cut the rest away: the Course
+   dropdown, Going, Weather, Season and half the stat sliders were never on
+   screen. The rail scrolls; the panels keep their height. */
+.rail > * { flex: none; }
 @media (max-width: 1080px) { .rail { position: static; max-height: none; overflow: visible; } }
 @media (max-height: 720px) { .rail { position: static; max-height: none; overflow: visible; } }
 
@@ -489,12 +496,16 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain;
   animation: drawer-in .16s ease-out;
 }
+/* The head and the toolbar are their own height; only the list gives. */
+.drawer__panel > *:not(.drawer__scroll) { flex: none; }
 /* A drawer that owns its own scrolling region keeps its search box and filters
    on screen instead of scrolling them away above the list. */
 .drawer__scroll {
   flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
   padding: 13px 16px 24px; display: flex; flex-direction: column; gap: 9px;
 }
+/* Same rule as the rail: the region scrolls, the rows keep their height. */
+.drawer__scroll > * { flex: none; }
 .drawer__tools {
   display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 16px;
   border-bottom: 1px solid var(--line-soft); background: var(--surface-2);
@@ -848,6 +859,7 @@ tr.is-you td { font-weight: 500; }
 .picker-pop__panel header { display: flex; align-items: center; justify-content: space-between; }
 .picker-pop__panel h3 { font-size: 14px; }
 .picker-pop__list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; }
+.picker-pop__list > * { flex: none; }
 .picker-pop__list .src-row { width: 100%; border: 0; border-bottom: 1px solid var(--line-soft); background: transparent; cursor: pointer; text-align: left; }
 .picker-pop__list .src-row:hover { background: var(--accent-soft); }
 
