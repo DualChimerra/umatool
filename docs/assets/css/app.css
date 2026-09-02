@@ -116,6 +116,10 @@
 /* ------------------------------------------------------------------- reset */
 
 *, *::before, *::after { box-sizing: border-box; }
+/* Half the layout primitives here set `display`, which quietly beat the
+   [hidden] attribute: the advanced field builder rendered underneath the
+   simple one, and every other toggled block did the same. */
+[hidden] { display: none !important; }
 html, body { margin: 0; padding: 0; }
 html { -webkit-text-size-adjust: 100%; }
 
@@ -226,11 +230,16 @@ ul { margin: 0; padding: 0; list-style: none; }
 }
 .panel__head {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  padding: 13px 15px; border-bottom: 1px solid var(--line-soft);
+  padding: 12px 14px; border-bottom: 1px solid var(--line-soft);
 }
+/* A heading that wraps to a second line drags the whole header out of shape,
+   so it never wraps; the summary beside it is the part that gives way. */
 .panel__head h3 {
   font-size: 13.5px; letter-spacing: -.01em; color: var(--ink); font-weight: 600;
-  display: inline-flex; align-items: center; gap: 8px;
+  display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; flex: none;
+}
+.panel__head > .sk-count {
+  min-width: 0; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .panel__head .ico { color: var(--ink-3); }
 .panel__body { padding: 15px; display: flex; flex-direction: column; gap: 13px; }
@@ -242,7 +251,18 @@ ul { margin: 0; padding: 0; list-style: none; }
 /* ------------------------------------------------------------------ inputs */
 
 .field { display: flex; flex-direction: column; gap: 5px; }
-.field > label { font-size: 11px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.field > label {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  font-size: 10.5px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-3); white-space: nowrap;
+}
+/* The reading of a slider belongs on the same line as its name, right-aligned
+   and in its own case — not shouted in the middle of the label. */
+.field > label > .muted, .field > label > [data-out] {
+  text-transform: none; letter-spacing: 0; font-size: 11.5px; font-weight: 600;
+  color: var(--ink-2); flex: none;
+}
+.field > label > .btn { text-transform: none; letter-spacing: 0; }
 
 .input, .select {
   width: 100%; padding: 9px 11px; background: var(--surface);
@@ -257,6 +277,8 @@ ul { margin: 0; padding: 0; list-style: none; }
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%238d949c' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6.5 4 4 4-4'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 9px center; background-size: 15px 15px;
 }
+.sel > select.select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; }
+
 :root[data-theme="dark"] .select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%237b818b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6.5 4 4 4-4'/%3E%3C/svg%3E");
 }
@@ -279,21 +301,25 @@ ul { margin: 0; padding: 0; list-style: none; }
 
 .seg { display: flex; background: var(--sunken); border-radius: var(--radius-sm); padding: 3px; gap: 3px; }
 .seg button {
-  flex: 1; padding: 6px 10px; border: 0; background: transparent; border-radius: var(--radius-xs);
-  font-size: 12.5px; font-weight: 550; color: var(--ink-3); cursor: pointer; white-space: nowrap;
+  flex: 1; min-width: 0; padding: 5px 8px; border: 0; background: transparent; border-radius: var(--radius-xs);
+  font-size: 12px; font-weight: 550; color: var(--ink-3); cursor: pointer; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
   transition: background .14s, color .14s;
 }
 .seg button:hover { color: var(--ink-2); }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
 
-.check { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: 13px; line-height: 1.35; }
-.check input { margin: 2px 0 0; accent-color: var(--accent); width: 14px; height: 14px; flex: none; }
-.check small { display: block; color: var(--ink-3); font-size: 11.5px; }
+.check { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12.5px; line-height: 1.4; color: var(--ink-2); }
+.check input { margin: 0; accent-color: var(--accent); width: 14px; height: 14px; flex: none; }
+/* Only the ones carrying an explanatory line hang their box off the top. */
+.check:has(small) { align-items: flex-start; }
+.check:has(small) input { margin-top: 2px; }
+.check small { display: block; color: var(--ink-3); font-size: 11px; margin-top: 2px; }
 
 .toggle-grid { display: flex; flex-wrap: wrap; gap: 5px; }
 .toggle-grid button {
-  padding: 6px 12px; border: 1px solid var(--line); background: var(--surface-2);
-  border-radius: 999px; font-size: 12.5px; cursor: pointer; color: var(--ink-2);
+  padding: 4px 10px; border: 1px solid var(--line); background: var(--surface-2);
+  border-radius: 999px; font-size: 12px; line-height: 1.45; cursor: pointer; color: var(--ink-2);
   transition: background .14s, border-color .14s, color .14s;
 }
 .toggle-grid button:hover { border-color: var(--line-strong); color: var(--ink); }
@@ -678,8 +704,7 @@ details.reach[open] > summary::before { transform: rotate(45deg); }
 .panel__foot { padding: 10px 13px; border-top: 1px solid var(--line-soft); }
 .panel__foot p { margin: 0; }
 
-.toggle-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.seg--full { display: grid; grid-template-columns: 1fr 1fr; }
+.seg--full { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
 .seg--full button { width: 100%; }
 
 .race-chip {
@@ -844,7 +869,6 @@ tr.is-you td { font-weight: 500; }
 .range-row__label { font-size: 11px; color: var(--ink-3); }
 .range-row--tight output { font-size: 11.5px; text-align: right; color: var(--ink-2); }
 
-.check { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--ink-2); }
 .btn--xs { padding: 1px 6px; font-size: 10.5px; height: auto; }
 
 .picker-pop { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 24px; }
@@ -1079,3 +1103,147 @@ tr.is-you td { font-weight: 500; }
 .racechip b { color: var(--ink); font-weight: 600; }
 .racechip .ico { color: var(--accent); }
 .racechip > span + span::before { content: ''; display: inline-block; width: 3px; height: 3px; border-radius: 50%; background: var(--line-strong); margin-right: 9px; vertical-align: middle; }
+
+/* ==================================================== the styled dropdown
+
+   A native <select> draws its list with the operating system: platform font,
+   square corners, its own light background under a dark theme, and a popup
+   that lands wherever the OS puts it. Every other floating surface here is
+   drawn by the app, so these are too. The real <select> stays in the DOM
+   underneath, unseen, still holding the value. */
+
+.sel { position: relative; display: block; width: 100%; }
+.sel__btn {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 8px 10px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  font-size: 13.5px; color: var(--ink); text-align: left; cursor: pointer;
+  transition: border-color .14s, box-shadow .14s, background .14s;
+}
+.sel__btn:hover { border-color: var(--line-strong); }
+.sel__btn:disabled { opacity: .5; cursor: default; }
+.sel.is-open .sel__btn { border-color: var(--accent); box-shadow: var(--ring); }
+.sel__value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sel__chev { flex: none; color: var(--ink-3); transition: transform .16s ease; }
+.sel.is-open .sel__chev { transform: rotate(180deg); color: var(--accent); }
+.sel--sm .sel__btn { padding: 4px 7px; font-size: 12px; }
+
+.sel__pop {
+  position: fixed; z-index: 75; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow-lg); padding: 4px;
+}
+.sel__pop[hidden] { display: none; }
+.sel__opt {
+  display: flex; align-items: center; gap: 8px; padding: 7px 9px;
+  border-radius: var(--radius-xs); cursor: pointer; font-size: 13px; color: var(--ink-2);
+}
+.sel__opt-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sel__tick { flex: none; color: var(--accent); opacity: 0; }
+.sel__opt[aria-selected="true"] { color: var(--ink); font-weight: 600; }
+.sel__opt[aria-selected="true"] .sel__tick { opacity: 1; }
+.sel__opt.is-active { background: var(--accent-soft); color: var(--accent-ink); }
+.sel__opt.is-disabled { opacity: .45; cursor: default; }
+.sel__empty { padding: 14px 10px; text-align: center; font-size: 12.5px; color: var(--ink-3); }
+
+/* ============================================== compact exclusive choices
+
+   A three-way choice — Any / Right / Left — used to be three full-size pills
+   wrapping across a whole panel row. As one segmented strip it is a single
+   line the height of an input, which is what a choice that small deserves. */
+
+.toggle-grid--row {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+  gap: 3px; padding: 3px; background: var(--sunken); border-radius: var(--radius-sm);
+  flex-wrap: nowrap;
+}
+.toggle-grid--row button {
+  padding: 4px 6px; border: 0; background: transparent; border-radius: var(--radius-xs);
+  font-size: 11.5px; font-weight: 550; color: var(--ink-3); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.toggle-grid--row button:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); color: var(--ink-2); }
+.toggle-grid--row button[aria-pressed="true"] {
+  background: var(--surface); color: var(--ink); font-weight: 650;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+/* Two rows of a segmented strip, for a choice with five or six options. */
+.toggle-grid--wrap { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-flow: row; }
+.toggle-grid--2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: row; }
+
+/* ------------------------------------------------------------------ sliders
+
+   The range inputs were the last native widget left on screen: a grey OS track
+   with a chrome-blue thumb sitting inside panels built out of these tokens. */
+
+input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 16px; background: transparent; cursor: pointer; margin: 0;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 999px; background: var(--sunken);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 14px; margin-top: -5px; border-radius: 50%;
+  background: var(--surface); border: 2px solid var(--accent);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.14); }
+input[type="range"]:focus-visible { outline: none; }
+input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: var(--ring); }
+input[type="range"]::-moz-range-track {
+  height: 4px; border-radius: 999px; background: var(--sunken);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--accent);
+  background: var(--surface); transition: transform .12s ease;
+}
+input[type="range"]:hover::-moz-range-thumb { transform: scale(1.14); }
+input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: var(--ring); }
+
+/* ------------------------------------------------- rail panel housekeeping
+
+   The rail is 296px wide. Anything inside it that assumes a page's worth of
+   room — a row of action buttons, a label and its reading — has to be told. */
+
+.panel--rail .panel__body { gap: 12px; }
+.field--tight { gap: 4px; }
+
+/* A label with its own row of small actions beside it. */
+.field__head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-size: 10.5px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-3); white-space: nowrap;
+}
+.field__head .row { flex-wrap: nowrap; gap: 4px; }
+
+/* The three or four small buttons that sit under a label: one strip, equal
+   weight, no wrapping into a ragged block. */
+.btn-row { display: flex; flex-wrap: wrap; gap: 5px; }
+.btn-row .btn { flex: 1 1 auto; }
+
+.stepper--sliderless { justify-content: flex-end; }
+
+/* The runner card in the rail. */
+.you-card { padding: 8px; gap: 10px; }
+.you-card .av { width: 38px; height: 38px; }
+
+/* An empty rail section says what is missing in one line, not a paragraph. */
+.hint-line { font-size: 11.5px; color: var(--ink-3); }
+
+/* A plain button used as an on/off toggle reads its state, rather than leaving
+   the user to guess from nothing. */
+.btn[aria-pressed="true"] {
+  background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  color: var(--accent-ink); font-weight: 650;
+}
+.btn--ghost[aria-pressed="true"] { background: var(--accent-soft); }
+
+/* A stat row is a slider and a number, not a slider squeezed beside a text
+   field wide enough for a sentence. */
+.range-row .input[type="number"] {
+  width: 76px; padding: 5px 8px; font-size: 12.5px; text-align: right;
+}

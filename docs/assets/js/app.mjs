@@ -1,6 +1,7 @@
 import { loadData, db } from './store.mjs';
 import { initTooltips, initImageFallback, esc, el } from './ui.mjs';
 import { initContext } from './context.mjs';
+import { initSelects } from './select.mjs';
 import { initSkillDrawer } from './views/detail.mjs';
 import { renderPlanner } from './views/planner.mjs';
 import { renderTeam } from './views/team.mjs';
@@ -101,6 +102,7 @@ loadData().then(() => {
   initContext();
   initTooltips(document.body);
   initImageFallback(document);
+  initSelects(document.body);
   initSkillDrawer(document.body);
   const meta = db.meta;
   if (meta.generatedAt) {

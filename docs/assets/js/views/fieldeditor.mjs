@@ -50,8 +50,8 @@ function ensure() {
         <button class="icon-btn" data-act="close" type="button" aria-label="Close">✕</button>
       </header>
       <div class="drawer__tools">
-        <button class="btn btn--sm" type="button" data-act="auto">Fill from the best umas here</button>
-        <button class="btn btn--sm btn--ghost" type="button" data-act="spread">Even style spread</button>
+        <button class="btn btn--sm" type="button" data-act="auto">Fill with the best umas</button>
+        <button class="btn btn--sm btn--ghost" type="button" data-act="spread">Even spread</button>
         <button class="btn btn--sm btn--ghost" type="button" data-act="clear">Clear all</button>
       </div>
       <div class="drawer__scroll" data-role="list"></div>
@@ -189,12 +189,12 @@ function paint() {
         </div>
         <div class="field">
           <label>Running style</label>
-          <div class="toggle-grid">
+          <div class="toggle-grid toggle-grid--row">
             ${[1, 2, 3, 4].map((v) => `<button type="button" data-style-set="${i}:${v}" aria-pressed="${r.strategy === v}">${esc(STRATEGY[v].short)}</button>`).join('')}
           </div>
         </div>
         <div class="field">
-          <label>Stats <button class="btn btn--ghost btn--xs" type="button" data-copy-stats="${i}">copy to every rival</button></label>
+          <label>Stats <button class="btn btn--ghost btn--xs" type="button" data-copy-stats="${i}">copy to all</button></label>
           ${STAT_KEYS.map(([k, label]) => `
             <div class="range-row range-row--tight">
               <span class="range-row__label">${label}</span>
@@ -203,7 +203,7 @@ function paint() {
             </div>`).join('')}
         </div>
         <div class="field">
-          <label>Skills <button class="btn btn--ghost btn--xs" type="button" data-auto-skills="${i}">best 6 for this style</button></label>
+          <label>Skills <button class="btn btn--ghost btn--xs" type="button" data-auto-skills="${i}">best 6</button></label>
           <div class="chips">
             ${unique && r.unique ? skillPill(unique, { tag: 'unique' }) : ''}
             ${r.skills.map((id) => {
