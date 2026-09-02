@@ -101,7 +101,6 @@ function body(skill) {
         <button class="btn ${inPriority ? '' : 'btn--primary'}" type="button" data-act="priority" data-id="${esc(skill.id)}">
           ${inPriority ? 'Remove from priority skills' : 'Add to priority skills'}
         </button>
-        <p class="tiny muted" style="margin-top:6px">Priority skills drive the coverage numbers on the Team page. One entry per skill group: picking another rank moves the target rather than adding a second row.</p>
       </section>
     </div>`;
 }

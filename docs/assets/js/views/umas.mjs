@@ -43,7 +43,6 @@ export function renderUmas(root) {
 
   const skillFilter = createSkillFilter({
     label: 'Filter by skills',
-    hint: 'Pick one or more skills an uma must have in its own skill list (unique skills included).',
     onChange: () => paint(),
   });
 
@@ -53,7 +52,7 @@ export function renderUmas(root) {
       <div class="page-head">
         <div>
           <h1>Umas</h1>
-          <p>Every Global uma with their complete skill list, aptitudes and running style.</p>
+          <p>Every Global uma with their skill list, aptitudes and running style.</p>
         </div>
         <div class="page-head__right" data-role="sortbar"></div>
       </div>

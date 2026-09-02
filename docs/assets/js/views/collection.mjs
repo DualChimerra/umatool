@@ -58,7 +58,7 @@ export function renderCollection(root) {
   bar.replaceChildren(el(`<div class="panel">
     <div class="panel__body" style="gap:10px">
       <div class="row" style="justify-content:space-between">
-        <div class="seg" data-role="tab" style="max-width:320px">
+        <div class="seg" data-role="tab" style="max-width:320px;flex:0 0 auto">
           <button type="button" data-t="cards" aria-pressed="${state.tab === 'cards'}">Support cards <b>0</b></button>
           <button type="button" data-t="umas" aria-pressed="${state.tab === 'umas'}">Umas <b>0</b></button>
         </div>
@@ -69,7 +69,7 @@ export function renderCollection(root) {
       </div>
       <div class="row" style="gap:8px">
         <input class="input" data-role="q" type="search" placeholder="Search…" value="${esc(state.q)}" style="max-width:280px">
-        <div class="toggle-grid" data-role="filters"></div>
+        <div class="toggle-grid" data-role="filters" style="flex:1"></div>
         <label class="check" style="align-items:center;margin-left:auto">
           <input type="checkbox" data-role="showowned" ${state.showOwned ? 'checked' : ''}>
           <span>Only what I own</span>

@@ -16,7 +16,6 @@ export function createSkillFilter({ onChange, label = 'Skills', hint = '' } = {}
         <button class="btn btn--ghost btn--sm" data-act="clear" type="button" hidden>Clear</button>
       </div>
       <div class="panel__body">
-        ${hint ? `<p class="tiny muted">${esc(hint)}</p>` : ''}
         <div data-role="search"></div>
         <div class="chips" data-role="picked"></div>
         <div class="seg" data-role="mode">
@@ -25,9 +24,7 @@ export function createSkillFilter({ onChange, label = 'Skills', hint = '' } = {}
         </div>
         <label class="check">
           <input type="checkbox" data-role="ranks" checked>
-          <span>Also match the other rank
-            <small>A gold pick also matches its normal version — Determined Descent ⇄ Straight Descent.</small>
-          </span>
+          <span>Also match the other rank</span>
         </label>
       </div>
     </section>`);

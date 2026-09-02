@@ -62,11 +62,9 @@ export function renderRace(root) {
   const runnerPanel = el(`<section class="panel panel--rail">
     <div class="panel__head"><h3>Your runner</h3><span class="sk-count" data-role="you"></span></div>
     <div class="panel__body">
-      <p class="tiny muted">Your umamusume, stats, running style, aptitudes and the field all come from the Planner —
-      this is the same skill list, editable from either side.</p>
-      <div class="row" style="gap:6px;flex-wrap:wrap">
-        <button class="btn btn--sm" type="button" data-act="fill">Fill from the top 6</button>
-        <button class="btn btn--sm btn--ghost" type="button" data-act="fill-priority">Use priority list</button>
+      <div class="btn-row">
+        <button class="btn btn--sm" type="button" data-act="fill">Top 6</button>
+        <button class="btn btn--sm btn--ghost" type="button" data-act="fill-priority">Priority list</button>
         <button class="btn btn--sm btn--ghost" type="button" data-act="clear">Clear</button>
       </div>
       <div class="field" style="position:relative">
@@ -82,7 +80,6 @@ export function renderRace(root) {
       <div class="field">
         <label>Races to run <span class="muted" data-out="runs">${cm.simRuns}</span></label>
         <input type="range" min="40" max="600" step="20" data-role="runs" value="${cm.simRuns}">
-        <p class="tiny muted">More races, tighter numbers. 200 puts the margin within about ±0.05 lengths.</p>
       </div>
       <button class="btn btn--primary" type="button" data-act="run">Run the race</button>
       <div class="progress" data-role="prog" hidden><i></i><span></span></div>
@@ -130,7 +127,7 @@ export function renderRace(root) {
       if (s) bits.push(`<span class="chip-drop">${skillPill(s)}<button type="button" class="chip-drop__x" data-drop="${esc(id)}" aria-label="remove">\u2715</button></span>`);
     }
     mine.innerHTML = bits.length ? bits.join('')
-      : '<p class="tiny muted">No skills yet — an unskilled runner is a fair baseline, but not a plan.</p>';
+      : '<p class="hint-line">No skills picked yet.</p>';
     const ctx = scoringContext();
     runnerPanel.querySelector('[data-role="you"]').textContent =
       `${outfit ? `${outfit.charaName} · ` : ''}${STRATEGY[ctx.strategy].short} · ${yourSkills().length} skills`;
@@ -321,8 +318,7 @@ export function renderRace(root) {
       out.replaceChildren(el(`<section class="panel"><div class="panel__body">
         <div class="empty">
           <h3>Nothing has run yet</h3>
-          <p class="muted small">Pick the skills your runner will finish with, then press <b>Run the race</b>.
-          The field is the one set on the Planner — ${esc(fieldSummary())}.</p>
+          <p class="muted small">Pick the skills your runner finishes with, then press <b>Run the race</b>.</p>
         </div>
       </div></section>`), limitations());
       return;
@@ -388,13 +384,9 @@ export function renderRace(root) {
           <tbody>${rows}</tbody>
         </table></div>
       </div>
-      <div class="panel__foot">
-        <p class="tiny muted">${esc(lastResult.notes.join(' '))}
-        Running styles are not equal at equal stats, and that is the game&rsquo;s own coefficients rather than a thumb on the scale:
-        a Late Surger or End Closer runs the final leg faster than a Front Runner does. What flips it is stamina — drop everyone&rsquo;s
-        Stamina until the last spurt stops being fully paid for and the front of the field starts winning, because it is the only
-        part of it still able to spurt.</p>
-      </div>
+      ${lastResult.notes.length ? `<div class="panel__foot">
+        <p class="tiny muted">${esc(lastResult.notes.join(' '))}</p>
+      </div>` : ''}
     </section>`);
   }
 
@@ -444,18 +436,15 @@ export function renderRace(root) {
     : '<p class="tiny muted">Nothing fired — this runner has no skills yet.</p>'}
         </div>
       </div>
-      <div class="panel__foot"><p class="tiny muted">Distance along the track against how many lengths behind the leader each runner is. The shaded band is your last spurt.</p></div>
     </section>`);
   }
 
   function verifyCard() {
     if (!lastVerdicts) {
       return el(`<section class="panel">
-        <div class="panel__head"><h3>Check the ranking against the race</h3></div>
+        <div class="panel__head"><h3>Check against the race</h3></div>
         <div class="panel__body">
-          <p class="small">The Planner scores 600 skills in a few milliseconds by doing arithmetic. This measures them the slow,
-          honest way: run the field with the skill and without it, on identical seeds, and take the difference.</p>
-          <button class="btn btn--primary" type="button" data-act="verify">Measure your skills and the top 14</button>
+          <button class="btn btn--primary" type="button" data-act="verify">Measure the top 14 against the race</button>
         </div>
       </section>`);
     }
@@ -492,12 +481,12 @@ export function renderRace(root) {
 
   function limitations() {
     return el(`<section class="panel">
-      <div class="panel__head"><h3>What this simulator does not model</h3></div>
-      <div class="panel__body">
+      <details class="explain explain--panel">
+        <summary>What is not modelled</summary>
         <ul class="steps">${LIMITATIONS.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>
         <p class="tiny muted">Ticks are ${(1 / DT).toFixed(0)} per second. Everything else — phase target speeds, the HP curve, the last-spurt
         solve, slopes, aptitudes, the Wit roll, pace-ups and every skill condition — is run for real, per runner, per tick.</p>
-      </div>
+      </details>
     </section>`);
   }
 

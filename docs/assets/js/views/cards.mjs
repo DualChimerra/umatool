@@ -33,7 +33,6 @@ export function renderCards(root) {
 
   const skillFilter = createSkillFilter({
     label: 'Filter by skills',
-    hint: 'Find the cards that carry a skill — the badge on each pill says whether it comes from the card event or from a random hint.',
     onChange: () => paint(),
   });
 
@@ -43,7 +42,7 @@ export function renderCards(root) {
       <div class="page-head">
         <div>
           <h1>Support cards</h1>
-          <p>Every Global support card indexed by the skills it hands out — event skills and hint skills kept apart.</p>
+          <p>Indexed by the skills each card hands out.</p>
         </div>
         <div class="page-head__right" data-role="sortbar"></div>
       </div>
@@ -91,12 +90,12 @@ export function renderCards(root) {
 
   const globalToggle = el(`<label class="check">
     <input type="checkbox" ${state.globalOnly ? 'checked' : ''}>
-    <span>Global releases only<small>Cards not yet on the Global server are hidden.</small></span>
+    <span>Global releases only</span>
   </label>`);
   globalToggle.querySelector('input').addEventListener('change', (e) => { state.globalOnly = e.target.checked; paint(); });
   const hideUnverified = el(`<label class="check">
     <input type="checkbox" ${state.hideUnverified ? 'checked' : ''}>
-    <span>Hide unverified releases<small>Cards past the current Global frontier that only pass the automatic check because they reuse old skills.</small></span>
+    <span>Hide unverified releases</span>
   </label>`);
   hideUnverified.querySelector('input').addEventListener('change', (e) => { state.hideUnverified = e.target.checked; paint(); });
   body.append(globalToggle, hideUnverified);

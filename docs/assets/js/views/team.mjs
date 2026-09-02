@@ -57,7 +57,7 @@ export function renderTeam(root) {
     </div>
     <div class="panel__body">
       <div data-role="search"></div>
-      <button class="btn btn--sm" data-act="auto" type="button">Fill from top 12 for this course</button>
+      <button class="btn btn--sm" data-act="auto" type="button">Fill from the top 12</button>
       <div data-role="list" class="stack" style="gap:6px"></div>
       <details class="explain">
         <summary>How this is counted</summary>
@@ -111,7 +111,7 @@ export function renderTeam(root) {
   function paintPriority() {
     const list = priorityPanel.querySelector('[data-role="list"]');
     if (!cm.priority.length) {
-      list.innerHTML = '<p class="tiny muted">Nothing chosen yet — add skills by hand, or fill from the course ranking and edit from there.</p>';
+      list.innerHTML = '<p class="hint-line">Nothing chosen yet.</p>';
       return;
     }
     list.innerHTML = cm.priority.map((id) => {
@@ -193,7 +193,7 @@ export function renderTeam(root) {
   function paintBuilds() {
     const list = buildsPanel.querySelector('[data-role="builds"]');
     if (!cm.builds.length) {
-      list.innerHTML = '<p class="tiny muted">The three slots below are kept automatically between visits. Save a build to keep several and switch between them.</p>';
+      list.innerHTML = '<p class="hint-line">No saved builds yet.</p>';
       return;
     }
     list.innerHTML = cm.builds.map((b) => {
@@ -234,7 +234,7 @@ export function renderTeam(root) {
       <div class="drawer__body" style="gap:10px">
         <input class="input" type="search" data-role="pq" placeholder="Search…" autocomplete="off">
         <div data-role="pown"></div>
-        <div class="toggle-grid" data-role="pfilter"></div>
+        <div class="toggle-grid toggle-grid--row toggle-grid--wrap" data-role="pfilter"></div>
         <div data-role="pnote"></div>
         <div data-role="pgrid" class="stack" style="gap:6px"></div>
       </div>
@@ -287,7 +287,7 @@ export function renderTeam(root) {
       const analysis = analyseSlot(slot);
       const spent = borrowedIn(slot, pickerState.deckIndex).length >= BORROWED_ALLOWANCE;
       title.textContent = `Support card for uma ${pickerState.slotIndex + 1}, slot ${pickerState.deckIndex + 1}`;
-      subtitle.textContent = 'Sorted by what it would actually add to this deck — priority skills first, then expected lengths.';
+      subtitle.textContent = 'Sorted by what it adds to this deck.';
 
       ownEl.innerHTML = cm.useOwned
         ? ownSegment([['all', 'All'], ['mine', 'Mine'], ['friend', "Friend's"]])
@@ -304,7 +304,7 @@ export function renderTeam(root) {
       grid.innerHTML = rows.map(cardRow).join('') || '<p class="muted small">Nothing matches.</p>';
     } else {
       title.textContent = `Umamusume for slot ${pickerState.slotIndex + 1}`;
-      subtitle.textContent = 'Sorted by what their own unique and skill list is worth on this course, discounted for missing aptitude.';
+      subtitle.textContent = 'Sorted by what they are worth on this course.';
       ownEl.innerHTML = cm.useOwned ? ownSegment([['all', 'All'], ['mine', 'Mine']]) : '';
       noteEl.innerHTML = '';
       const rows = rankUmas({
@@ -468,10 +468,10 @@ export function renderTeam(root) {
 
   function adviceCard(items) {
     if (!items.length) {
-      return el('<section class="panel"><div class="panel__body"><p class="small muted">Nothing to flag — the entry looks coherent for this course.</p></div></section>');
+      return el('<section class="panel"><div class="panel__body"><p class="hint-line">Nothing to flag.</p></div></section>');
     }
     return el(`<section class="panel">
-      <div class="panel__head"><h3>${icon('warn', { size: 14 })}What to fix next</h3><span class="sk-count">${items.length}</span></div>
+      <div class="panel__head"><h3>${icon('warn', { size: 14 })}What to fix</h3><span class="sk-count">${items.length}</span></div>
       <div class="panel__body" style="padding:0">
         <div class="rank-list">
           ${items.map((r) => `<div class="advice advice--${r.severity}">
@@ -614,7 +614,7 @@ export function renderTeam(root) {
                   <span class="tiny muted num">${p.value.toFixed(2)}</span>
                   <span class="cover-tag cover-tag--${p.kind === 'own' || p.kind === 'unique' ? 'own' : p.kind}">${KIND_LABEL[p.kind]}</span>
                 </span>
-              </div>`).join('') || '<p class="tiny muted">Pick an uma and some cards to see what this run can end up with.</p>'}
+              </div>`).join('') || '<p class="hint-line">Pick an uma and some cards.</p>'}
           </div>
         </details>
       </div>

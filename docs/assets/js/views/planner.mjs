@@ -70,7 +70,7 @@ export function renderPlanner(root) {
       </div>
       <div class="field">
         <label>Direction</label>
-        <div class="toggle-grid toggle-grid--3" data-role="turn">
+        <div class="toggle-grid toggle-grid--row" data-role="turn">
           <button type="button" data-v="0">Any</button>
           <button type="button" data-v="1">Right</button>
           <button type="button" data-v="2">Left</button>
@@ -79,32 +79,31 @@ export function renderPlanner(root) {
       <div class="field"><label>Course</label><select class="select" data-role="course"></select></div>
       <div class="field">
         <label>Running style</label>
-        <div class="toggle-grid" data-role="strategy">
+        <div class="toggle-grid toggle-grid--row toggle-grid--2" data-role="strategy">
           ${Object.entries(STRATEGY).map(([v, s]) => `<button type="button" data-v="${v}" aria-pressed="${Number(v) === cm.strategy}">${esc(s.name)}</button>`).join('')}
         </div>
       </div>
       <div class="field">
         <label>Going</label>
-        <div class="toggle-grid" data-role="ground">
+        <div class="toggle-grid toggle-grid--row" data-role="ground">
           ${Object.entries(GROUND_NAME).map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${Number(v) === cm.ground}">${l}</button>`).join('')}
         </div>
       </div>
       <div class="field">
         <label>Weather</label>
-        <div class="toggle-grid" data-role="weather">
+        <div class="toggle-grid toggle-grid--row" data-role="weather">
           ${Object.entries(WEATHER_NAME).map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${Number(v) === cm.weather}">${l}</button>`).join('')}
         </div>
       </div>
       <div class="field">
         <label>Season</label>
-        <div class="toggle-grid toggle-grid--3" data-role="season">
+        <div class="toggle-grid toggle-grid--row toggle-grid--wrap" data-role="season">
           ${Object.entries(SEASON_NAME).map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${Number(v) === cm.season}">${l}</button>`).join('')}
         </div>
-        <p class="tiny muted">Going, weather, season and the track itself are hard gates on green skills — <b>Sunny Days ○</b> is worth nothing in the rain, and the app now says so instead of pricing it anyway.</p>
       </div>
       <div class="field">
         <label>Field size</label>
-        <div class="toggle-grid toggle-grid--3" data-role="field">
+        <div class="toggle-grid toggle-grid--row" data-role="field">
           ${[9, 12, 18].map((n) => `<button type="button" data-v="${n}" aria-pressed="${n === cm.fieldSize}">${n}${n === CM_FIELD_SIZE ? ' · CM' : ''}</button>`).join('')}
         </div>
       </div>
@@ -112,14 +111,14 @@ export function renderPlanner(root) {
   </section>`);
 
   const fieldPanel = el(`<section class="panel panel--rail">
-    <div class="panel__head"><h3>The rest of the field</h3><span class="sk-count" data-role="fsum"></span></div>
+    <div class="panel__head"><h3>The field</h3><span class="sk-count" data-role="fsum"></span></div>
     <div class="panel__body">
       <div class="seg seg--full" data-role="fmode">
         <button type="button" data-v="simple" aria-pressed="${cm.field.mode !== 'advanced'}">By running style</button>
         <button type="button" data-v="advanced" aria-pressed="${cm.field.mode === 'advanced'}">Build each rival</button>
       </div>
       <div data-role="fsimple" class="stack" style="gap:9px">
-        <div class="row" style="gap:5px;flex-wrap:wrap">
+        <div class="btn-row">
           ${FIELD_PRESETS.map((p) => `<button class="btn btn--sm btn--ghost" type="button" data-preset="${p.key}" title="${esc(p.hint)}">${esc(p.name)}</button>`).join('')}
         </div>
         <div class="count-grid" data-role="counts"></div>
@@ -128,12 +127,11 @@ export function renderPlanner(root) {
           <input type="range" min="60" max="115" step="1" data-role="strength">
         </div>
         <div class="field">
-          <label>Skills each rival carries <span class="muted" data-out="depth"></span></label>
+          <label>Skills per rival <span class="muted" data-out="depth"></span></label>
           <input type="range" min="0" max="8" step="1" data-role="depth">
         </div>
       </div>
       <div data-role="fadvanced" class="stack" style="gap:8px" hidden>
-        <p class="tiny muted">Every rival gets its own umamusume, stats, running style and skill list. The unique comes with the uma.</p>
         <button class="btn btn--primary btn--sm" type="button" data-act="edit-field">Open the field editor</button>
         <div data-role="fpreview" class="stack" style="gap:4px"></div>
       </div>
@@ -141,16 +139,16 @@ export function renderPlanner(root) {
   </section>`);
 
   const youPanel = el(`<section class="panel panel--rail">
-    <div class="panel__head"><h3>Your umamusume</h3><span class="sk-count" data-role="you-chip"></span></div>
+    <div class="panel__head"><h3>Your runner</h3><span class="sk-count" data-role="you-chip"></span></div>
     <div class="panel__body" data-role="you-body"></div>
   </section>`);
 
   const statsPanel = el(`<section class="panel panel--rail">
-    <div class="panel__head"><h3>Your stats</h3><button class="btn btn--ghost btn--sm" data-act="stat-reset" type="button">Reset</button></div>
+    <div class="panel__head"><h3>Stats</h3><button class="btn btn--ghost btn--sm" data-act="stat-reset" type="button">Reset</button></div>
     <div class="panel__body">
       <div class="field">
-        <label>Stat ceiling you play with</label>
-        <div class="toggle-grid toggle-grid--3" data-role="cap">
+        <label>Stat ceiling</label>
+        <div class="toggle-grid toggle-grid--row" data-role="cap">
           ${[1200, 1400, 1600, 1800, 2000].map((n) => `<button type="button" data-v="${n}" aria-pressed="${n === cm.statCap}">${n}</button>`).join('')}
         </div>
       </div>
@@ -163,12 +161,11 @@ export function renderPlanner(root) {
           </div>
         </div>`).join('')}
       <div class="field">
-        <label>Aptitudes for this race</label>
+        <label>Aptitudes</label>
         <div class="apt-row" data-role="apt"></div>
-        <p class="tiny muted">Distance aptitude scales the Speed term in the final leg; surface and running-style aptitude scale acceleration. Below A costs real time, and the model charges for it.</p>
       </div>
       <div class="field">
-        <label>Recovery from skills <span class="muted" data-out="recovery">${cm.recovery}%</span></label>
+        <label>Skill recovery <span class="muted" data-out="recovery">${cm.recovery}%</span></label>
         <input type="range" min="0" max="60" step="1" data-role="recovery" value="${cm.recovery}">
       </div>
     </div>
@@ -234,35 +231,36 @@ export function renderPlanner(root) {
 
     body.innerHTML = `
       ${outfit ? `<div class="you-card">
-        <img src="./img/chara/${esc(outfit.id)}.webp" alt="" width="42" height="42" class="av">
+        <img src="./img/chara/${esc(outfit.id)}.webp" alt="" width="38" height="38" class="av">
         <span style="min-width:0">
           <b>${esc(outfit.charaName)}</b>
-          <span class="tiny muted" style="display:block">${esc(outfit.epithet)} &middot; ${esc(outfit.strategyName)}</span>
+          <span class="tiny muted" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(outfit.strategyName)}</span>
         </span>
-        <button class="icon-btn" type="button" data-act="you-clear" aria-label="Clear">&#10005;</button>
+        <button class="icon-btn icon-btn--sm" type="button" data-act="you-clear" aria-label="Clear">&#10005;</button>
       </div>` : ''}
-      <div class="row" style="gap:6px;flex-wrap:wrap">
+      <div class="btn-row">
         <button class="btn btn--sm${outfit ? ' btn--ghost' : ' btn--primary'}" type="button" data-act="you-pick">${outfit ? 'Change uma' : 'Pick an umamusume'}</button>
-        ${outfit ? `<label class="check"><input type="checkbox" data-act="you-lock" ${cm.you.lockAptitudes ? 'checked' : ''}> use her aptitudes</label>` : ''}
+        ${outfit ? `<button class="btn btn--sm btn--ghost" type="button" data-act="you-lock" aria-pressed="${cm.you.lockAptitudes}">Her aptitudes</button>` : ''}
       </div>
-      ${unique ? `<div class="field">
-        <label>Unique &middot; level ${cm.you.uniqueLevel} <span class="muted">(&times;${uniqueScale(cm.you.uniqueLevel).toFixed(2)} effect)</span></label>
+      ${unique ? `<div class="field field--tight">
+        <div class="field__head"><span>Unique</span><span class="sk-count">Lv${cm.you.uniqueLevel} &times;${uniqueScale(cm.you.uniqueLevel).toFixed(2)}</span></div>
         <div class="row" style="gap:6px;align-items:center">
           <label class="check"><input type="checkbox" data-act="you-unique" ${cm.you.unique ? 'checked' : ''}></label>
           ${skillPill(unique)}
         </div>
-        <div class="toggle-grid toggle-grid--3" data-role="ulevel">
+        <div class="toggle-grid toggle-grid--row" data-role="ulevel">
           ${[1, 2, 3, 4, 5, 6].map((n) => `<button type="button" data-v="${n}" aria-pressed="${cm.you.uniqueLevel === n}">Lv${n}</button>`).join('')}
         </div>
-        <p class="tiny muted">The dump ships uniques at their base value, so Lv1 is the game&rsquo;s own number. Each level above
-        that is taken as +10% of base &mdash; the community reading &mdash; and every score using it says which level it used.</p>
       </div>` : ''}
-      <div class="field">
-        <label>Skills you expect to finish with</label>
-        <div class="row" style="gap:6px;flex-wrap:wrap">
-          <button class="btn btn--sm btn--ghost" type="button" data-act="you-add">+ skill</button>
-          <button class="btn btn--sm btn--ghost" type="button" data-act="you-best">Best 6 here</button>
-          ${outfit ? '<button class="btn btn--sm btn--ghost" type="button" data-act="you-own">Her own list</button>' : ''}
+      <div class="field field--tight">
+        <div class="field__head">
+          <span>Skills at the line</span>
+          <span class="sk-count">${cm.raceSkills.length}</span>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn--sm" type="button" data-act="you-add">Add skill</button>
+          <button class="btn btn--sm btn--ghost" type="button" data-act="you-best">Best 6</button>
+          ${outfit ? '<button class="btn btn--sm btn--ghost" type="button" data-act="you-own">Her list</button>' : ''}
           ${cm.raceSkills.length ? '<button class="btn btn--sm btn--ghost" type="button" data-act="you-clear-skills">Clear</button>' : ''}
         </div>
         <div class="chips" data-role="you-skills"></div>
@@ -274,7 +272,7 @@ export function renderPlanner(root) {
         const sk = db.skillById.get(id);
         return sk ? `<span class="chip-drop">${skillPill(sk)}<button type="button" class="chip-drop__x" data-you-drop="${esc(id)}" aria-label="remove">&#10005;</button></span>` : '';
       }).join('')
-      : '<p class="tiny muted">Nothing yet. The Race page runs whatever is here against the field.</p>';
+      : '<p class="hint-line">No skills picked yet.</p>';
   }
 
   on(youPanel, 'click', '[data-act="you-pick"]', () => pickUma((id) => {
@@ -287,7 +285,7 @@ export function renderPlanner(root) {
     commitContext(); paintYou(); repaint();
   }));
   on(youPanel, 'click', '[data-act="you-clear"]', () => { cm.you.outfitId = null; commitContext(); paintYou(); repaint(); });
-  on(youPanel, 'change', '[data-act="you-lock"]', (e, t) => { cm.you.lockAptitudes = t.checked; commitContext(); paintYou(); repaint(); });
+  on(youPanel, 'click', '[data-act="you-lock"]', () => { cm.you.lockAptitudes = !cm.you.lockAptitudes; commitContext(); paintYou(); repaint(); });
   on(youPanel, 'change', '[data-act="you-unique"]', (e, t) => { cm.you.unique = t.checked; commitContext(); repaint(); });
   on(youPanel, 'click', '[data-role="ulevel"] button', (e, t) => {
     cm.you.uniqueLevel = Number(t.dataset.v);
@@ -335,7 +333,7 @@ export function renderPlanner(root) {
       </div>`).join('');
 
     fieldPanel.querySelector('[data-role="strength"]').value = Math.round((cm.field.strength ?? 0.92) * 100);
-    fieldPanel.querySelector('[data-out="strength"]').textContent = `${Math.round((cm.field.strength ?? 0.92) * 100)}% of your stats`;
+    fieldPanel.querySelector('[data-out="strength"]').textContent = `${Math.round((cm.field.strength ?? 0.92) * 100)}%`;
     fieldPanel.querySelector('[data-role="depth"]').value = cm.field.skillDepth ?? 4;
     fieldPanel.querySelector('[data-out="depth"]').textContent = `${cm.field.skillDepth ?? 4}`;
 
@@ -384,7 +382,7 @@ export function renderPlanner(root) {
   });
   fieldPanel.querySelector('[data-role="strength"]').addEventListener('input', (e) => {
     cm.field.strength = Number(e.target.value) / 100;
-    fieldPanel.querySelector('[data-out="strength"]').textContent = `${e.target.value}% of your stats`;
+    fieldPanel.querySelector('[data-out="strength"]').textContent = `${e.target.value}%`;
     clearFieldCache(); commitContext();
   });
   fieldPanel.querySelector('[data-role="depth"]').addEventListener('input', (e) => {
@@ -700,15 +698,17 @@ export function renderPlanner(root) {
     }).join('');
 
     return el(`<section class="panel" data-section="stats">
-      <div class="panel__head"><h3>Stat targets and where the next 100 points go</h3></div>
+      <div class="panel__head"><h3>Stat targets</h3></div>
       <div class="panel__body" style="gap:8px">
         <div class="table-wrap"><table>
           <thead><tr><th>Stat</th><th class="num">Target</th><th class="num">+100 is worth</th><th>How it was worked out</th></tr></thead>
           <tbody>${rows}</tbody>
         </table></div>
-        <p class="note">The “+100 is worth” column is a finite difference on the model — it re-runs the race with 100 more of that
-        stat and converts the time saved into lengths at the finish. It is also what prices every green skill: <b>+40 Stamina</b> is
-        worth 0.4 × the Stamina row, which is why a racecourse ○ is two lengths when the spurt is short and nothing when it is not.</p>
+        <details class="explain">
+          <summary>How “+100 is worth” is measured</summary>
+          <p>A finite difference on the model: it re-runs the race with 100 more of that stat and converts the time saved into
+          lengths at the finish. It is also what prices every green skill — <b>+40 Stamina</b> is worth 0.4 × the Stamina row.</p>
+        </details>
       </div>
     </section>`);
   }
@@ -747,7 +747,7 @@ export function renderPlanner(root) {
     };
     return el(`<section class="panel" data-section="matrix">
       <div class="panel__head">
-        <h3>${icon('layers', { size: 14 })}Going and style, against your Stamina</h3>
+        <h3>${icon('layers', { size: 14 })}Going against your Stamina</h3>
         <span class="sk-count">you have ${fmt.int(have)}</span>
       </div>
       <div class="panel__body" style="gap:8px">
@@ -853,15 +853,18 @@ export function renderPlanner(root) {
         <span class="sk-count">${cm.fieldSize} runners · ${esc(fieldSummary())}</span>
       </div>
       <div class="panel__body">
-        <p class="small muted">Where you sit changes through the race, so a skill gated on placing is priced at the phase it fires in —
-        not at the finish. With ${esc(fieldSummary())}, <code>order_rate</code> moves in steps of ${(100 / cm.fieldSize).toFixed(1)}%.</p>
+
         <div class="table-wrap"><table>
           <thead><tr><th>Place</th><th class="num">order_rate</th>${phases.map(([n]) => `<th class="num">${n}</th>`).join('')}</tr></thead>
           <tbody>${rows.join('')}</tbody>
         </table></div>
-        <p class="small muted">Wit ${ctx.stats.wit} → Wit-checked skills fire <b>${(wit * 100).toFixed(1)}%</b> of the time
-        (<code>100 − 9000 / Wit</code>, floored at 20%). Change the field mix on the left and this table, and every positional
-        skill's score, moves with it.</p>
+        <details class="explain">
+          <summary>How this table is used</summary>
+          <p>Where you sit changes through the race, so a skill gated on placing is priced at the phase it fires in, not at the
+          finish. With ${esc(fieldSummary())}, <code>order_rate</code> moves in steps of ${(100 / cm.fieldSize).toFixed(1)}%.</p>
+          <p>Wit ${ctx.stats.wit} → Wit-checked skills fire <b>${(wit * 100).toFixed(1)}%</b> of the time
+          (<code>100 − 9000 / Wit</code>, floored at 20%).</p>
+        </details>
       </div>
     </section>`);
   }
