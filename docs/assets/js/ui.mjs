@@ -117,9 +117,13 @@ const PART_COLOR = {
   recovery: 'var(--turf)',
   stat: 'var(--unique)',
   utility: 'var(--ink-3)',
+  // What an umamusume herself is made of, for the roster ranking.
+  unique: 'var(--unique)',
+  kit: 'var(--accent)',
 };
 export const PART_NAME = {
   speed: 'Speed', accel: 'Acceleration', recovery: 'Recovery', stat: 'Stat boost', utility: 'Utility',
+  unique: 'Her unique', kit: 'Her own skill list',
 };
 
 /**

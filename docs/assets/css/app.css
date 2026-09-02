@@ -773,8 +773,38 @@ details.reach[open] > summary::before { transform: rotate(45deg); }
 .tag--green { background: color-mix(in srgb, var(--turf) 16%, transparent); color: var(--turf); }
 .bar--neg > i { background: var(--danger); }
 .rank-row__score.is-neg, td.is-neg { color: var(--danger); }
-.rank-row--uni { grid-template-columns: 26px 38px minmax(0, 1fr) 104px 64px; }
+.rank-row--uni { grid-template-columns: 26px 38px minmax(0, 1fr) 92px 124px 64px; }
+.rank-row--uma { grid-template-columns: 26px 42px minmax(0, 1fr) 124px 152px 66px; }
 .rank-row--card { grid-template-columns: 44px minmax(0, 1fr) 92px 64px; }
+.rank-row--uma .rank-row__mid:last-of-type { display: flex; flex-direction: column; gap: 4px; }
+@media (max-width: 1180px) {
+  .rank-row--uni { grid-template-columns: 26px 38px minmax(0, 1fr) 92px 64px; }
+  .rank-row--uma { grid-template-columns: 26px 42px minmax(0, 1fr) 124px 66px; }
+  .rank-row--uni > .rank-row__mid:last-of-type,
+  .rank-row--uma > .rank-row__mid:last-of-type { display: none; }
+}
+@media (max-width: 760px) {
+  .rank-row--uni { grid-template-columns: 22px 30px minmax(0, 1fr) 60px; }
+  .rank-row--uma { grid-template-columns: 22px 32px minmax(0, 1fr) 62px; }
+  .rank-row--uni > .rank-row__mid, .rank-row--uma > .rank-row__mid { display: none; }
+}
+
+/* A unique read under all four running styles. Uniques never name a style in
+   their condition, but nearly all of them are gated on field position, which
+   the style decides — so the same skill is four different skills, and the four
+   bars are the only honest way to say so on one line. */
+.sstrip { display: flex; align-items: flex-end; gap: 3px; height: 30px; }
+.sstrip__b { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; }
+.sstrip__b::before {
+  content: ''; display: block; height: var(--h); border-radius: 2px 2px 0 0; background: var(--line-strong);
+}
+.sstrip__b > b { font-size: 9px; line-height: 1; font-weight: 500; text-align: center; color: var(--ink-3); }
+.sstrip__b.is-best::before { background: color-mix(in srgb, var(--gold) 55%, transparent); }
+.sstrip__b.is-on::before { background: var(--accent); }
+.sstrip__b.is-on > b { color: var(--accent); font-weight: 700; }
+
+.etag--warn { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+.etag--good { background: color-mix(in srgb, var(--turf) 14%, transparent); color: var(--turf); }
 .av { border-radius: 7px; background: var(--sunken); object-fit: cover; }
 .av--card { border-radius: 6px; }
 .av--empty { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 7px; background: var(--sunken); color: var(--ink-3); }
