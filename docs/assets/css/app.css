@@ -765,15 +765,29 @@ td.heat::before {
 .progress > i { position: absolute; inset: 0 auto 0 0; background: var(--accent-soft); transition: width .1s linear; }
 .progress > span { position: relative; display: block; text-align: center; font-size: 11px; line-height: 22px; color: var(--ink-2); }
 
-.pop-list {
-  position: absolute; top: 100%; left: 0; right: 0; z-index: 30; margin-top: 4px;
-  max-height: 260px; overflow: auto; overscroll-behavior: contain;
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-md);
+/* ---------------------------------------------------------- autocomplete */
+
+.ac { position: relative; }
+.ac__list {
+  position: fixed; z-index: 70; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow-lg); padding: 4px;
 }
-.pop-list[hidden] { display: none; }
-.pop-list .src-row { width: 100%; border: 0; border-bottom: 1px solid var(--line-soft); background: transparent; cursor: pointer; text-align: left; }
-.pop-list .src-row:hover { background: var(--accent-soft); }
+.ac__list[hidden] { display: none; }
+.ac__opt {
+  display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; align-items: center;
+  padding: 7px 8px; border-radius: var(--radius-xs); cursor: pointer;
+}
+.ac__opt.is-active { background: var(--accent-soft); }
+.ac__opt img { width: 26px; height: 26px; border-radius: 50%; background: var(--sunken); }
+.ac__text { min-width: 0; }
+.ac__text b { display: block; font-weight: 550; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ac__sub { display: block; font-size: 11.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ac__empty { padding: 14px 10px; text-align: center; font-size: 12.5px; color: var(--ink-3); }
+
+/* Sort direction reads off the button instead of being a mystery toggle. */
+.btn--dir .ico { transition: transform .15s ease; }
+.btn--dir.is-asc .ico { transform: rotate(180deg); }
 
 .chip-drop { position: relative; display: inline-flex; }
 .chip-drop__x {
@@ -798,7 +812,7 @@ tr.is-you td { font-weight: 500; }
 
 /* ========================================================== field editor */
 
-.rival { border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-2); overflow: hidden; }
+.rival { flex: none; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-2); overflow: hidden; }
 .rival.is-open { border-color: var(--accent); background: var(--surface); }
 .rival__head {
   display: grid; grid-template-columns: 34px minmax(0, 1fr) auto auto auto 16px;

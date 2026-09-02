@@ -104,8 +104,17 @@ export function renderCards(root) {
   rail.append(collapsible(basics, 'cards.basics'), collapsible(skillFilter.element, 'cards.skills'));
 
   const sortSel = selectField({ title: 'Sort by', options: SORTS, value: state.sort, onChange: (v) => { state.sort = v; paint(); } });
-  const dirBtn = el(`<button class="btn btn--sm" type="button" title="Reverse order" aria-label="Reverse order">${icon('sort')}</button>`);
-  dirBtn.addEventListener('click', () => { state.dir = state.dir === 'desc' ? 'asc' : 'desc'; paint(); });
+  const dirBtn = el(`<button class="btn btn--sm btn--dir" type="button">${icon('arrow')}</button>`);
+  const paintDir = () => {
+    dirBtn.classList.toggle('is-asc', state.dir !== 'desc');
+    dirBtn.title = state.dir === 'desc' ? 'Descending' : 'Ascending';
+    dirBtn.setAttribute('aria-label', dirBtn.title);
+  };
+  paintDir();
+  dirBtn.addEventListener('click', () => {
+    state.dir = state.dir === 'desc' ? 'asc' : 'desc';
+    paintDir(); paint();
+  });
   layout.querySelector('[data-role="sortbar"]').append(sortSel.element, dirBtn);
 
   function paint() {

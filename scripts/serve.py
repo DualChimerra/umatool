@@ -37,7 +37,7 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('port', nargs='?', type=int, default=8080)
+    ap.add_argument('port', nargs='?', type=int, default=int(os.environ.get('PORT') or 8080))
     ap.add_argument('--directory', default=os.path.join(os.path.dirname(__file__), '..', 'docs'))
     args = ap.parse_args()
 

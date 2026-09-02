@@ -53,50 +53,56 @@ export function renderCollection(root) {
   });
   tools.append(useOwned);
 
+  // Built once. Rebuilding it inside paint() replaced the search box under the
+  // cursor, so it lost focus after every character typed.
+  bar.replaceChildren(el(`<div class="panel">
+    <div class="panel__body" style="gap:10px">
+      <div class="row" style="justify-content:space-between">
+        <div class="seg" data-role="tab" style="max-width:320px">
+          <button type="button" data-t="cards" aria-pressed="${state.tab === 'cards'}">Support cards <b>0</b></button>
+          <button type="button" data-t="umas" aria-pressed="${state.tab === 'umas'}">Umas <b>0</b></button>
+        </div>
+        <div class="row">
+          <button class="btn btn--sm" data-act="all" type="button">Tick everything shown</button>
+          <button class="btn btn--sm" data-act="none" type="button">Untick everything shown</button>
+        </div>
+      </div>
+      <div class="row" style="gap:8px">
+        <input class="input" data-role="q" type="search" placeholder="Search…" value="${esc(state.q)}" style="max-width:280px">
+        <div class="toggle-grid" data-role="filters"></div>
+        <label class="check" style="align-items:center;margin-left:auto">
+          <input type="checkbox" data-role="showowned" ${state.showOwned ? 'checked' : ''}>
+          <span>Only what I own</span>
+        </label>
+      </div>
+    </div>
+  </div>`));
+
+  bar.querySelector('[data-role="q"]').addEventListener('input', debounce((e) => { state.q = e.target.value; paint(); }, 130));
+  bar.querySelector('[data-role="showowned"]').addEventListener('change', (e) => { state.showOwned = e.target.checked; paint(); });
+
+  function countLabel(tab) {
+    return tab === 'cards' ? `Support cards <b>${cm.owned.cards.length}</b>` : `Umas <b>${cm.owned.umas.length}</b>`;
+  }
+
   function paint() {
     writeState({ tab: state.tab, q: state.q, own: state.showOwned ? '1' : '' });
 
-    const ownedCards = cm.owned.cards.length;
-    const ownedUmas = cm.owned.umas.length;
+    for (const b of bar.querySelectorAll('[data-t]')) {
+      b.setAttribute('aria-pressed', String(b.dataset.t === state.tab));
+      b.innerHTML = countLabel(b.dataset.t);
+    }
 
-    bar.replaceChildren(el(`<div class="panel">
-      <div class="panel__body" style="gap:10px">
-        <div class="row" style="justify-content:space-between">
-          <div class="seg" data-role="tab" style="max-width:320px">
-            <button type="button" data-t="cards" aria-pressed="${state.tab === 'cards'}">Support cards <b>${ownedCards}</b></button>
-            <button type="button" data-t="umas" aria-pressed="${state.tab === 'umas'}">Umas <b>${ownedUmas}</b></button>
-          </div>
-          <div class="row">
-            <button class="btn btn--sm" data-act="all" type="button">Tick everything shown</button>
-            <button class="btn btn--sm" data-act="none" type="button">Untick everything shown</button>
-          </div>
-        </div>
-        <div class="row" style="gap:8px">
-          <input class="input" data-role="q" type="search" placeholder="Search…" value="${esc(state.q)}" style="max-width:280px">
-          <div class="toggle-grid" data-role="filters"></div>
-          <label class="check" style="align-items:center;margin-left:auto">
-            <input type="checkbox" data-role="showowned" ${state.showOwned ? 'checked' : ''}>
-            <span>Only what I own</span>
-          </label>
-        </div>
-      </div>
-    </div>`));
-
-    const filters = bar.querySelector('[data-role="filters"]');
-    filters.innerHTML = state.tab === 'cards'
+    bar.querySelector('[data-role="filters"]').innerHTML = state.tab === 'cards'
       ? [...RARITIES.map(([v, l]) => `<button type="button" data-f="r:${v}" aria-pressed="${state.rarity === v}">${l}</button>`),
         ...TYPES.map(([v, l]) => `<button type="button" data-f="t:${v}" aria-pressed="${state.type === v}">${l}</button>`)].join('')
-      : Object.entries(STRATEGY).map(([v, s]) => `<button type="button" data-f="s:${v}" aria-pressed="${state.strategy === Number(v)}">${esc(s.name)}</button>`).join('');
-
-    bar.querySelector('[data-role="q"]').addEventListener('input', debounce((e) => { state.q = e.target.value; paint(); }, 130));
-    bar.querySelector('[data-role="showowned"]').addEventListener('change', (e) => { state.showOwned = e.target.checked; paint(); });
+      : Object.entries(STRATEGY).map(([v, s2]) => `<button type="button" data-f="s:${v}" aria-pressed="${state.strategy === Number(v)}">${esc(s2.name)}</button>`).join('');
 
     const rows = visible();
     body.replaceChildren(el(`<div class="stack">
       <p class="small muted">${rows.length} shown, ${cm.owned[state.tab].length} owned in total</p>
       <div class="own-grid">${rows.map(tile).join('') || '<div class="empty">Nothing matches.</div>'}</div>
     </div>`));
-
   }
 
   // Registered once: `paint` replaces the children of these containers, not the

@@ -10,8 +10,9 @@
 // difference. Where that disagrees with the Planner's score, the simulation is
 // the one to believe.
 
-import { db, skillIconUrl, isObtainable } from '../store.mjs';
-import { el, esc, on, skillPill, fmt, debounce, collapsible } from '../ui.mjs';
+import { db, isObtainable } from '../store.mjs';
+import { el, esc, on, skillPill, fmt, collapsible, skillOption } from '../ui.mjs';
+import { combobox } from '../combobox.mjs';
 import {
   cm, commitContext, currentCourse, scoringContext, fieldSummary, yourSkills,
 } from '../context.mjs';
@@ -69,8 +70,7 @@ export function renderRace(root) {
         <button class="btn btn--sm btn--ghost" type="button" data-act="clear">Clear</button>
       </div>
       <div class="field" style="position:relative">
-        <input class="input" type="search" data-role="q" placeholder="Add a skill…" autocomplete="off">
-        <div class="pop-list" data-role="results" hidden></div>
+        <div data-role="search"></div>
       </div>
       <div class="chips" data-role="mine"></div>
     </div>
@@ -93,33 +93,15 @@ export function renderRace(root) {
 
   /* ------------------------------------------------------- skill picking */
 
-  const q = runnerPanel.querySelector('[data-role="q"]');
-  const results = runnerPanel.querySelector('[data-role="results"]');
+  runnerPanel.querySelector('[data-role="search"]').append(combobox({
+    placeholder: 'Add a skill…',
+    search: (needle) => db.learnable
+      .filter((s) => s.name.toLowerCase().includes(needle.toLowerCase()) && !cm.raceSkills.includes(s.id))
+      .slice(0, 24),
+    row: skillOption,
+    onPick: (skill) => { cm.raceSkills.push(skill.id); commitContext(); paintMine(); },
+  }).element);
 
-  function renderResults() {
-    const needle = q.value.trim().toLowerCase();
-    if (!needle) { results.hidden = true; return; }
-    const list = db.learnable
-      .filter((s) => s.name.toLowerCase().includes(needle) && !cm.raceSkills.includes(s.id))
-      .slice(0, 24);
-    if (!list.length) { results.hidden = true; return; }
-    results.innerHTML = list.map((s) => `
-      <button type="button" class="src-row" data-add="${esc(s.id)}">
-        <img src="${skillIconUrl(s)}" alt="" width="26" height="26">
-        <span style="min-width:0"><b>${esc(s.name)}</b><span class="src-row__sub">${esc(s.variants[0]?.text ?? '')}</span></span>
-        <span class="chip chip--${s.tier === 'normal' ? '' : s.tier}">${esc(s.tierName)}</span>
-      </button>`).join('');
-    results.hidden = false;
-  }
-  q.addEventListener('input', debounce(renderResults, 100));
-  q.addEventListener('blur', () => setTimeout(() => { results.hidden = true; }, 160));
-
-  on(runnerPanel, 'mousedown', '[data-add]', (e, t) => {
-    e.preventDefault();
-    cm.raceSkills.push(t.dataset.add);
-    q.value = ''; results.hidden = true;
-    commitContext(); paintMine();
-  });
   on(runnerPanel, 'click', '[data-drop]', (e, t) => {
     cm.raceSkills = cm.raceSkills.filter((id) => id !== t.dataset.drop);
     commitContext(); paintMine();

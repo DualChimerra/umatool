@@ -20,13 +20,23 @@ const SORTS = [
   ...APT.map(([k, , full]) => ({ value: `apt:${k}`, label: `Aptitude: ${full}` })),
 ];
 
+/** The aptitude filter round-trips through the URL, where anything can be typed. */
+function readApt(raw) {
+  try {
+    const parsed = JSON.parse(raw ?? '{}');
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 export function renderUmas(root) {
   const saved = readState();
   const state = {
     q: saved.q ?? '',
     strategies: saved.st ? saved.st.split(',').map(Number) : [],
     stars: saved.stars ? saved.stars.split(',').map(Number) : [],
-    apt: JSON.parse(saved.apt ?? '{}'),
+    apt: readApt(saved.apt),
     sort: saved.sort ?? 'name',
     dir: saved.dir ?? 'desc',
   };
@@ -103,8 +113,17 @@ export function renderUmas(root) {
     title: 'Sort by', options: SORTS, value: state.sort,
     onChange: (v) => { state.sort = v; paint(); },
   });
-  const dirBtn = el(`<button class="btn btn--sm" type="button" title="Reverse order" aria-label="Reverse order">${icon('sort')}</button>`);
-  dirBtn.addEventListener('click', () => { state.dir = state.dir === 'desc' ? 'asc' : 'desc'; paint(); });
+  const dirBtn = el(`<button class="btn btn--sm btn--dir" type="button">${icon('arrow')}</button>`);
+  const paintDir = () => {
+    dirBtn.classList.toggle('is-asc', state.dir !== 'desc');
+    dirBtn.title = state.dir === 'desc' ? 'Descending' : 'Ascending';
+    dirBtn.setAttribute('aria-label', dirBtn.title);
+  };
+  paintDir();
+  dirBtn.addEventListener('click', () => {
+    state.dir = state.dir === 'desc' ? 'asc' : 'desc';
+    paintDir(); paint();
+  });
   sortbar.append(sortSel.element, dirBtn);
 
   function outfitSkills(outfit) {
