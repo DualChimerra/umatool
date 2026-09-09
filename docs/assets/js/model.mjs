@@ -361,21 +361,35 @@ function conditionEnv(ctx) {
  * uniques are written as "…and no pace-up yet @ …" and the second branch is
  * the one that actually decides the skill.
  */
+/**
+ * Where in the race an alternative's condition is checked: the first metre of
+ * its stretch, or the length-weighted centroid when it fires at random inside
+ * one.
+ */
+function triggerPoint(alt) {
+  const window = rangeLength(alt.ranges);
+  if (!window) return alt.ranges[0]?.[0] ?? 0;
+  return alt.random
+    ? alt.ranges.reduce((n, [s, e]) => n + ((s + e) / 2) * (e - s), 0) / window
+    : alt.ranges[0][0];
+}
+
 function chooseAlternative(skill, ctx) {
   const [race, runner] = conditionEnv(ctx);
   let best = null;
   for (const c of compiledFor(skill, ctx.course)) {
     // A precondition is a gate on the whole variant: if this race cannot
     // satisfy it, the skill never arms, whatever its main condition says.
-    const pre = preOdds(c.pre, race, runner);
+    const pre = preOdds(c.pre, race, runner, ctx, skill.id);
     if (pre.blocked) continue;
     for (const alt of c.cond.alts) {
       if (!alt.setup.every((fn) => fn(race, runner))) continue;
       if (!alt.ranges.length || rangeLength(alt.ranges) <= 0) continue;
+      const trigger = triggerPoint(alt);
       let odds = pre.odds;
       for (const g of [...alt.liveKeys, ...alt.guesses]) {
         const key = g.split(/[<>=!]/)[0];
-        if (key !== 'order' && key !== 'order_rate') odds *= termOdds(g);
+        if (key !== 'order' && key !== 'order_rate') odds *= termOdds(g, ctx, trigger, skill.id);
       }
       if (!best || odds > best.odds) best = { alt, variant: c.variant, cond: c.cond, odds, pre };
     }
@@ -389,18 +403,19 @@ function chooseAlternative(skill, ctx) {
  * get their published odds, discounted a little less than a live condition
  * because a precondition only has to be true *once*, not at the trigger.
  */
-function preOdds(pre, race, runner) {
+function preOdds(pre, race, runner, ctx = null, selfId = null) {
   if (!pre) return { blocked: false, odds: 1, terms: [] };
   let best = null;
   for (const alt of pre.alts) {
     if (!alt.setup.every((fn) => fn(race, runner))) continue;
     if (alt.ranges.length && rangeLength(alt.ranges) <= 0) continue;
+    const trigger = alt.ranges.length ? triggerPoint(alt) : null;
     let odds = 1;
     const terms = [];
     for (const g of [...alt.liveKeys, ...alt.guesses]) {
       const key = g.split(/[<>=!]/)[0];
       if (key === 'order' || key === 'order_rate') continue;
-      odds *= Math.min(1, termOdds(g) + 0.15);
+      odds *= Math.min(1, termOdds(g, ctx, trigger, selfId) + 0.15);
       if (LIVE_LABEL[key]) terms.push(LIVE_LABEL[key]);
     }
     if (!best || odds > best.odds) best = { blocked: false, odds, terms, position: alt.position ?? {} };
@@ -459,13 +474,138 @@ const LIVE_ODDS = {
 
 const TERM_RE = /^([a-z_0-9]+)(>=|<=|==|!=|>|<)(-?\d+)$/;
 
-/** Odds that one unmodelled term holds, read from its operator and value. */
-function termOdds(raw) {
+/**
+ * Odds that one unmodelled term holds, read from its operator and value.
+ *
+ * `activate_count_*` is the exception: it is not a coin flip about the race, it
+ * is a fact about the deck you are planning. When the deck is known it is
+ * counted instead of guessed — see `countOdds`.
+ *
+ * @param {object} [ctx]     scoring context, if the deck is known
+ * @param {number} [before]  the metre mark the condition is checked at
+ * @param {string} [selfId]  the skill being priced, so it cannot count itself
+ */
+function termOdds(raw, ctx = null, before = null, selfId = null) {
   const m = TERM_RE.exec(raw);
   if (!m) return 0.5;
-  const entry = LIVE_ODDS[m[1]];
+  const [, key, op, value] = m;
+  if (COUNT_BUCKET[key]) {
+    const counted = countOdds(COUNT_BUCKET[key], op, Number(value), ctx, before, selfId);
+    if (counted != null) return counted;
+  }
+  const entry = LIVE_ODDS[key];
   if (entry == null) return 0.5;
-  return typeof entry === 'function' ? entry(m[2], Number(m[3])) : entry;
+  return typeof entry === 'function' ? entry(op, Number(value)) : entry;
+}
+
+/* -------------------------------------------- counting your own skill history
+
+ * A handful of skills — Festive Miracle, A Kiss for Courage, Dazzl'n ♪ Diver,
+ * Barcarole of Blessings — are gated on how many of your *other* skills have
+ * already fired. Scored blind they get a flat table entry (`activate_count_heal
+ * >= 3` was a hard 15%), which prices a unique you deliberately build a deck
+ * around as though the deck were a coincidence. That is what kept Christmas
+ * Oguri Cap out of every ranking on the site: her unique is worth over two
+ * lengths once three heals have landed, and the model paid her 15% of that
+ * whatever she was carrying.
+ *
+ * When the deck is known, count it instead. Each candidate contributes its own
+ * activation probability, and the answer is the Poisson-binomial P(N ≥ v)
+ * rather than a guess. Two honest discounts stay in:
+ *
+ *   * a contributor that fires *after* the gate is checked counts at half
+ *     weight — it still arms the skill, just later in its window;
+ *   * the contributors are scored with the deck switched off, so a chain of
+ *     count-gated skills cannot bootstrap itself.
+ */
+
+const COUNT_BUCKET = {
+  activate_count_all: 'all',
+  activate_count_heal: 'heal',
+  activate_count_start: 'opening',
+  activate_count_middle: 'middle',
+  activate_count_later_half: 'lateHalf',
+};
+
+const LATE_CONTRIBUTOR_WEIGHT = 0.5;
+
+// One entry per scoring context, so a 600-row ranking pays for this once.
+const deckCountCache = new WeakMap();
+
+function isHealSkill(skill) {
+  return skill.effects.some((e) => e.key === 'recovery' && e.target === 1 && e.value > 0);
+}
+
+/**
+ * Every skill in the deck that can contribute to a count, with the odds it
+ * fires and where. Returns null when no deck is known, which is what puts the
+ * static table back in charge.
+ */
+function deckContributors(ctx) {
+  if (!ctx) return null;
+  const list = (ctx.deckSkills ?? []).filter(Boolean);
+  if (!list.length) return null;
+  if (deckCountCache.has(ctx)) return deckCountCache.get(ctx);
+
+  // Scored with the deck switched off: a count-gated skill must not be allowed
+  // to count itself, directly or through another count-gated skill.
+  const bare = { ...ctx, deckSkills: null };
+  const out = { all: [], heal: [], opening: [], middle: [], lateHalf: [] };
+  deckCountCache.set(ctx, out);
+
+  for (const skill of list) {
+    const scored = scoreSkill(skill, bare);
+    if (!scored || !(scored.probability > 0)) continue;
+    const entry = { id: skill.id, p: scored.probability, at: scored.at };
+    out.all.push(entry);
+    if (isHealSkill(skill)) out.heal.push(entry);
+    if (scored.phase === 0) out.opening.push(entry);
+    if (scored.phase === 1) out.middle.push(entry);
+    if (scored.fraction >= 0.5) out.lateHalf.push(entry);
+  }
+  return out;
+}
+
+/** P(exactly k of these independent events) for every k — Poisson-binomial. */
+function countDistribution(ps) {
+  let dist = [1];
+  for (const p of ps) {
+    const next = new Array(dist.length + 1).fill(0);
+    for (let k = 0; k < dist.length; k += 1) {
+      next[k] += dist[k] * (1 - p);
+      next[k + 1] += dist[k] * p;
+    }
+    dist = next;
+  }
+  return dist;
+}
+
+/**
+ * Odds that the "how many of my skills have fired" gate holds, counted off the
+ * deck rather than guessed. `null` means the deck is unknown and the caller
+ * should fall back to the published table.
+ */
+function countOdds(bucket, op, value, ctx, before, selfId) {
+  const contributors = deckContributors(ctx);
+  if (!contributors) return null;
+  const ps = [];
+  for (const c of contributors[bucket]) {
+    if (c.id === selfId) continue;
+    if (before == null || c.at < before) ps.push(c.p);
+    else ps.push(c.p * LATE_CONTRIBUTOR_WEIGHT);
+  }
+  const dist = countDistribution(ps);
+  const atLeast = (k) => dist.slice(Math.max(0, k)).reduce((n, x) => n + x, 0);
+  const atMost = (k) => dist.slice(0, Math.max(0, k) + 1).reduce((n, x) => n + x, 0);
+  switch (op) {
+    case '>=': return atLeast(value);
+    case '>': return atLeast(value + 1);
+    case '<=': return atMost(value);
+    case '<': return atMost(value - 1);
+    case '==': return dist[value] ?? 0;
+    case '!=': return 1 - (dist[value] ?? 0);
+    default: return null;
+  }
 }
 
 const LIVE_LABEL = {
@@ -649,9 +789,7 @@ export function scoreSkill(skill, ctx) {
   const reasons = [];
   const d = course.distance;
   const window = rangeLength(alt.ranges);
-  const at = alt.random
-    ? alt.ranges.reduce((n, [s, e]) => n + ((s + e) / 2) * (e - s), 0) / window
-    : alt.ranges[0][0];
+  const at = triggerPoint(alt);
   const fraction = at / d;
   const phase = phaseAt(d, at);
   const speedHere = at >= sim.spurtStart ? sim.speeds.spurt
@@ -798,14 +936,19 @@ export function scoreSkill(skill, ctx) {
   // positional skill.
   let pOther = 1;
   const unmodelled = [];
+  const counted = [];
   for (const g of [...alt.liveKeys, ...alt.guesses]) {
     const key = g.split(/[<>=!]/)[0];
     if (key === 'order' || key === 'order_rate') continue;
-    const odds = termOdds(g);
+    const odds = termOdds(g, ctx, at, skill.id);
     pOther *= odds;
-    if (odds < 0.95 && LIVE_LABEL[key]) unmodelled.push(LIVE_LABEL[key]);
+    // A count gate read off a known deck is a measurement, not a discount, so
+    // it says what the deck buys rather than hiding in the "needs …" list.
+    if (COUNT_BUCKET[key] && deckContributors(ctx)) counted.push(`${LIVE_LABEL[key]} ${Math.round(odds * 100)}% of the time in this deck`);
+    else if (odds < 0.95 && LIVE_LABEL[key]) unmodelled.push(LIVE_LABEL[key]);
   }
   if (unmodelled.length) reasons.push(`needs ${[...new Set(unmodelled)].join(', ')}`);
+  for (const c of counted) reasons.push(c);
   if (alt.random && window < d * 0.25) {
     reasons.push(`fires somewhere in ${Math.round(window)}m of eligible track`);
   }
@@ -974,7 +1117,9 @@ const usesRamp = (skill) => skill.effects.some((e) => e.target === 1 && e.key ==
  */
 export function valueDeck(skills, ctx) {
   const list = (skills ?? []).filter(Boolean);
-  const base = { ...ctx, sim: ctx.sim ?? simulateRace(ctx) };
+  // A deck is also the answer to "how many of my skills have already fired", so
+  // it is the deck itself that prices its own count-gated skills.
+  const base = { ...ctx, deckSkills: list, sim: ctx.sim ?? simulateRace(ctx) };
 
   const alone = new Map();
   let naive = 0;
@@ -993,6 +1138,7 @@ export function valueDeck(skills, ctx) {
   const rebuild = () => {
     const next = {
       ...ctx,
+      deckSkills: list,
       stats,
       recoveryPct: (ctx.recoveryPct ?? 0) + healPct,
       _deckAccel: accelUsed,
@@ -1061,6 +1207,9 @@ export function optimiseDeck(skills, ctx, { budget = Infinity, limit = 0, keep =
   const stateFor = () => {
     const next = {
       ...ctx,
+      // Snapshot, not the live array: the count model caches per context object
+      // and `picked` keeps growing under it.
+      deckSkills: [...(ctx.deckSkills ?? []), ...picked],
       stats,
       recoveryPct: (ctx.recoveryPct ?? 0) + healPct,
       _deckAccel: accelUsed,
@@ -1081,7 +1230,10 @@ export function optimiseDeck(skills, ctx, { budget = Infinity, limit = 0, keep =
       if (v) { stats[k] = (stats[k] ?? 0) + v; resim = true; }
     }
     for (const s of scored?.spend ?? []) accelUsed.set(s.ramp, (accelUsed.get(s.ramp) ?? 0) + s.da);
-    state = resim ? stateFor() : { ...state, _deckAccel: accelUsed };
+    // Even a pick that changes nothing physical changes the deck, and a
+    // count-gated skill is priced off the deck, so the state is rebuilt either
+    // way rather than only on a re-sim.
+    state = resim ? stateFor() : { ...state, deckSkills: [...(ctx.deckSkills ?? []), ...picked], _deckAccel: accelUsed };
   };
 
   // Anything already committed is priced first, at the top of the deck, and its

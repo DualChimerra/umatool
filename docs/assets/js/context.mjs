@@ -22,6 +22,35 @@ const listeners = new Set();
 export const DEFAULT_STATS = { speed: 1200, stamina: 900, power: 1000, guts: 500, wit: 900 };
 export const DEFAULT_APT = { distance: 7, surface: 7, style: 7 };
 
+/**
+ * Aptitude sparks.
+ *
+ * The card's aptitude grid is not the grid the uma runs a Champions Meeting on.
+ * Inheritance factors raise distance, surface and running-style aptitude, and
+ * running style is the one everybody fixes: it is a single factor line and it
+ * turns an off-style pick into a real one. Reading the card's own grades as
+ * final is what made the tool answer "who is already an End Closer" when the
+ * question was "who is the best End Closer I could build".
+ *
+ *   none  — the card's own grid, which is what a fresh pull actually has
+ *   style — running style sparked to A, the default, because it nearly always is
+ *   all   — distance and surface sparked to A as well
+ */
+export const SPARK_MODES = ['none', 'style', 'all'];
+export const SPARK_CEILING = 7; // A
+
+/** The grades the sparks reach, given the card's own. Sparks never lower one. */
+export function applySparks(raw, mode = cm.sparks) {
+  if (mode === 'none' || !raw) return raw;
+  const out = { ...raw };
+  out.style = Math.max(out.style, SPARK_CEILING);
+  if (mode === 'all') {
+    out.distance = Math.max(out.distance, SPARK_CEILING);
+    out.surface = Math.max(out.surface, SPARK_CEILING);
+  }
+  return out;
+}
+
 /** A rival slot in the advanced field editor. */
 export function emptyRival(strategy = 2) {
   return { outfitId: null, strategy, stats: { ...DEFAULT_STATS }, skills: [], unique: true };
@@ -48,6 +77,7 @@ function defaults() {
     weather: 1,
     season: 1,
     aptitudes: { ...DEFAULT_APT },
+    sparks: 'style',
     // The rest of the field. `simple` is a headcount per running style, which
     // is what you actually know before a Champions Meeting; `advanced` lets
     // every rival be built out in full.
@@ -207,7 +237,12 @@ export const currentCourse = () => db.courseById.get(cm.courseId);
  * back to A, which is what a planned Champions Meeting runner is assumed to be
  * brought up to.
  */
-export function aptitudesFor(outfit, course = currentCourse(), strategy = null) {
+export function aptitudesFor(outfit, course = currentCourse(), strategy = null, { sparks = cm.sparks } = {}) {
+  return applySparks(rawAptitudesFor(outfit, course, strategy), sparks);
+}
+
+/** The same three grades exactly as the card ships them, sparks ignored. */
+export function rawAptitudesFor(outfit, course = currentCourse(), strategy = null) {
   if (!outfit) return null;
   const distanceKey = ['', 'sprint', 'mile', 'medium', 'long'][course.distanceType];
   const surfaceKey = course.surface === 1 ? 'turf' : 'dirt';
@@ -235,6 +270,10 @@ export function scoringContext(slot = null, sim = null) {
     ?? (own && cm.you.lockAptitudes ? aptitudesFor(own, course, strategy) : { ...cm.aptitudes });
   return {
     course,
+    // The skills the run is expected to end with. A count-gated skill
+    // ("after three recovery skills") is priced off this rather than off a
+    // table, so the deck you are actually planning decides whether it fires.
+    deckSkills: slot ? null : yourSkills(),
     strategy,
     ground: cm.ground,
     weather: cm.weather,

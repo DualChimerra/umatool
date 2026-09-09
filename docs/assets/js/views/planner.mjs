@@ -173,6 +173,16 @@ export function renderPlanner(root) {
         <div class="apt-row" data-role="apt"></div>
       </div>
       <div class="field">
+        <label>Aptitude sparks</label>
+        <div class="toggle-grid toggle-grid--row" data-role="sparks">
+          <button type="button" data-v="none" aria-pressed="${cm.sparks === 'none'}">Card</button>
+          <button type="button" data-v="style" aria-pressed="${cm.sparks === 'style'}">Style</button>
+          <button type="button" data-v="all" aria-pressed="${cm.sparks === 'all'}">All to A</button>
+        </div>
+        <p class="tiny muted">What the rankings assume you bring an uma up to with inheritance factors.
+        <b>Style</b> is the default: it is one factor line and it is what makes an off-style pick runnable at all.</p>
+      </div>
+      <div class="field">
         <label>Skill recovery <span class="muted" data-out="recovery">${cm.recovery}%</span></label>
         <input type="range" min="0" max="60" step="1" data-role="recovery" value="${cm.recovery}">
       </div>
@@ -461,6 +471,11 @@ export function renderPlanner(root) {
   on(statsPanel, 'change', '[data-apt]', (e, t) => {
     cm.aptitudes[t.dataset.apt] = Number(t.value);
     commitContext(); repaint();
+  });
+  on(statsPanel, 'click', '[data-role="sparks"] button', (e, t) => {
+    cm.sparks = t.dataset.v;
+    statsPanel.querySelectorAll('[data-role="sparks"] button').forEach((b) => b.setAttribute('aria-pressed', String(b === t)));
+    commitContext(); paintYou(); repaint();
   });
   statsPanel.querySelector('[data-role="recovery"]').addEventListener('input', (e) => {
     cm.recovery = Number(e.target.value);
@@ -1126,7 +1141,7 @@ export function renderPlanner(root) {
     const gap = r.bashin - r.nativeBashin;
     const notes = [];
     if (r.owner.strategy !== cm.strategy) {
-      notes.push(`<span class="etag${r.styleApt >= MIN_STYLE_APT ? '' : ' etag--warn'}">runs ${esc(r.owner.strategyName)} · ${esc(r.styleGrade)} ${esc(STRATEGY[cm.strategy].short)}</span>`);
+      notes.push(`<span class="etag${r.styleApt >= MIN_STYLE_APT ? '' : ' etag--warn'}">runs ${esc(r.owner.strategyName)} · ${esc(r.styleGrade)} ${esc(STRATEGY[cm.strategy].short)}${r.sparkedStyle ? ` (card ${esc(r.cardStyleGrade)}, sparked)` : ''}</span>`);
       notes.push(`<span class="etag etag--note">${esc(fmt.signed(gap))} vs her own style</span>`);
     } else {
       notes.push('<span class="etag etag--good">her own style</span>');
@@ -1275,7 +1290,10 @@ export function renderPlanner(root) {
         minus what <b>${esc(course.distanceTypeName)} and ${esc(course.surfaceName)} aptitude</b> cost against the clock,
         minus what <b>style aptitude</b> costs the activation roll. Stats are the ones in the rail, so the ranking is for
         <em>your</em> build, not a theoretical one. <b>As ${esc(STRATEGY[cm.strategy].short)}</b> drops anyone below
-        ${esc(APT_GRADE[MIN_STYLE_APT])} aptitude for that style or ${esc(APT_GRADE[MIN_COURSE_APT])} for this distance or surface.</p>
+        ${esc(APT_GRADE[MIN_STYLE_APT])} aptitude for that style or ${esc(APT_GRADE[MIN_COURSE_APT])} for this distance or surface —
+        read <b>after</b> the aptitude sparks set in the rail, which is why an uma whose card says D for this style can still be here.
+        Her unique is priced against the skills you have said you are training, so anything gated on your own skill history
+        (&ldquo;after three recovery skills&rdquo;) is counted off that list rather than guessed at.</p>
       </div>
     </section>`);
 

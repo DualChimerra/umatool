@@ -39,11 +39,13 @@ built out individually. It returns:
 * the best **uniques** that can fire with that running style — scored under the
   style *you* picked rather than the one their owner prefers, each with the same
   skill read under all four styles, and gated on whether the owner can run this
-  race at all
+  race at all *after* the aptitude sparks set in the rail
 * the best **unique to inherit from a parent**, ranked as the weaker white copy
   you would actually be carrying, on your own runner's style and aptitudes
 * the **best umamusume for this race**, added up from her unique, her own skill
-  list, and what her aptitudes cost against the clock and the activation roll
+  list, and what her aptitudes cost against the clock and the activation roll —
+  her unique priced against the skills you said you are training, so one gated
+  on your own skill history is counted off that list rather than guessed at
 * the **support cards** that hand out the top-ranked skills
 
 **Race sim** — the whole field run forward at 1/15 s, a few hundred times. Your
@@ -264,6 +266,26 @@ overtake an earlier one.
 * **Aptitudes are modelled.** Distance aptitude scales the Speed term in the final
   leg; surface and running-style aptitude scale acceleration. Below A costs real
   time and the model charges for it.
+* **Aptitudes are also *sparked*.** The card's aptitude grid is not the grid an
+  uma runs a Champions Meeting on — inheritance factors raise distance, surface
+  and running-style aptitude, and running style is the one everybody fixes. The
+  rail has an **Aptitude sparks** switch: *Card* reads the grid exactly as
+  shipped, *Style* (the default) assumes the running style is factored up to A,
+  *All to A* assumes distance and surface as well. Reading the card as final is
+  not a conservative choice, it is a wrong one: on Kyoto 2200m as an End Closer
+  it cut 57 of 97 outfits out of the ranking on a grade that costs one factor
+  line to change, including the outfit the round is actually about.
+* **A count gate is read off your deck, not off a table.** A handful of skills
+  are gated on your own skill history — *Festive Miracle* wants three recovery
+  skills to have fired, *Dazzl'n ♪ Diver* two middle-leg ones. Those used to get
+  a flat entry in the odds table (`activate_count_heal>=3` was a hard 15%),
+  which prices a unique you deliberately build a deck around as though the deck
+  were a coincidence. They are now counted: every candidate in the planned deck
+  contributes its own activation probability and the answer is the
+  Poisson-binomial P(N ≥ v), with a contributor that fires after the gate is
+  checked counting at half weight. On Kyoto 2200m with seven recovery skills the
+  closed form puts Festive Miracle at 85%; the simulator fires it in 88% of 300
+  races, at 1151m against the closed form's 1100m.
 * **Position keep is why early skills are cheap.** For the first two thirds of the
   race every runner behind the leader is holding a slot, so ground stolen there is
   largely handed back. Measured against the simulator, an early speed skill keeps
@@ -286,6 +308,17 @@ overtake an earlier one.
   position keep, so a hand-written state machine could not be checked against
   anything. A calibrated approximation that is disclosed beats an unvalidated
   guess that is not.
+* **The closed form runs high on uniques, and worst in the middle leg.** The
+  15% quoted above is measured over a basket of ordinary skills. Uniques are
+  long-duration and large, and on Kyoto 2200m as an End Closer six of them come
+  out at 0.99–1.99× what the simulator pays, averaging about 1.5×. The overshoot
+  tracks *where* the skill fires: `positionWeight` charges only 5% against a
+  skill landing anywhere between ⅙ and ⅔ of the race, while the position-keep
+  note above says ground stolen there is largely handed back. A skill firing at
+  the halfway mark would need a weight near 0.58 to match the simulator, not the
+  0.95 it gets. Relative order inside the last spurt is fine; a middle-leg skill
+  ranked against a last-spurt one is not, and the Race page's per-row check
+  against the simulator is the way to settle any row that matters.
 * **What the simulator does not model** is listed on the Race page itself: lanes
   are one-dimensional, skill ordering inside a tick is list order, position keep is
   a per-style nudge rather than the full four-mode state machine, and a handful of

@@ -347,6 +347,8 @@ ul { margin: 0; padding: 0; list-style: none; }
 .chip--dirt { color: var(--dirt); border-color: color-mix(in srgb, var(--dirt) 32%, transparent); background: color-mix(in srgb, var(--dirt) 8%, transparent); }
 .chip--warn { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 30%, transparent); background: color-mix(in srgb, var(--danger) 7%, transparent); }
 .chip--friend { color: var(--friend); border-color: color-mix(in srgb, var(--friend) 40%, transparent); background: color-mix(in srgb, var(--friend) 10%, transparent); }
+/* An aptitude the card does not ship with, reached by an inheritance factor. */
+.chip--note { color: var(--ink-2); border-style: dashed; background: transparent; }
 .chip__x { cursor: pointer; opacity: .55; font-weight: 700; padding: 0 1px; }
 .chip__x:hover { opacity: 1; }
 
