@@ -13,7 +13,7 @@ import {
   borrowedIn, borrowedIndex, saveBuild, loadBuild, deleteBuild, clearRoster, BORROWED_ALLOWANCE,
 } from '../context.mjs';
 import { simulateRace, rankSkills, STRATEGY } from '../model.mjs';
-import { analyseSlot, rankCards, rankUmas, recommendations, sourceNames, HINT_CONFIDENCE } from '../analysis.mjs';
+import { analyseSlot, cardSkills, rankCards, rankUmas, recommendations, sourceNames, HINT_CONFIDENCE } from '../analysis.mjs';
 
 const STATS = [['speed', 'Spd'], ['stamina', 'Sta'], ['power', 'Pwr'], ['guts', 'Gut'], ['wit', 'Wit']];
 const SEV_LABEL = { blocker: 'Fix', warn: 'Check', tip: 'Tip' };
@@ -311,6 +311,12 @@ export function renderTeam(root) {
         query: pickerState.query,
         strategy: pickerState.type ? Number(pickerState.type) : null,
         own: pickerState.own,
+        // Whatever the six cards already teach counts as hers for this ranking:
+        // an uma whose unique is gated on "after three recovery skills" is only
+        // as good as the deck waiting for her.
+        deck: [...new Set(slot.deck.filter(Boolean)
+          .flatMap((id) => cardSkills(db.supportById.get(id) ?? { eventSkills: [], hintSkills: [] })
+            .map((e) => e.skill)))],
       }).slice(0, 60);
       grid.innerHTML = rows.map(umaRow).join('')
         || '<p class="muted small">Nothing matches. Tick some umas on the Collection page, or turn the restriction off there.</p>';
@@ -371,6 +377,7 @@ export function renderTeam(root) {
           <span class="chip chip--accent">${esc(o.strategyName)}</span>
           <span class="chip ${r.aptitudes.distanceVal >= 7 ? '' : 'chip--warn'}">${esc(r.aptitudes.distance)}</span>
           <span class="chip ${r.aptitudes.surfaceVal >= 7 ? '' : 'chip--warn'}">${esc(r.aptitudes.surface)}</span>
+          ${r.style !== o.strategy ? `<span class="chip chip--note">as ${esc(STRATEGY[r.style].short)}${r.aptitudes.sparkedStyle ? `, sparked from ${esc(r.aptitudes.cardStyle)}` : ` ${esc(r.aptitudes.style)}`}</span>` : ''}
           ${r.owned ? '' : '<span class="chip chip--friend">not in collection</span>'}
         </div>
         <div class="tiny muted">${esc(o.epithet)}</div>
@@ -548,6 +555,7 @@ export function renderTeam(root) {
                 <span class="chip ${a.aptitudes.distanceVal >= 7 ? '' : 'chip--warn'}">${esc(course.distanceTypeName)} ${esc(a.aptitudes.distance)}</span>
                 <span class="chip ${a.aptitudes.surfaceVal >= 7 ? '' : 'chip--warn'}">${esc(course.surfaceName)} ${esc(a.aptitudes.surface)}</span>
                 <span class="chip ${a.aptitudes.styleVal >= 7 ? '' : 'chip--warn'}">Style ${esc(a.aptitudes.style)}</span>
+                ${a.aptitudes.sparked ? `<span class="chip chip--note" title="The card ships ${esc(a.aptitudes.card.style)} for this style; the rail is set to spark it.">sparked from ${esc(a.aptitudes.card.style)}</span>` : ''}
               </div>
             </div>
           </div>

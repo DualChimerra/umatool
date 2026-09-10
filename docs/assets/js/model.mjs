@@ -35,7 +35,7 @@ import {
 import {
   STRATEGY_HP_COEF, GROUND_HP, TARGET_KIND, DEFAULT_APTITUDES,
   accelRate, aptWit, courseSpeedModifier, effectiveStats, raceSpeeds, SPURT_RUNOUT,
-  isDebuff, isPassive, baseSpeed, BASHIN,
+  isDebuff, isPassive, baseSpeed, BASHIN, temptationChance,
 } from './race/sim.mjs';
 
 // The physics lives in the simulator and is re-exported here, so the closed
@@ -43,6 +43,7 @@ import {
 export {
   BASHIN, baseSpeed, isDebuff, isPassive, TARGET_KIND,
   accelRate, aptWit, courseSpeedModifier, effectiveStats, raceSpeeds,
+  temptationChance,
 };
 export const CM_FIELD_SIZE = 9;
 
@@ -360,21 +361,35 @@ function conditionEnv(ctx) {
  * uniques are written as "…and no pace-up yet @ …" and the second branch is
  * the one that actually decides the skill.
  */
+/**
+ * Where in the race an alternative's condition is checked: the first metre of
+ * its stretch, or the length-weighted centroid when it fires at random inside
+ * one.
+ */
+function triggerPoint(alt) {
+  const window = rangeLength(alt.ranges);
+  if (!window) return alt.ranges[0]?.[0] ?? 0;
+  return alt.random
+    ? alt.ranges.reduce((n, [s, e]) => n + ((s + e) / 2) * (e - s), 0) / window
+    : alt.ranges[0][0];
+}
+
 function chooseAlternative(skill, ctx) {
   const [race, runner] = conditionEnv(ctx);
   let best = null;
   for (const c of compiledFor(skill, ctx.course)) {
     // A precondition is a gate on the whole variant: if this race cannot
     // satisfy it, the skill never arms, whatever its main condition says.
-    const pre = preOdds(c.pre, race, runner);
+    const pre = preOdds(c.pre, race, runner, ctx, skill.id);
     if (pre.blocked) continue;
     for (const alt of c.cond.alts) {
       if (!alt.setup.every((fn) => fn(race, runner))) continue;
       if (!alt.ranges.length || rangeLength(alt.ranges) <= 0) continue;
+      const trigger = triggerPoint(alt);
       let odds = pre.odds;
       for (const g of [...alt.liveKeys, ...alt.guesses]) {
         const key = g.split(/[<>=!]/)[0];
-        if (key !== 'order' && key !== 'order_rate') odds *= termOdds(g);
+        if (key !== 'order' && key !== 'order_rate') odds *= termOdds(g, ctx, trigger, skill.id);
       }
       if (!best || odds > best.odds) best = { alt, variant: c.variant, cond: c.cond, odds, pre };
     }
@@ -388,18 +403,19 @@ function chooseAlternative(skill, ctx) {
  * get their published odds, discounted a little less than a live condition
  * because a precondition only has to be true *once*, not at the trigger.
  */
-function preOdds(pre, race, runner) {
+function preOdds(pre, race, runner, ctx = null, selfId = null) {
   if (!pre) return { blocked: false, odds: 1, terms: [] };
   let best = null;
   for (const alt of pre.alts) {
     if (!alt.setup.every((fn) => fn(race, runner))) continue;
     if (alt.ranges.length && rangeLength(alt.ranges) <= 0) continue;
+    const trigger = alt.ranges.length ? triggerPoint(alt) : null;
     let odds = 1;
     const terms = [];
     for (const g of [...alt.liveKeys, ...alt.guesses]) {
       const key = g.split(/[<>=!]/)[0];
       if (key === 'order' || key === 'order_rate') continue;
-      odds *= Math.min(1, termOdds(g) + 0.15);
+      odds *= Math.min(1, termOdds(g, ctx, trigger, selfId) + 0.15);
       if (LIVE_LABEL[key]) terms.push(LIVE_LABEL[key]);
     }
     if (!best || odds > best.odds) best = { blocked: false, odds, terms, position: alt.position ?? {} };
@@ -458,13 +474,138 @@ const LIVE_ODDS = {
 
 const TERM_RE = /^([a-z_0-9]+)(>=|<=|==|!=|>|<)(-?\d+)$/;
 
-/** Odds that one unmodelled term holds, read from its operator and value. */
-function termOdds(raw) {
+/**
+ * Odds that one unmodelled term holds, read from its operator and value.
+ *
+ * `activate_count_*` is the exception: it is not a coin flip about the race, it
+ * is a fact about the deck you are planning. When the deck is known it is
+ * counted instead of guessed — see `countOdds`.
+ *
+ * @param {object} [ctx]     scoring context, if the deck is known
+ * @param {number} [before]  the metre mark the condition is checked at
+ * @param {string} [selfId]  the skill being priced, so it cannot count itself
+ */
+function termOdds(raw, ctx = null, before = null, selfId = null) {
   const m = TERM_RE.exec(raw);
   if (!m) return 0.5;
-  const entry = LIVE_ODDS[m[1]];
+  const [, key, op, value] = m;
+  if (COUNT_BUCKET[key]) {
+    const counted = countOdds(COUNT_BUCKET[key], op, Number(value), ctx, before, selfId);
+    if (counted != null) return counted;
+  }
+  const entry = LIVE_ODDS[key];
   if (entry == null) return 0.5;
-  return typeof entry === 'function' ? entry(m[2], Number(m[3])) : entry;
+  return typeof entry === 'function' ? entry(op, Number(value)) : entry;
+}
+
+/* -------------------------------------------- counting your own skill history
+
+ * A handful of skills — Festive Miracle, A Kiss for Courage, Dazzl'n ♪ Diver,
+ * Barcarole of Blessings — are gated on how many of your *other* skills have
+ * already fired. Scored blind they get a flat table entry (`activate_count_heal
+ * >= 3` was a hard 15%), which prices a unique you deliberately build a deck
+ * around as though the deck were a coincidence. That is what kept Christmas
+ * Oguri Cap out of every ranking on the site: her unique is worth over two
+ * lengths once three heals have landed, and the model paid her 15% of that
+ * whatever she was carrying.
+ *
+ * When the deck is known, count it instead. Each candidate contributes its own
+ * activation probability, and the answer is the Poisson-binomial P(N ≥ v)
+ * rather than a guess. Two honest discounts stay in:
+ *
+ *   * a contributor that fires *after* the gate is checked counts at half
+ *     weight — it still arms the skill, just later in its window;
+ *   * the contributors are scored with the deck switched off, so a chain of
+ *     count-gated skills cannot bootstrap itself.
+ */
+
+const COUNT_BUCKET = {
+  activate_count_all: 'all',
+  activate_count_heal: 'heal',
+  activate_count_start: 'opening',
+  activate_count_middle: 'middle',
+  activate_count_later_half: 'lateHalf',
+};
+
+const LATE_CONTRIBUTOR_WEIGHT = 0.5;
+
+// One entry per scoring context, so a 600-row ranking pays for this once.
+const deckCountCache = new WeakMap();
+
+function isHealSkill(skill) {
+  return skill.effects.some((e) => e.key === 'recovery' && e.target === 1 && e.value > 0);
+}
+
+/**
+ * Every skill in the deck that can contribute to a count, with the odds it
+ * fires and where. Returns null when no deck is known, which is what puts the
+ * static table back in charge.
+ */
+function deckContributors(ctx) {
+  if (!ctx) return null;
+  const list = (ctx.deckSkills ?? []).filter(Boolean);
+  if (!list.length) return null;
+  if (deckCountCache.has(ctx)) return deckCountCache.get(ctx);
+
+  // Scored with the deck switched off: a count-gated skill must not be allowed
+  // to count itself, directly or through another count-gated skill.
+  const bare = { ...ctx, deckSkills: null };
+  const out = { all: [], heal: [], opening: [], middle: [], lateHalf: [] };
+  deckCountCache.set(ctx, out);
+
+  for (const skill of list) {
+    const scored = scoreSkill(skill, bare);
+    if (!scored || !(scored.probability > 0)) continue;
+    const entry = { id: skill.id, p: scored.probability, at: scored.at };
+    out.all.push(entry);
+    if (isHealSkill(skill)) out.heal.push(entry);
+    if (scored.phase === 0) out.opening.push(entry);
+    if (scored.phase === 1) out.middle.push(entry);
+    if (scored.fraction >= 0.5) out.lateHalf.push(entry);
+  }
+  return out;
+}
+
+/** P(exactly k of these independent events) for every k — Poisson-binomial. */
+function countDistribution(ps) {
+  let dist = [1];
+  for (const p of ps) {
+    const next = new Array(dist.length + 1).fill(0);
+    for (let k = 0; k < dist.length; k += 1) {
+      next[k] += dist[k] * (1 - p);
+      next[k + 1] += dist[k] * p;
+    }
+    dist = next;
+  }
+  return dist;
+}
+
+/**
+ * Odds that the "how many of my skills have fired" gate holds, counted off the
+ * deck rather than guessed. `null` means the deck is unknown and the caller
+ * should fall back to the published table.
+ */
+function countOdds(bucket, op, value, ctx, before, selfId) {
+  const contributors = deckContributors(ctx);
+  if (!contributors) return null;
+  const ps = [];
+  for (const c of contributors[bucket]) {
+    if (c.id === selfId) continue;
+    if (before == null || c.at < before) ps.push(c.p);
+    else ps.push(c.p * LATE_CONTRIBUTOR_WEIGHT);
+  }
+  const dist = countDistribution(ps);
+  const atLeast = (k) => dist.slice(Math.max(0, k)).reduce((n, x) => n + x, 0);
+  const atMost = (k) => dist.slice(0, Math.max(0, k) + 1).reduce((n, x) => n + x, 0);
+  switch (op) {
+    case '>=': return atLeast(value);
+    case '>': return atLeast(value + 1);
+    case '<=': return atMost(value);
+    case '<': return atMost(value - 1);
+    case '==': return dist[value] ?? 0;
+    case '!=': return 1 - (dist[value] ?? 0);
+    default: return null;
+  }
 }
 
 const LIVE_LABEL = {
@@ -558,13 +699,15 @@ function statValue(ctx, key) {
  */
 const RAMP_YIELD = 0.6;
 
-function accelValue(sim, da, ranges, durSec, random, at, zone = 0) {
+function accelValue(sim, da, ranges, durSec, random, at, zone = 0, used = null) {
   let total = 0;
   let hit = null;
   let best = 0;
+  const spend = [];
   const window = ranges.reduce((n, [s, e]) => n + (e - s), 0);
 
-  for (const ramp of sim.ramps) {
+  for (let ri = 0; ri < sim.ramps.length; ri += 1) {
+    const ramp = sim.ramps[ri];
     const speed = ramp.to;
     // The stretch of track a trigger can sit on and still have the effect
     // running while the ramp is being climbed.
@@ -596,20 +739,30 @@ function accelValue(sim, da, ranges, durSec, random, at, zone = 0) {
     }
     if (p <= 0) continue;
 
+    // Acceleration already committed to this ramp by the rest of the deck. A
+    // ramp is a fixed climb, so the second skill onto it is solving a shallower
+    // problem than the first: rampLoss falls away convexly in `a`, and reading
+    // the saving from the raised base is what makes the third accel skill
+    // price itself at what it is actually worth rather than at what it would
+    // be worth alone. With no deck state this is `ramp.a`, exactly as before.
+    const aBase = ramp.a + (used ? (used.get(ri) ?? 0) : 0);
+
     // Not all of the theoretical time saving survives: reaching target speed
     // sooner also starts spending stamina sooner, and the runner is capped at
     // that target either way. Measured against the simulator, about six tenths
     // of the closed-form saving turns into ground.
-    const saved = (ramp.loss - rampLoss(ramp.from, ramp.to, ramp.a + da)) * RAMP_YIELD;
+    const saved = (rampLoss(ramp.from, ramp.to, aBase)
+      - rampLoss(ramp.from, ramp.to, aBase + da)) * RAMP_YIELD;
     const gain = saved * speed * p;
     total += gain;
+    if (da > 0 && p > 0) spend.push({ ramp: ri, da: da * p });
     if (gain > best) { best = gain; hit = ramp.why; }
   }
 
   // Real races are never exactly at target speed — traffic, corners and lane
   // changes keep nibbling at it — so a little survives with no ramp in range.
   const residual = da * Math.min(durSec, 3) * 0.05;
-  return { metres: total + residual, ramp: hit, offRamp: total <= 0 };
+  return { metres: total + residual, ramp: hit, offRamp: total <= 0, spend };
 }
 
 /** Expected ground a rival loses from a speed cut, per rival. */
@@ -636,9 +789,7 @@ export function scoreSkill(skill, ctx) {
   const reasons = [];
   const d = course.distance;
   const window = rangeLength(alt.ranges);
-  const at = alt.random
-    ? alt.ranges.reduce((n, [s, e]) => n + ((s + e) / 2) * (e - s), 0) / window
-    : alt.ranges[0][0];
+  const at = triggerPoint(alt);
   const fraction = at / d;
   const phase = phaseAt(d, at);
   const speedHere = at >= sim.spurtStart ? sim.speeds.spurt
@@ -660,6 +811,11 @@ export function scoreSkill(skill, ctx) {
 
   let metres = 0;
   let rivalMetres = 0;
+  // What this skill would consume of the race's finite resources — ramp
+  // acceleration and the stamina hole — so a deck can be priced as a deck.
+  const spend = [];
+  const statGain = {};
+  let healPct = 0;
   const parts = {};
   const add = (key, m) => { if (m) { parts[key] = (parts[key] ?? 0) + m; metres += m; } };
   const addRival = (key, m) => { if (m) { parts[key] = (parts[key] ?? 0) + m; rivalMetres += m; } };
@@ -687,8 +843,9 @@ export function scoreSkill(skill, ctx) {
       }
       case 'accel': {
         if (onSelf) {
-          const a = accelValue(sim, e.value, alt.ranges, durSec, alt.random, at, fireZone);
+          const a = accelValue(sim, e.value, alt.ranges, durSec, alt.random, at, fireZone, ctx._deckAccel);
           add('accel', a.metres);
+          for (const s of a.spend) spend.push(s);
           if (a.ramp) reasons.push(`lands on the ramp ${a.ramp}`);
           else if (a.offRamp) reasons.push('no acceleration to gain here — already at target speed');
         } else {
@@ -698,6 +855,7 @@ export function scoreSkill(skill, ctx) {
       }
       case 'recovery': {
         if (onSelf) {
+          healPct += e.value;
           const recovered = (e.value / 100) * sim.maxHp;
           const extraSeconds = recovered / Math.max(0.1, sim.rates.spurt);
           const gain = extraSeconds * Math.max(0, sim.speeds.spurt - sim.speeds.v2);
@@ -713,6 +871,10 @@ export function scoreSkill(skill, ctx) {
       case 'speed': case 'stamina': case 'power': case 'guts': case 'wit': {
         const per = statValue(ctx, e.key);
         const lengths = per * e.value * (nominal > 0 ? Math.min(1, durSec / Math.max(1, sim.time)) : 1);
+        // A green skill is a permanent stat change, so the deck has to carry it
+        // forward: the second Speed ○ is priced from a build that already has
+        // the first. A timed stat buff is not permanent and is not recorded.
+        if (onSelf && nominal === 0) statGain[e.key] = (statGain[e.key] ?? 0) + e.value;
         if (onSelf) add('stat', lengths * BASHIN);
         else addRival('debuff-stat', Math.abs(lengths) * BASHIN * victims.weight);
         break;
@@ -774,14 +936,19 @@ export function scoreSkill(skill, ctx) {
   // positional skill.
   let pOther = 1;
   const unmodelled = [];
+  const counted = [];
   for (const g of [...alt.liveKeys, ...alt.guesses]) {
     const key = g.split(/[<>=!]/)[0];
     if (key === 'order' || key === 'order_rate') continue;
-    const odds = termOdds(g);
+    const odds = termOdds(g, ctx, at, skill.id);
     pOther *= odds;
-    if (odds < 0.95 && LIVE_LABEL[key]) unmodelled.push(LIVE_LABEL[key]);
+    // A count gate read off a known deck is a measurement, not a discount, so
+    // it says what the deck buys rather than hiding in the "needs …" list.
+    if (COUNT_BUCKET[key] && deckContributors(ctx)) counted.push(`${LIVE_LABEL[key]} ${Math.round(odds * 100)}% of the time in this deck`);
+    else if (odds < 0.95 && LIVE_LABEL[key]) unmodelled.push(LIVE_LABEL[key]);
   }
   if (unmodelled.length) reasons.push(`needs ${[...new Set(unmodelled)].join(', ')}`);
+  for (const c of counted) reasons.push(c);
   if (alt.random && window < d * 0.25) {
     reasons.push(`fires somewhere in ${Math.round(window)}m of eligible track`);
   }
@@ -822,6 +989,11 @@ export function scoreSkill(skill, ctx) {
     victims,
     debuff: rivalMetres !== 0,
     variant,
+    // Deck bookkeeping: expected, not nominal, since a skill that fires half
+    // the time only takes half the ramp and heals half the hole.
+    spend: spend.map((s) => ({ ramp: s.ramp, da: s.da * probability })),
+    healPct: healPct * probability,
+    statGain: Object.fromEntries(Object.entries(statGain).map(([k, v]) => [k, v * probability])),
   };
 }
 
@@ -909,6 +1081,189 @@ export function skillFiring(skill, scored, course, sim) {
     inSpurt: end >= d - sim.spurtDistance,
     secondsClipped: Math.max(0, (skill.duration * (d / 1000)) - scored.durSec),
   };
+}
+
+/* ------------------------------------------------------------ deck valuation */
+
+/** Does this skill compete for a resource the rest of the deck also wants? */
+const usesRamp = (skill) => skill.effects.some((e) => e.target === 1 && e.key === 'accel' && e.value > 0);
+
+/**
+ * What a *set* of skills is worth together, which is not what they are worth
+ * added up.
+ *
+ * `scoreSkill` answers "what is this skill worth on this race", and every
+ * total on the site used to be a sum of those answers. For skills that compete
+ * for the same finite thing, that sum is not an estimate but an overcount:
+ *
+ *   * **The stamina hole is one hole.** Recovery is priced against
+ *     `staminaPressure`, which falls as the hole fills. Four heals scored
+ *     independently on Tokyo 2400m at 900 Stamina came to 2.74 lengths; scored
+ *     in sequence they are 1.35, and the fourth is worth exactly nothing —
+ *     `scoreSkill` already returns `null` for it, given the right state.
+ *   * **A ramp is one climb.** Four acceleration skills can each reach the
+ *     run-up into the last spurt and each score around 0.9 lengths alone, but
+ *     that ramp is 6.97 seconds long and there is only one of it.
+ *
+ * So the deck is priced greedily: score everything, take the best, commit what
+ * it consumes, re-price only what that consumption touched, repeat. Greedy is
+ * exact here rather than approximate, because both resources are convex — the
+ * next skill onto a ramp always saves less than the last, so no later pick can
+ * overtake an earlier one.
+ *
+ * @returns {{rows: object[], total: number, naive: number, overcount: number}}
+ *   `rows` in commit order, each with `alone` (what the old sum charged) and
+ *   `marginal` (what it is worth given everything above it).
+ */
+export function valueDeck(skills, ctx) {
+  const list = (skills ?? []).filter(Boolean);
+  // A deck is also the answer to "how many of my skills have already fired", so
+  // it is the deck itself that prices its own count-gated skills.
+  const base = { ...ctx, deckSkills: list, sim: ctx.sim ?? simulateRace(ctx) };
+
+  const alone = new Map();
+  let naive = 0;
+  for (const skill of list) {
+    const r = scoreSkill(skill, base);
+    alone.set(skill, r?.bashin ?? 0);
+    naive += r?.bashin ?? 0;
+  }
+
+  // Deck state: acceleration already committed per ramp, the share of the
+  // stamina hole already healed, and the green skills already trained.
+  const accelUsed = new Map();
+  const stats = { ...ctx.stats };
+  let healPct = 0;
+  let state = base;
+  const rebuild = () => {
+    const next = {
+      ...ctx,
+      deckSkills: list,
+      stats,
+      recoveryPct: (ctx.recoveryPct ?? 0) + healPct,
+      _deckAccel: accelUsed,
+      _statCache: undefined,
+    };
+    next.sim = simulateRace(next);
+    state = next;
+  };
+
+  const pool = [...list];
+  const current = new Map(list.map((s) => [s, { value: alone.get(s), scored: null }]));
+  for (const s of pool) current.get(s).scored = scoreSkill(s, base);
+
+  const rows = [];
+  let total = 0;
+  while (pool.length) {
+    let bestAt = 0;
+    for (let i = 1; i < pool.length; i += 1) {
+      if (current.get(pool[i]).value > current.get(pool[bestAt]).value) bestAt = i;
+    }
+    const skill = pool.splice(bestAt, 1)[0];
+    const { value, scored } = current.get(skill);
+    rows.push({ skill, scored, marginal: value, alone: alone.get(skill) ?? 0 });
+    total += value;
+
+    // Commit what it takes out of the race, then re-price only the skills that
+    // were competing for it. Everything else is unaffected, which is what keeps
+    // this linear rather than quadratic on a full pool.
+    let resim = false;
+    let ramped = false;
+    if (scored?.healPct > 0) { healPct += scored.healPct; resim = true; }
+    for (const [k, v] of Object.entries(scored?.statGain ?? {})) {
+      if (v) { stats[k] = (stats[k] ?? 0) + v; resim = true; }
+    }
+    for (const s of scored?.spend ?? []) {
+      accelUsed.set(s.ramp, (accelUsed.get(s.ramp) ?? 0) + s.da);
+      ramped = true;
+    }
+    if (!resim && !ramped) continue;
+    if (resim) rebuild(); else state = { ...state, _deckAccel: accelUsed };
+
+    for (const s of pool) {
+      // A heal or a green skill moves the whole race model, so it re-prices
+      // everything; a ramp commitment only moves the other accel skills.
+      if (!resim && !usesRamp(s)) continue;
+      const r = scoreSkill(s, state);
+      current.set(s, { value: r?.bashin ?? 0, scored: r });
+    }
+  }
+
+  return { rows, total, naive, overcount: naive - total };
+}
+
+/** Best skills for a race under a real SP budget, priced as a deck. */
+export function optimiseDeck(skills, ctx, { budget = Infinity, limit = 0, keep = [] } = {}) {
+  const forced = keep.filter(Boolean);
+  const pool = (skills ?? []).filter((s) => s && !forced.includes(s));
+
+  const accelUsed = new Map();
+  const stats = { ...ctx.stats };
+  let healPct = 0;
+  let spent = 0;
+  const picked = [];
+  const rows = [];
+
+  const stateFor = () => {
+    const next = {
+      ...ctx,
+      // Snapshot, not the live array: the count model caches per context object
+      // and `picked` keeps growing under it.
+      deckSkills: [...(ctx.deckSkills ?? []), ...picked],
+      stats,
+      recoveryPct: (ctx.recoveryPct ?? 0) + healPct,
+      _deckAccel: accelUsed,
+      _statCache: undefined,
+    };
+    next.sim = simulateRace(next);
+    return next;
+  };
+  let state = stateFor();
+
+  const commit = (skill, scored, marginal) => {
+    picked.push(skill);
+    spent += skill.cost ?? 0;
+    rows.push({ skill, scored, marginal, perSp: skill.cost ? (marginal / skill.cost) * 100 : null });
+    let resim = false;
+    if (scored?.healPct > 0) { healPct += scored.healPct; resim = true; }
+    for (const [k, v] of Object.entries(scored?.statGain ?? {})) {
+      if (v) { stats[k] = (stats[k] ?? 0) + v; resim = true; }
+    }
+    for (const s of scored?.spend ?? []) accelUsed.set(s.ramp, (accelUsed.get(s.ramp) ?? 0) + s.da);
+    // Even a pick that changes nothing physical changes the deck, and a
+    // count-gated skill is priced off the deck, so the state is rebuilt either
+    // way rather than only on a re-sim.
+    state = resim ? stateFor() : { ...state, deckSkills: [...(ctx.deckSkills ?? []), ...picked], _deckAccel: accelUsed };
+  };
+
+  // Anything already committed is priced first, at the top of the deck, and its
+  // SP comes off the budget — otherwise the optimiser recommends skills you
+  // cannot afford next to the ones you have already decided on.
+  for (const skill of forced) {
+    const scored = scoreSkill(skill, state);
+    commit(skill, scored, scored?.bashin ?? 0);
+  }
+
+  while (pool.length && (!limit || picked.length < limit)) {
+    let best = null;
+    let bestAt = -1;
+    for (let i = 0; i < pool.length; i += 1) {
+      const skill = pool[i];
+      const cost = skill.cost ?? 0;
+      if (spent + cost > budget) continue;
+      const scored = scoreSkill(skill, state);
+      const marginal = scored?.bashin ?? 0;
+      if (marginal <= 0) continue;
+      // Under a budget the right greedy key is value per SP, not value; a free
+      // skill is ranked on value alone so it never divides by zero.
+      const key = cost > 0 ? marginal / cost : Infinity;
+      if (!best || key > best.key) { best = { key, scored, marginal }; bestAt = i; }
+    }
+    if (!best) break;
+    commit(pool.splice(bestAt, 1)[0], best.scored, best.marginal);
+  }
+
+  return { rows, picked, spent, total: rows.reduce((n, r) => n + r.marginal, 0) };
 }
 
 export function rankSkills(skills, ctx, { tiers = null, limit = 0, filter = null } = {}) {

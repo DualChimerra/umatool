@@ -22,6 +22,35 @@ const listeners = new Set();
 export const DEFAULT_STATS = { speed: 1200, stamina: 900, power: 1000, guts: 500, wit: 900 };
 export const DEFAULT_APT = { distance: 7, surface: 7, style: 7 };
 
+/**
+ * Aptitude sparks.
+ *
+ * The card's aptitude grid is not the grid the uma runs a Champions Meeting on.
+ * Inheritance factors raise distance, surface and running-style aptitude, and
+ * running style is the one everybody fixes: it is a single factor line and it
+ * turns an off-style pick into a real one. Reading the card's own grades as
+ * final is what made the tool answer "who is already an End Closer" when the
+ * question was "who is the best End Closer I could build".
+ *
+ *   none  — the card's own grid, which is what a fresh pull actually has
+ *   style — running style sparked to A, the default, because it nearly always is
+ *   all   — distance and surface sparked to A as well
+ */
+export const SPARK_MODES = ['none', 'style', 'all'];
+export const SPARK_CEILING = 7; // A
+
+/** The grades the sparks reach, given the card's own. Sparks never lower one. */
+export function applySparks(raw, mode = cm.sparks) {
+  if (mode === 'none' || !raw) return raw;
+  const out = { ...raw };
+  out.style = Math.max(out.style, SPARK_CEILING);
+  if (mode === 'all') {
+    out.distance = Math.max(out.distance, SPARK_CEILING);
+    out.surface = Math.max(out.surface, SPARK_CEILING);
+  }
+  return out;
+}
+
 /** A rival slot in the advanced field editor. */
 export function emptyRival(strategy = 2) {
   return { outfitId: null, strategy, stats: { ...DEFAULT_STATS }, skills: [], unique: true };
@@ -48,6 +77,7 @@ function defaults() {
     weather: 1,
     season: 1,
     aptitudes: { ...DEFAULT_APT },
+    sparks: 'style',
     // The rest of the field. `simple` is a headcount per running style, which
     // is what you actually know before a Champions Meeting; `advanced` lets
     // every rival be built out in full.
@@ -65,6 +95,7 @@ function defaults() {
     raceSkills: [],
     fieldSize: CM_FIELD_SIZE,
     statCap: 1600,
+    spBudget: 1200,
     recovery: 0,
     obtainableOnly: true,
     stats: { ...DEFAULT_STATS },
@@ -98,6 +129,7 @@ export function initContext() {
   cm.you = { outfitId: null, uniqueLevel: 1, unique: true, lockAptitudes: true, ...(cm.you ?? {}) };
   if (cm.you.outfitId && !db.outfitById.has(cm.you.outfitId)) cm.you.outfitId = null;
   cm.you.uniqueLevel = Math.max(1, Math.min(6, Number(cm.you.uniqueLevel) || 1));
+  cm.spBudget = Math.max(200, Math.min(3000, Number(cm.spBudget) || 1200));
   cm.owned.umas = (cm.owned.umas ?? []).filter((id) => db.outfitById.has(id));
   cm.owned.cards = (cm.owned.cards ?? []).filter((id) => db.supportById.has(id));
   normaliseRoster(cm.roster);
@@ -205,7 +237,12 @@ export const currentCourse = () => db.courseById.get(cm.courseId);
  * back to A, which is what a planned Champions Meeting runner is assumed to be
  * brought up to.
  */
-export function aptitudesFor(outfit, course = currentCourse(), strategy = null) {
+export function aptitudesFor(outfit, course = currentCourse(), strategy = null, { sparks = cm.sparks } = {}) {
+  return applySparks(rawAptitudesFor(outfit, course, strategy), sparks);
+}
+
+/** The same three grades exactly as the card ships them, sparks ignored. */
+export function rawAptitudesFor(outfit, course = currentCourse(), strategy = null) {
   if (!outfit) return null;
   const distanceKey = ['', 'sprint', 'mile', 'medium', 'long'][course.distanceType];
   const surfaceKey = course.surface === 1 ? 'turf' : 'dirt';
@@ -233,6 +270,10 @@ export function scoringContext(slot = null, sim = null) {
     ?? (own && cm.you.lockAptitudes ? aptitudesFor(own, course, strategy) : { ...cm.aptitudes });
   return {
     course,
+    // The skills the run is expected to end with. A count-gated skill
+    // ("after three recovery skills") is priced off this rather than off a
+    // table, so the deck you are actually planning decides whether it fires.
+    deckSkills: slot ? null : yourSkills(),
     strategy,
     ground: cm.ground,
     weather: cm.weather,
@@ -405,6 +446,15 @@ export function saveBuild(name) {
     roster: clone(cm.roster),
     priority: [...cm.priority],
     priorityOpts: clone(cm.priorityOpts),
+    // The runner herself. A saved build used to keep the race and the team but
+    // not the person running it, so loading one left whatever runner happened
+    // to be set — which made two builds impossible to compare.
+    you: clone(cm.you),
+    strategy: cm.strategy,
+    stats: clone(cm.stats),
+    aptitudes: clone(cm.aptitudes),
+    raceSkills: [...cm.raceSkills],
+    recovery: cm.recovery,
   });
   cm.builds = cm.builds.slice(0, 24);
   commitContext();
@@ -424,8 +474,46 @@ export function loadBuild(id) {
   normaliseRoster(cm.roster);
   cm.priority = dedupeByGroup((build.priority ?? []).filter((id) => db.skillById.has(id)));
   cm.priorityOpts = clone(build.priorityOpts ?? {});
+  // Builds saved before the runner was part of a build simply have no runner
+  // to restore, so the current one is left alone rather than blanked.
+  if (build.you) cm.you = { ...cm.you, ...clone(build.you) };
+  if (build.strategy) cm.strategy = build.strategy;
+  if (build.stats) cm.stats = { ...DEFAULT_STATS, ...clone(build.stats) };
+  if (build.aptitudes) cm.aptitudes = { ...DEFAULT_APT, ...clone(build.aptitudes) };
+  if (build.raceSkills) cm.raceSkills = build.raceSkills.filter((id) => db.skillById.has(id));
+  if (build.recovery != null) cm.recovery = build.recovery;
   commitContext();
   return true;
+}
+
+/**
+ * The runner a saved build describes, without loading it.
+ *
+ * Comparing two builds means racing both, and racing one must not disturb the
+ * live context — so this hands back just the pieces `buildSetup` needs.
+ */
+export function buildRunner(build) {
+  if (!build) return null;
+  const outfit = build.you?.outfitId ? db.outfitById.get(build.you.outfitId) : null;
+  const strategy = build.strategy ?? cm.strategy;
+  const course = db.courseById.get(build.courseId) ?? currentCourse();
+  const skills = [];
+  if (outfit?.uniqueId && build.you?.unique !== false) {
+    const u = db.skillById.get(outfit.uniqueId);
+    if (u) skills.push(u);
+  }
+  for (const id of build.raceSkills ?? []) { const s = db.skillById.get(id); if (s) skills.push(s); }
+  return {
+    name: build.name,
+    outfit,
+    strategy,
+    stats: { ...DEFAULT_STATS, ...(build.stats ?? cm.stats) },
+    aptitudes: outfit && build.you?.lockAptitudes !== false
+      ? aptitudesFor(outfit, course, strategy)
+      : { ...DEFAULT_APT, ...(build.aptitudes ?? cm.aptitudes) },
+    uniqueLevel: build.you?.uniqueLevel ?? 1,
+    skills,
+  };
 }
 
 export function deleteBuild(id) {

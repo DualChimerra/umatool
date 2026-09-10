@@ -140,7 +140,7 @@ const DOWNHILL_LEAVE_PER_S = 0.2;
 const DOWNHILL_HP_FACTOR = 0.4;
 
 // Pace-up (kakari): the classic 1/(log10(0.1·Wit+1)) curve, ~10 % at 1000 Wit.
-const temptationChance = (wit) => Math.min(0.6, (6.5 / Math.log10(0.1 * wit + 1)) ** 2 / 100);
+export const temptationChance = (wit) => Math.min(0.6, (6.5 / Math.log10(0.1 * wit + 1)) ** 2 / 100);
 
 // Being boxed in is the one thing a one-dimensional track cannot give you for
 // free, so runners carry a lane coordinate in [0,1). Only runners whose lanes

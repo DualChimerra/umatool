@@ -4,7 +4,7 @@
 import { db, isObtainable } from './store.mjs';
 import {
   cm, scoringContext, prioritySatisfiers, ownsCard, canPlace, aptitudesFor,
-  fieldStyles, DEFAULT_APT,
+  fieldStyles, yourSkills, DEFAULT_APT,
 } from './context.mjs';
 import {
   simulateRace, scoreSkill, STRATEGY, statSensitivity,
@@ -63,8 +63,6 @@ export function analyseSlot(slot) {
   const outfit = slot.outfitId ? db.outfitById.get(slot.outfitId) : null;
   const ctx = scoringContext(slot);
   const sim = simulateRace({ ...ctx, recoveryPct: cm.recovery });
-  const full = { ...ctx, sim, recoveryPct: cm.recovery };
-  const valueOf = valuer(full);
 
   const origin = new Map();
   const note = (id, kind, from) => {
@@ -83,6 +81,17 @@ export function analyseSlot(slot) {
     if (!card) continue;
     for (const { skill, kind } of cardSkills(card)) note(skill.id, kind, card.id);
   }
+
+  // The pool has to exist before anything in it is priced: a skill gated on
+  // "after three recovery skills" is worth what the rest of this deck makes it
+  // worth, so the deck is assembled first and valued second.
+  const full = {
+    ...ctx,
+    sim,
+    recoveryPct: cm.recovery,
+    deckSkills: [...origin.keys()].map((id) => db.skillById.get(id)).filter(Boolean),
+  };
+  const valueOf = valuer(full);
 
   const pool = [];
   for (const [id, info] of origin) {
@@ -120,10 +129,20 @@ export function analyseSlot(slot) {
 
   return {
     slot, outfit, ctx, sim, cards, origin, pool, usable, total, coverage, covered, valueOf, full,
+    // Card grades, plus what she actually runs on once the sparks are in — the
+    // second set is what the race was scored with, so both are reported.
     aptitudes: outfit ? {
-      distance: outfit.aptitudeGrades[aptDistance], distanceVal: outfit.aptitudes[aptDistance],
-      surface: outfit.aptitudeGrades[aptSurface], surfaceVal: outfit.aptitudes[aptSurface],
-      style: outfit.aptitudeGrades[aptStyle], styleVal: outfit.aptitudes[aptStyle],
+      distance: APT_GRADE[ctx.aptitudes.distance], distanceVal: ctx.aptitudes.distance,
+      surface: APT_GRADE[ctx.aptitudes.surface], surfaceVal: ctx.aptitudes.surface,
+      style: APT_GRADE[ctx.aptitudes.style], styleVal: ctx.aptitudes.style,
+      card: {
+        distance: outfit.aptitudeGrades[aptDistance], distanceVal: outfit.aptitudes[aptDistance],
+        surface: outfit.aptitudeGrades[aptSurface], surfaceVal: outfit.aptitudes[aptSurface],
+        style: outfit.aptitudeGrades[aptStyle], styleVal: outfit.aptitudes[aptStyle],
+      },
+      sparked: ctx.aptitudes.style > (outfit.aptitudes[aptStyle] ?? 7)
+        || ctx.aptitudes.distance > (outfit.aptitudes[aptDistance] ?? 7)
+        || ctx.aptitudes.surface > (outfit.aptitudes[aptSurface] ?? 7),
     } : null,
   };
 }
@@ -192,7 +211,7 @@ export function rankCards(analysis, deckIndex, { own = 'all', query = '', type =
  * Rank umamusume by what their own kit is worth on this course.
  * @param {'all'|'mine'} own  'mine' respects the collection restriction
  */
-export function rankUmas({ own = 'all', query = '', strategy = null } = {}) {
+export function rankUmas({ own = 'all', query = '', strategy = null, deck = [] } = {}) {
   const course = db.courseById.get(cm.courseId);
   const needle = query.trim().toLowerCase();
   const aptDistance = ['', 'sprint', 'mile', 'medium', 'long'][course.distanceType];
@@ -206,7 +225,10 @@ export function rankUmas({ own = 'all', query = '', strategy = null } = {}) {
   for (const outfit of db.globalOutfits) {
     if (needle && !outfit.displayName.toLowerCase().includes(needle)) continue;
     const style = strategy ?? outfit.strategy;
-    if (strategy && outfit.strategy !== strategy) continue;
+    // With the style spark on, "End Closer" is a way to run an uma, not a class
+    // of uma — so the filter scores everyone that way instead of hiding the
+    // 70 outfits whose card happens to say something else.
+    if (strategy && outfit.strategy !== strategy && cm.sparks === 'none') continue;
     const owned = !cm.useOwned || cm.owned.umas.includes(outfit.id);
     if (own === 'mine' && !owned) continue;
 
@@ -216,12 +238,22 @@ export function rankUmas({ own = 'all', query = '', strategy = null } = {}) {
       // The whole context goes in, so the going, weather, season and field mix
       // reach the valuation the same way they do everywhere else.
       const ctx = { ...scoringContext({ outfitId: outfit.id, strategy: style, stats: cm.stats, deck: [] }), aptitudes };
-      const sim = simulateRace({ ...ctx, recoveryPct: cm.recovery });
-      byContext.set(key, { valueOf: valuer({ ...ctx, sim, recoveryPct: cm.recovery }), sim });
+      byContext.set(key, { ctx, sim: simulateRace({ ...ctx, recoveryPct: cm.recovery }) });
     }
-    const { valueOf, sim } = byContext.get(key);
+    const { ctx, sim } = byContext.get(key);
 
     const ids = [...(outfit.uniqueId ? [outfit.uniqueId] : []), ...outfit.skillIds];
+    // The run she is being scored on is her own list plus whatever the deck
+    // already in the slot teaches, so that is what a count-gated skill of hers
+    // is read against. Only the valuer is per-uma: the race simulation is the
+    // expensive half and it does not depend on the deck.
+    const ownSkills = ids.map((id) => db.skillById.get(id)).filter(Boolean);
+    const valueOf = valuer({
+      ...ctx,
+      sim,
+      recoveryPct: cm.recovery,
+      deckSkills: [...ownSkills, ...deck.filter((s) => !ids.includes(s.id))],
+    });
     let value = 0;
     let unique = 0;
     const skills = [];
@@ -235,17 +267,20 @@ export function rankUmas({ own = 'all', query = '', strategy = null } = {}) {
     }
     skills.sort((a, b) => b.value - a.value);
 
+    const cardStyleApt = outfit.aptitudes[STRATEGY[style].key];
     out.push({
-      outfit, value, unique, skills, owned, sim,
+      outfit, value, unique, skills, owned, sim, style,
       gold: skills.filter((s) => s.skill?.tier === 'gold').length,
       // The aptitude penalty used to be a hand-picked multiplier bolted on here.
       // The model applies the game's own aptitude tables now, so applying a
       // second discount on top would count the same shortfall twice.
       rank: value,
       aptitudes: {
-        distance: outfit.aptitudeGrades[aptDistance], distanceVal: outfit.aptitudes[aptDistance],
-        surface: outfit.aptitudeGrades[aptSurface], surfaceVal: outfit.aptitudes[aptSurface],
-        style: outfit.aptitudeGrades[STRATEGY[style].key], styleVal: outfit.aptitudes[STRATEGY[style].key],
+        distance: APT_GRADE[aptitudes.distance], distanceVal: aptitudes.distance,
+        surface: APT_GRADE[aptitudes.surface], surfaceVal: aptitudes.surface,
+        style: APT_GRADE[aptitudes.style], styleVal: aptitudes.style,
+        cardStyle: APT_GRADE[cardStyleApt],
+        sparkedStyle: aptitudes.style > cardStyleApt,
       },
     });
   }
@@ -359,6 +394,9 @@ function setupSignature() {
     cm.courseId, cm.ground, cm.weather, cm.season, cm.fieldSize, cm.recovery,
     cm.you.uniqueLevel, fieldStyles().slice(1).join(''),
     cm.stats.speed, cm.stats.stamina, cm.stats.power, cm.stats.guts, cm.stats.wit,
+    // Sparks change every aptitude the ranking reads, and the planned skill
+    // list changes what a count-gated skill is worth, so both invalidate.
+    cm.sparks, cm.raceSkills.join(','),
   ].join('|');
 }
 
@@ -368,10 +406,11 @@ function setupSignature() {
  * The field mix, going, weather and season are the ones set on the Planner, so
  * a unique is never priced against a race nobody is planning to run.
  */
-function ctxFor(strategy, aptitudes) {
+function ctxFor(strategy, aptitudes, deckSkills = null) {
   const sig = setupSignature();
   if (sig !== ctxCacheKey) { ctxCacheKey = sig; ctxCache = new Map(); }
-  const key = `${strategy}:${aptitudes.distance}:${aptitudes.surface}:${aptitudes.style}`;
+  const deck = deckSkills?.length ? deckSkills.map((s) => s.id).join(',') : '';
+  const key = `${strategy}:${aptitudes.distance}:${aptitudes.surface}:${aptitudes.style}:${deck}`;
   let hit = ctxCache.get(key);
   if (!hit) {
     const styles = fieldStyles();
@@ -385,6 +424,7 @@ function ctxFor(strategy, aptitudes) {
       fieldSize: cm.fieldSize,
       fieldStyles: styles,
       aptitudes,
+      deckSkills,
       stats: cm.stats,
       recoveryPct: cm.recovery,
       uniqueLevel: cm.you.uniqueLevel,
@@ -442,7 +482,10 @@ export function rankUniquesForStyle(strategy = cm.strategy) {
 
     const nativeApt = aptitudesFor(owner, course, owner.strategy);
     const native = ctxFor(owner.strategy, nativeApt).valueOf(skill);
-    const styleApt = owner.aptitudes[styleKey] ?? 7;
+    // The grade she runs on, not the one the card ships: the fit gate has to
+    // read the same aptitude the valuation above just used.
+    const cardStyleApt = owner.aptitudes[styleKey] ?? 7;
+    const styleApt = aptitudes.style;
 
     out.push({
       skill,
@@ -454,6 +497,8 @@ export function rankUniquesForStyle(strategy = cm.strategy) {
       reasons: scored.reasons,
       styleApt,
       styleGrade: APT_GRADE[styleApt],
+      cardStyleGrade: APT_GRADE[cardStyleApt],
+      sparkedStyle: styleApt > cardStyleApt,
       native: owner.strategy,
       nativeBashin: native?.bashin ?? 0,
       // Her own style always counts as runnable, whatever the grade table says.
@@ -597,16 +642,24 @@ export function rateUmasForRace({ strategy = cm.strategy, ownStyle = false, own 
     const style = ownStyle ? outfit.strategy : strategy;
     const styleKey = STRATEGY[style].key;
     const aptitudes = aptitudesFor(outfit, course, style);
-    const { ctx, valueOf } = ctxFor(style, aptitudes);
     const cost = aptitudeCost(style, aptitudes);
 
     const uniqueSkill = outfit.uniqueId ? db.skillById.get(outfit.uniqueId) : null;
+    // The run she would actually have: her own unique and skill list, plus the
+    // skills you have said you are training. Her unique is priced against that
+    // deck rather than in isolation — for a unique gated on "after three
+    // recovery skills" the deck is the whole answer.
+    const kitSkills = outfit.skillIds.map((id) => db.skillById.get(id)).filter(Boolean);
+    const deckSkills = [
+      ...(uniqueSkill ? [uniqueSkill] : []),
+      ...kitSkills,
+      ...yourSkills().filter((s) => s.id !== outfit.uniqueId && !outfit.skillIds.includes(s.id)),
+    ];
+    const { ctx, valueOf } = ctxFor(style, aptitudes, deckSkills);
     const uniqueScored = uniqueSkill ? valueOf(uniqueSkill) : null;
     const uniqueValue = uniqueScored?.bashin ?? 0;
 
-    const kit = outfit.skillIds
-      .map((id) => db.skillById.get(id))
-      .filter(Boolean)
+    const kit = kitSkills
       .map((skill) => {
         const scored = valueOf(skill);
         const shared = taughtByCard(skill);
@@ -617,11 +670,16 @@ export function rateUmasForRace({ strategy = cm.strategy, ownStyle = false, own 
     const kitTop = kit.slice(0, KIT_DEPTH).filter((x) => x.worth > 0);
     const kitValue = kitTop.reduce((n, x) => n + x.worth, 0);
 
-    const styleApt = outfit.aptitudes[styleKey] ?? 7;
+    // Two readings of the same grade: what the card ships with, and what she
+    // runs on once the style factor is in. The fit gate uses the second,
+    // because the first is not what anyone brings to a Champions Meeting.
+    const cardStyleApt = outfit.aptitudes[styleKey] ?? 7;
+    const styleApt = aptitudes.style;
+    const sparkedStyle = styleApt > cardStyleApt;
     const total = uniqueValue + kitValue - cost.total;
 
     out.push({
-      outfit, style, styleApt, aptitudes, owned,
+      outfit, style, styleApt, cardStyleApt, sparkedStyle, aptitudes, owned,
       sim: ctx.sim,
       unique: uniqueSkill, uniqueScored, uniqueValue,
       kit, kitTop, kitValue,
@@ -634,7 +692,10 @@ export function rateUmasForRace({ strategy = cm.strategy, ownStyle = false, own 
         surface: APT_GRADE[aptitudes.surface],
         style: APT_GRADE[styleApt],
       },
-      reasons: umaReasons({ outfit, course, style, aptitudes, styleApt, cost, uniqueSkill, uniqueScored, kitTop, sim: ctx.sim }),
+      reasons: umaReasons({
+        outfit, course, style, aptitudes, styleApt, cardStyleApt, sparkedStyle,
+        cost, uniqueSkill, uniqueScored, kitTop, sim: ctx.sim,
+      }),
     });
   }
 
@@ -643,7 +704,7 @@ export function rateUmasForRace({ strategy = cm.strategy, ownStyle = false, own 
 }
 
 /** The short, checkable "why" a row carries. Strongest claim first. */
-function umaReasons({ outfit, course, style, aptitudes, styleApt, cost, uniqueSkill, uniqueScored, kitTop, sim }) {
+function umaReasons({ outfit, course, style, aptitudes, styleApt, cardStyleApt, sparkedStyle, cost, uniqueSkill, uniqueScored, kitTop, sim }) {
   const why = [];
 
   if (uniqueScored && uniqueSkill) {
@@ -664,7 +725,9 @@ function umaReasons({ outfit, course, style, aptitudes, styleApt, cost, uniqueSk
   }
 
   if (outfit.strategy !== style) {
-    why.push(`built as a ${STRATEGY[outfit.strategy].name}; ${APT_GRADE[styleApt]} aptitude for ${STRATEGY[style].name}`);
+    why.push(sparkedStyle
+      ? `built as a ${STRATEGY[outfit.strategy].name}: the card is ${APT_GRADE[cardStyleApt]} for ${STRATEGY[style].name}, sparked to ${APT_GRADE[styleApt]}`
+      : `built as a ${STRATEGY[outfit.strategy].name}; ${APT_GRADE[styleApt]} aptitude for ${STRATEGY[style].name}`);
   }
   const aptLabel = `${APT_GRADE[aptitudes.distance]} ${course.distanceTypeName} / ${APT_GRADE[aptitudes.surface]} ${course.surfaceName}`;
   if (cost.clock > 0.15) {
