@@ -937,15 +937,38 @@ export function scoreSkill(skill, ctx) {
   let pOther = 1;
   const unmodelled = [];
   const counted = [];
+  // A count gate is the one term the *deck* decides, so it is tracked apart
+  // from the rest: a skill behind an unmet one is not a bad skill, it is a
+  // skill you have not built for yet, and a ranking that cannot say so hides
+  // it instead of pricing it.
+  const gates = [];
+  // Kept as its own factor rather than folded into `pOther`, so the
+  // gate-satisfied value stays computable when the deck misses the gate
+  // outright and the product is zero.
+  let pCount = 1;
   for (const g of [...alt.liveKeys, ...alt.guesses]) {
     const key = g.split(/[<>=!]/)[0];
     if (key === 'order' || key === 'order_rate') continue;
     const odds = termOdds(g, ctx, at, skill.id);
-    pOther *= odds;
-    // A count gate read off a known deck is a measurement, not a discount, so
-    // it says what the deck buys rather than hiding in the "needs …" list.
-    if (COUNT_BUCKET[key] && deckContributors(ctx)) counted.push(`${LIVE_LABEL[key]} ${Math.round(odds * 100)}% of the time in this deck`);
-    else if (odds < 0.95 && LIVE_LABEL[key]) unmodelled.push(LIVE_LABEL[key]);
+    const bucket = COUNT_BUCKET[key];
+    if (!bucket) pOther *= odds;
+    if (bucket) {
+      const m = TERM_RE.exec(g);
+      const known = deckContributors(ctx);
+      pCount *= odds;
+      gates.push({
+        key,
+        bucket,
+        label: LIVE_LABEL[key],
+        op: m?.[2] ?? '>=',
+        need: Number(m?.[3] ?? 0),
+        have: known ? known[bucket].filter((c) => c.id !== skill.id).length : null,
+        odds,
+        counted: !!known,
+      });
+      if (known) counted.push(`${LIVE_LABEL[key]} ${Math.round(odds * 100)}% of the time in this deck`);
+      else if (odds < 0.95 && LIVE_LABEL[key]) unmodelled.push(LIVE_LABEL[key]);
+    } else if (odds < 0.95 && LIVE_LABEL[key]) unmodelled.push(LIVE_LABEL[key]);
   }
   if (unmodelled.length) reasons.push(`needs ${[...new Set(unmodelled)].join(', ')}`);
   for (const c of counted) reasons.push(c);
@@ -957,17 +980,28 @@ export function scoreSkill(skill, ctx) {
   // from the gate onwards, and the stat difference already priced it over the
   // whole distance. Only timed effects get the where-in-the-race discount.
   const weight = nominal > 0 ? positionWeight(fraction) : 1;
-  const probability = pPosition * pWit * pOther * pPre;
-  const selfExpected = metres * weight * probability;
-  const rivalExpected = rivalMetres * probability * 0.85;
-  const expected = selfExpected + rivalExpected;
+  const ungated = pPosition * pWit * pOther * pPre;
+  const probability = ungated * pCount;
+  const expectedAt = (p) => metres * weight * p + rivalMetres * p * 0.85;
+  const expected = expectedAt(probability);
 
   return {
     metres,
     rivalMetres,
     bashin: expected / BASHIN,
-    selfBashin: selfExpected / BASHIN,
-    rivalBashin: rivalExpected / BASHIN,
+    // What it is worth once the deck satisfies its count gates. Computed from
+    // the ungated probability rather than divided back out of `bashin`, so it
+    // survives the case that matters — a deck that misses the gate outright,
+    // where `bashin` is zero and the skill is not bad, only unbuilt-for.
+    gates,
+    potentialBashin: expectedAt(ungated) / BASHIN,
+    pCount,
+    // How often it fires for every reason *except* the deck's count gates, so
+    // a caller reporting the gate separately does not also charge for it in
+    // the activation rate and end up saying "worth 3.12, fires 0% of the time".
+    ungatedProbability: ungated,
+    selfBashin: (metres * weight * probability) / BASHIN,
+    rivalBashin: (rivalMetres * probability * 0.85) / BASHIN,
     perSp: skill.cost ? (expected / BASHIN) / skill.cost * 100 : null,
     score: expected,
     probability,

@@ -658,6 +658,14 @@ export function rateUmasForRace({ strategy = cm.strategy, ownStyle = false, own 
     const { ctx, valueOf } = ctxFor(style, aptitudes, deckSkills);
     const uniqueScored = uniqueSkill ? valueOf(uniqueSkill) : null;
     const uniqueValue = uniqueScored?.bashin ?? 0;
+    // This panel is read *before* a skill list exists — it is where you go to
+    // find out who to build. Pricing a unique gated on your own skill history
+    // against an empty list answers zero and hides her, which is a different
+    // wrong answer from the flat 15% it replaced. So the ranking is on what
+    // she is worth once the deck meets the gate, and the row is required to
+    // print the gate next to it.
+    const uniquePotential = uniqueScored?.potentialBashin ?? 0;
+    const openGates = (uniqueScored?.gates ?? []).filter((g) => g.odds < 0.9);
 
     const kit = kitSkills
       .map((skill) => {
@@ -676,15 +684,19 @@ export function rateUmasForRace({ strategy = cm.strategy, ownStyle = false, own 
     const cardStyleApt = outfit.aptitudes[styleKey] ?? 7;
     const styleApt = aptitudes.style;
     const sparkedStyle = styleApt > cardStyleApt;
+    // `total` is what she is worth on the list you have written so far;
+    // `potential` is what she is worth once the deck meets her unique's gate.
+    // They are the same number for every uma whose unique has no gate.
     const total = uniqueValue + kitValue - cost.total;
+    const potential = uniquePotential + kitValue - cost.total;
 
     out.push({
       outfit, style, styleApt, cardStyleApt, sparkedStyle, aptitudes, owned,
       sim: ctx.sim,
-      unique: uniqueSkill, uniqueScored, uniqueValue,
+      unique: uniqueSkill, uniqueScored, uniqueValue, uniquePotential, openGates,
       kit, kitTop, kitValue,
       cost,
-      total,
+      total, potential,
       fits: (outfit.strategy === style || styleApt >= MIN_STYLE_APT)
         && aptitudes.distance >= MIN_COURSE_APT && aptitudes.surface >= MIN_COURSE_APT,
       grades: {
@@ -694,31 +706,51 @@ export function rateUmasForRace({ strategy = cm.strategy, ownStyle = false, own 
       },
       reasons: umaReasons({
         outfit, course, style, aptitudes, styleApt, cardStyleApt, sparkedStyle,
-        cost, uniqueSkill, uniqueScored, kitTop, sim: ctx.sim,
+        cost, uniqueSkill, uniqueScored, uniquePotential, openGates, kitTop, sim: ctx.sim,
       }),
     });
   }
 
-  out.sort((a, b) => b.total - a.total);
+  out.sort((a, b) => b.potential - a.potential || b.total - a.total);
   return out;
 }
 
+/** Plain English for an unmet count gate: what it wants and what you have. */
+function gateNote(gate) {
+  const what = {
+    heal: 'recovery skills', all: 'skills', opening: 'opening-leg skills',
+    middle: 'middle-leg skills', lateHalf: 'second-half skills',
+  }[gate.bucket] ?? 'skills';
+  const have = gate.have == null ? '' : `, and the list you have planned holds ${gate.have}`;
+  return `only if your deck fires ${gate.need} ${what} first${have}`;
+}
+
 /** The short, checkable "why" a row carries. Strongest claim first. */
-function umaReasons({ outfit, course, style, aptitudes, styleApt, cardStyleApt, sparkedStyle, cost, uniqueSkill, uniqueScored, kitTop, sim }) {
+function umaReasons({ outfit, course, style, aptitudes, styleApt, cardStyleApt, sparkedStyle, cost, uniqueSkill, uniqueScored, uniquePotential, openGates, kitTop, sim }) {
   const why = [];
 
   if (uniqueScored && uniqueSkill) {
     const where = uniqueScored.at != null ? Math.round(uniqueScored.at) : null;
     const inSpurt = where != null && where >= sim.spurtStart;
-    why.push(`${uniqueSkill.name} is worth ${uniqueScored.bashin.toFixed(2)} here${
+    why.push(`${uniqueSkill.name} is worth ${(openGates?.length ? uniquePotential : uniqueScored.bashin).toFixed(2)} here${
       inSpurt ? ', and it lands inside the last spurt' : where != null ? `, firing around ${where}m` : ''}`);
+    // Never let the conditional number stand on its own — the condition is the
+    // difference between a top pick and a wasted slot, and it is the one thing
+    // the reader has to act on.
+    for (const gate of openGates ?? []) why.push(gateNote(gate));
     const ramp = uniqueScored.reasons.find((r) => r.startsWith('lands on the ramp'));
     if (ramp) why.push(`her unique ${ramp}`);
     else if (uniqueScored.reasons.includes('no acceleration to gain here — already at target speed')) {
       why.push('her unique is mostly acceleration, and this course gives it nowhere to spend it');
     }
-    if (uniqueScored.probability < 0.5) {
-      why.push(`but it only fires ${Math.round(uniqueScored.probability * 100)}% of the time as ${STRATEGY[style].name}`);
+    // With an open count gate the headline number is already the gate-satisfied
+    // one and the gate is stated on its own line, so the activation rate quoted
+    // here has to leave the gate out — otherwise the row reads "worth 3.12" and
+    // "fires 0% of the time" one after the other.
+    const rate = openGates?.length ? uniqueScored.ungatedProbability : uniqueScored.probability;
+    if (rate < 0.5) {
+      why.push(`but it only fires ${Math.round(rate * 100)}% of the time as ${STRATEGY[style].name}${
+        openGates?.length ? ' even once that is met' : ''}`);
     }
   } else if (!uniqueSkill) {
     why.push('no unique in the data for this outfit');

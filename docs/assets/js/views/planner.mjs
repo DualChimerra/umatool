@@ -1275,10 +1275,11 @@ export function renderPlanner(root) {
                 <span class="chip chip--style${r.style}">${esc(STRATEGY[r.style].short)} ${esc(r.grades.style)}</span>
               </span>
               <span class="rank-row__mid">
-                ${valueBar({ unique: Math.max(0, r.uniqueValue), kit: Math.max(0, r.kitValue) })}
-                <span class="tiny muted num">unique ${r.uniqueValue.toFixed(2)} · kit ${r.kitValue.toFixed(2)} · aptitude ${fmt.signed(-r.cost.total)}</span>
+                ${valueBar({ unique: Math.max(0, r.openGates.length ? r.uniquePotential : r.uniqueValue), kit: Math.max(0, r.kitValue) })}
+                <span class="tiny muted num">unique ${(r.openGates.length ? r.uniquePotential : r.uniqueValue).toFixed(2)} · kit ${r.kitValue.toFixed(2)} · aptitude ${fmt.signed(-r.cost.total)}</span>
+                ${r.openGates.length ? `<span class="tiny muted num">on your list so far: ${r.total.toFixed(2)}</span>` : ''}
               </span>
-              <span class="rank-row__score">${r.total.toFixed(2)}</span>
+              <span class="rank-row__score">${r.potential.toFixed(2)}${r.openGates.length ? '<span class="rank-row__cond" title="Conditional on the count gate named in the row.">?</span>' : ''}</span>
             </div>`).join('')}
         </div>
       </div>
@@ -1292,8 +1293,10 @@ export function renderPlanner(root) {
         <em>your</em> build, not a theoretical one. <b>As ${esc(STRATEGY[cm.strategy].short)}</b> drops anyone below
         ${esc(APT_GRADE[MIN_STYLE_APT])} aptitude for that style or ${esc(APT_GRADE[MIN_COURSE_APT])} for this distance or surface —
         read <b>after</b> the aptitude sparks set in the rail, which is why an uma whose card says D for this style can still be here.
-        Her unique is priced against the skills you have said you are training, so anything gated on your own skill history
-        (&ldquo;after three recovery skills&rdquo;) is counted off that list rather than guessed at.</p>
+        A unique gated on your own skill history (&ldquo;after three recovery skills&rdquo;) is ranked at what it is worth
+        <b>once the deck meets that gate</b>, marked <b>?</b>, with the gate spelled out in the row and what it is worth on your
+        current list printed underneath — because this panel is where you decide who to build, and scoring her against a skill
+        list you have not written yet would answer zero and hide her.</p>
       </div>
     </section>`);
 

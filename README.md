@@ -286,6 +286,18 @@ overtake an earlier one.
   checked counting at half weight. On Kyoto 2200m with seven recovery skills the
   closed form puts Festive Miracle at 85%; the simulator fires it in 88% of 300
   races, at 1151m against the closed form's 1100m.
+* **…and *Best umamusume* ranks the gate as met, because that panel is read
+  before the deck exists.** Counting the gate is right for a deck you have
+  written down and wrong for the panel you use to decide *who to build*: an
+  empty skill list makes the gate impossible, which scored Christmas Oguri Cap
+  at 0.05 and dropped her to 65th — a different wrong answer from the 15% it
+  replaced, and one no amount of changing the race conditions can escape. So
+  that one ranking is on the gate-satisfied value, marked **?**, with the gate
+  written out in the row (*“only if your deck fires 3 recovery skills first, and
+  the list you have planned holds 2”*) and the as-planned number printed under
+  it. Two umamusume in the whole Global set ever reach a top 15 that way, and
+  both say why. Everywhere a concrete deck exists — the deck valuation, the SP
+  optimiser, the skill ranking, Team — the counted number is the one used.
 * **Position keep is why early skills are cheap.** For the first two thirds of the
   race every runner behind the leader is holding a slot, so ground stolen there is
   largely handed back. Measured against the simulator, an early speed skill keeps
